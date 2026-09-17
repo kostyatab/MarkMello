@@ -120,11 +120,11 @@ public sealed partial class DocumentTabViewModel : ObservableObject, IDisposable
     /// </summary>
     public double EstimateWidth()
     {
-        // 10px паддинги по краям + ~6.6px на символ 12px Inter Tight + 8px gap + 14px крестик.
-        var content = 20 + (DisplayTitle.Length * 6.6) + 22;
+        // 10px паддинги по краям + ~7.2px на символ 12px Inter + 8px gap + 14px крестик.
+        var content = 20 + (DisplayTitle.Length * 7.2) + 22;
         if (HasDisambiguator)
         {
-            content += 6 + (Disambiguator!.Length * 5.8);
+            content += 6 + (Disambiguator!.Length * 6.4);
         }
 
         return Math.Clamp(content, MinimumWidth, MaximumWidth);

@@ -8,7 +8,7 @@
     Источник истины: MarkMelloDesign/src/styles.css
 
       Document (serif):  Source Serif 4, Source Serif Pro, Iowan Old Style, Georgia, serif
-      UI/document sans:  Inter Tight, Segoe UI Variable, Segoe UI, system-ui, sans-serif
+      UI/document sans:  Inter, Segoe UI Variable, Segoe UI, system-ui, sans-serif
       Mono:              JetBrains Mono, Consolas, monospace
 
     Дизайн-шрифты встроены в сборку через AvaloniaResource
@@ -16,14 +16,14 @@
     следом на случай, если ресурс не зарегистрирован (например, в design-time).
 
       Source Serif 4  — Assets/Fonts/*.ttf        (static: Regular/Bold/Italic/BoldIt)
-      Inter Tight     — Assets/Fonts/InterTight   (variable: wght + italic)
+      Inter           — Assets/Fonts/Inter        (variable: opsz + wght, + italic)
       JetBrains Mono  — Assets/Fonts/JetBrainsMono (static: Regular/Bold)
 
     Лицензии (OFL) лежат рядом со шрифтами.
   -->
 
   <FontFamily x:Key="MmDocumentSerifFontFamily">avares://MarkMello.Presentation/Assets/Fonts#Source Serif 4, Source Serif Pro, Iowan Old Style, Georgia, Cambria, serif</FontFamily>
-  <FontFamily x:Key="MmDocumentSansFontFamily">avares://MarkMello.Presentation/Assets/Fonts/InterTight#Inter Tight, Segoe UI Variable, Segoe UI, Inter, system-ui, sans-serif</FontFamily>
+  <FontFamily x:Key="MmDocumentSansFontFamily">avares://MarkMello.Presentation/Assets/Fonts/Inter#Inter, Segoe UI Variable, Segoe UI, system-ui, sans-serif</FontFamily>
   <FontFamily x:Key="MmDocumentMonoFontFamily">avares://MarkMello.Presentation/Assets/Fonts/JetBrainsMono#JetBrains Mono, Cascadia Code, Consolas, Menlo, monospace</FontFamily>
 
   <sys:Double x:Key="MmDocumentFontSize">17</sys:Double>
