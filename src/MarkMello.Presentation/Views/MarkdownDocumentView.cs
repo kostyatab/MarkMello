@@ -1309,15 +1309,6 @@ public sealed class MarkdownDocumentView : UserControl
         // Design: h1 -> 700, h2+ -> 600. Previous code had this inverted.
         var weight = block.Level == 1 ? FontWeight.Bold : FontWeight.SemiBold;
 
-        // Tighter tracking at larger sizes, matching -0.025em / -0.02em / -0.01em.
-        var letterSpacing = block.Level switch
-        {
-            1 => fontSize * -0.025,
-            2 => fontSize * -0.02,
-            3 => fontSize * -0.01,
-            _ => 0d
-        };
-
         // h5 / h6 render with the soft text colour in the design.
         var baseForeground = block.Level >= 5 ? LookupBrush("MmTextSoftBrush") : null;
 
@@ -1330,8 +1321,7 @@ public sealed class MarkdownDocumentView : UserControl
             weight,
             FontStyle.Normal,
             fallbackClassName: "mm-md-heading",
-            baseForeground: baseForeground,
-            letterSpacing: letterSpacing);
+            baseForeground: baseForeground);
 
         RegisterHeadingAnchor(block, headingControl);
         return headingControl;
