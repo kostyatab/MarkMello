@@ -1519,13 +1519,10 @@ public sealed class MarkdownDocumentView : UserControl
             stack.Children.Add(BuildBlock(block.Blocks[index], $"{path}.b{index}", nested: true, insideQuote: insideQuote));
         }
 
-        if (block.AlertKind is not null)
-        {
-            // Нижний отступ блока — расстояние до следующего блока. У последнего
-            // блока alert следующего нет, и отступ оставлял бы под текстом пустое
-            // место больше, чем над шапкой.
-            RemoveTrailingBottomMargin(stack);
-        }
+        // Нижний отступ блока — расстояние до следующего блока. У последнего
+        // блока цитаты следующего нет, и отступ оставлял бы под текстом пустое
+        // место больше, чем над ним, — у вложенных цитат на каждом уровне.
+        RemoveTrailingBottomMargin(stack);
 
         return border;
     }
