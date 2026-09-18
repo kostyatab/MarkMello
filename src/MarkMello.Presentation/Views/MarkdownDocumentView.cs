@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Animation.Easings;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
@@ -48,6 +49,14 @@ public sealed class MarkdownDocumentView : UserControl
 
     private const double DragSelectionThreshold = 4;
     private const double CodeBlockHorizontalScrollBarReserve = 16;
+    private static readonly TimeSpan CodeCopyConfirmationDuration = TimeSpan.FromSeconds(1.5);
+
+    // The code block copy button is a 24px hit target around a 13px Lucide icon.
+    // What has to line up with the info label is the icon's ink (2..22 of the
+    // 24 grid), not the button box, so the button is shifted out by this inset.
+    private const double CodeCopyButtonSize = 24;
+    private const double CodeCopyIconSize = 13;
+    private const double CodeCopyIconInkInset = (CodeCopyButtonSize - CodeCopyIconSize) / 2 + CodeCopyIconSize * 2 / 24;
     private static readonly DataFormat<byte[]> WindowsHtmlClipboardFormat = DataFormat.CreateBytesPlatformFormat("HTML Format");
     private static readonly DataFormat<byte[]> HtmlClipboardFormat = DataFormat.CreateBytesPlatformFormat("text/html");
 
@@ -1450,22 +1459,25 @@ public sealed class MarkdownDocumentView : UserControl
             Spacing = 8
         };
 
+        TextBlock? infoLabel = null;
         if (!string.IsNullOrWhiteSpace(block.Info))
         {
-            body.Children.Add(new TextBlock
+            infoLabel = new TextBlock
             {
                 Text = block.Info,
                 UseLayoutRounding = true,
                 Classes = { "mm-md-code-info" }
-            });
+            };
+            body.Children.Add(infoLabel);
         }
 
+        var codeLineHeight = Math.Max(16, (ReadingPreferences.FontSize - 2) * 1.5);
         var codeFragment = BuildSelectionFragment(
             path,
             [new MarkdownTextInline(block.Code)],
             margin: default,
             fontSize: Math.Max(12, ReadingPreferences.FontSize - 2),
-            lineHeight: Math.Max(16, (ReadingPreferences.FontSize - 2) * 1.5),
+            lineHeight: codeLineHeight,
             fontWeight: FontWeight.Normal,
             fontStyle: FontStyle.Normal,
             fallbackClassName: "mm-md-codeblock-text",
@@ -1489,8 +1501,19 @@ public sealed class MarkdownDocumentView : UserControl
         var copyButton = CreateCodeCopyButton(block.Code);
         copyButton.HorizontalAlignment = HorizontalAlignment.Right;
         copyButton.VerticalAlignment = VerticalAlignment.Top;
-        copyButton.Margin = new Thickness(0, 0, 0, 0);
         contentGrid.Children.Add(copyButton);
+
+        // Centre the icon on the block's first line: the info label when there
+        // is one (its height comes from the font, so it is read after layout),
+        // otherwise the first line of code.
+        if (infoLabel is null)
+        {
+            AlignCodeCopyButton(copyButton, codeLineHeight);
+        }
+        else
+        {
+            infoLabel.SizeChanged += (_, e) => AlignCodeCopyButton(copyButton, e.NewSize.Height);
+        }
 
         return new Border
         {
@@ -1499,19 +1522,63 @@ public sealed class MarkdownDocumentView : UserControl
         };
     }
 
+    /// <summary>
+    /// Puts the copy icon on the same line as the block's first line and mirrors
+    /// the label's left inset on the right, measured to the icon's ink.
+    /// </summary>
+    private static void AlignCodeCopyButton(Button button, double firstLineHeight)
+        => button.Margin = new Thickness(
+            0,
+            (firstLineHeight - CodeCopyButtonSize) / 2,
+            -CodeCopyIconInkInset,
+            0);
+
     private Button CreateCodeCopyButton(string code)
     {
+        // The geometry, stroke and the copy -> check swap on .copied come from
+        // the theme; the Path is sized to Lucide's 24x24 grid and the Viewbox
+        // scales that grid down, stroke included.
         var button = new Button
         {
             Classes = { "mm-code-copy-button" },
-            Content = GetLocalizedString("ContextCopy", "Copy"),
+            Width = CodeCopyButtonSize,
+            Height = CodeCopyButtonSize,
+            Content = new Viewbox
+            {
+                Width = CodeCopyIconSize,
+                Height = CodeCopyIconSize,
+                Child = new Avalonia.Controls.Shapes.Path { Width = 24, Height = 24 }
+            },
             IsTabStop = true
         };
 
-        ToolTip.SetTip(button, GetLocalizedString("CodeCopyTooltip", "Copy code"));
+        var tooltip = GetLocalizedString("CodeCopyTooltip", "Copy code");
+        var copiedName = GetLocalizedString("CodeCopiedStatus", "Code copied");
+        ToolTip.SetTip(button, tooltip);
+        AutomationProperties.SetName(button, tooltip);
+
+        // The check mark is only visual; a screen reader hears the confirmation
+        // because the name changes on a live element.
+        AutomationProperties.SetLiveSetting(button, AutomationLiveSetting.Polite);
+
+        void ShowCopied(bool copied)
+        {
+            button.Classes.Set("copied", copied);
+            AutomationProperties.SetName(button, copied ? copiedName : tooltip);
+        }
+
+        IDisposable? pendingIconReset = null;
         button.Click += async (_, e) =>
         {
-            await CopyTextToClipboardAsync(code).ConfigureAwait(true);
+            if (await CopyTextToClipboardAsync(code).ConfigureAwait(true))
+            {
+                ShowCopied(true);
+                pendingIconReset?.Dispose();
+                pendingIconReset = DispatcherTimer.RunOnce(
+                    () => ShowCopied(false),
+                    CodeCopyConfirmationDuration);
+            }
+
             e.Handled = true;
         };
 
@@ -1945,22 +2012,24 @@ public sealed class MarkdownDocumentView : UserControl
         await CopyTextToClipboardAsync(SelectedText).ConfigureAwait(true);
     }
 
-    private async Task CopyTextToClipboardAsync(string? text)
+    /// <returns><see langword="true"/> when the text reached the clipboard.</returns>
+    private async Task<bool> CopyTextToClipboardAsync(string? text)
     {
         if (string.IsNullOrEmpty(text))
         {
-            return;
+            return false;
         }
 
         var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
         if (clipboard is null)
         {
-            return;
+            return false;
         }
 
         await ClipboardExtensions.SetTextAsync(
             clipboard,
             text.Replace("\n", Environment.NewLine, StringComparison.Ordinal));
+        return true;
     }
 
     private ContextMenu BuildContextMenu()

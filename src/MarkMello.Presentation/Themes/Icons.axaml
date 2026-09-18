@@ -1,0 +1,21 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!--
+    Иконки Lucide (https://lucide.dev), лицензия ISC — см. LUCIDE_LICENSE.txt рядом.
+
+    Геометрия в исходной сетке Lucide 24×24. Рисовать как в оригинале: обводка 2,
+    скруглённые концы и стыки, без заливки; Path размером 24×24, до нужного
+    размера масштабировать через Viewbox, а не Stretch (Stretch растягивает
+    по границам фигуры и искажает иконки, не заполняющие сетку).
+
+    Path data скопированы из SVG как есть; <rect> переписан в эквивалентный path.
+  -->
+
+  <!-- copy -->
+  <StreamGeometry x:Key="LucideCopyGeometry">M10 8H20A2 2 0 0 1 22 10V20A2 2 0 0 1 20 22H10A2 2 0 0 1 8 20V10A2 2 0 0 1 10 8Z M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2</StreamGeometry>
+
+  <!-- check -->
+  <StreamGeometry x:Key="LucideCheckGeometry">M20 6 9 17l-5-5</StreamGeometry>
+
+</ResourceDictionary>

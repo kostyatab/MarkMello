@@ -2,6 +2,7 @@ using MarkMello.Application.Abstractions;
 using MarkMello.Domain;
 using MarkMello.Presentation.Views;
 using MarkMello.Presentation.Views.Markdown;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 
@@ -158,6 +159,28 @@ public sealed class MarkdownDocumentViewTests
         Assert.Equal(ScrollBarVisibility.Disabled, scrollViewer.VerticalScrollBarVisibility);
         Assert.Equal(16, scrollContent.Padding.Bottom);
         Assert.NotNull(scrollContent.Child);
+    }
+
+    [Fact]
+    public void CodeCopyButtonShowsAnIconAndKeepsItsNameForScreenReaders()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownCodeBlock("bash", "dotnet test")
+        ]);
+
+        var view = CreateView(document);
+
+        var codeBlock = GetOnlyDocumentChild<Border>(view);
+        var contentGrid = Assert.IsType<Grid>(codeBlock.Child);
+        var copyButton = Assert.IsType<Button>(contentGrid.Children[1]);
+        var icon = Assert.IsType<Viewbox>(copyButton.Content);
+        var name = AutomationProperties.GetName(copyButton);
+
+        Assert.IsType<Avalonia.Controls.Shapes.Path>(icon.Child);
+        Assert.False(string.IsNullOrWhiteSpace(name));
+        Assert.Equal(name, ToolTip.GetTip(copyButton));
+        Assert.Equal(AutomationLiveSetting.Polite, AutomationProperties.GetLiveSetting(copyButton));
     }
 
     [Fact]

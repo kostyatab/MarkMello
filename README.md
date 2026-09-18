@@ -133,3 +133,5 @@ Diagram support in MarkMello is built on open-source projects:
 
 - [Naiad](https://github.com/NaiadDiagrams/Naiad) — a .NET library that renders Mermaid diagrams to SVG in-process, without a browser or external runtime. MIT License.
 - [Mermaid](https://github.com/mermaid-js/mermaid) — diagram syntax and specification.
+
+Interface icons come from [Lucide](https://lucide.dev) — ISC License (icons inherited from Feather are MIT); the full notice is in [LUCIDE_LICENSE.txt](src/MarkMello.Presentation/Themes/LUCIDE_LICENSE.txt).
