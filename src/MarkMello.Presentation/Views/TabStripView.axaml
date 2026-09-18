@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:MarkMello.Presentation.ViewModels"
+             xmlns:views="using:MarkMello.Presentation.Views"
              mc:Ignorable="d"
              x:Class="MarkMello.Presentation.Views.TabStripView"
              x:DataType="vm:ShellViewModel">
@@ -76,6 +77,11 @@
       <Setter Property="Opacity" Value="0" />
       <Setter Property="HorizontalContentAlignment" Value="Center" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <!-- Цвет крестика не зависит от состояния кнопки, поэтому стоит на самой иконке:
+         Foreground кнопки Fluent меняет по состояниям -->
+    <Style Selector="Button.mm-tab-close views|LucideIcon">
+      <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
     </Style>
     <!-- Крестик появляется под курсором; у несохранённой вкладки он подменяет точку -->
     <Style Selector="Border.mm-tab:pointerover Button.mm-tab-close">
@@ -224,10 +230,9 @@
                   <Button Classes="mm-tab-close"
                           Command="{Binding $parent[ItemsControl].((vm:ShellViewModel)DataContext).OpenDocuments.CloseCommand}"
                           CommandParameter="{Binding}">
-                    <Path Data="M0,0 L9,9 M9,0 L0,9"
-                          Stroke="{DynamicResource MmTextFaintBrush}"
-                          StrokeThickness="1.4"
-                          StrokeLineCap="Round" />
+                    <views:LucideIcon Data="{DynamicResource LucideXGeometry}"
+                                      Width="12"
+                                      Height="12" />
                   </Button>
                 </Panel>
               </Grid>
@@ -271,10 +276,9 @@
                             <Button Classes="mm-tab-close"
                                     Command="{Binding $parent[ItemsControl].((vm:ShellViewModel)DataContext).OpenDocuments.CloseCommand}"
                                     CommandParameter="{Binding}">
-                              <Path Data="M0,0 L9,9 M9,0 L0,9"
-                                    Stroke="{DynamicResource MmTextFaintBrush}"
-                                    StrokeThickness="1.4"
-                                    StrokeLineCap="Round" />
+                              <views:LucideIcon Data="{DynamicResource LucideXGeometry}"
+                                                Width="12"
+                                                Height="12" />
                             </Button>
                           </Panel>
                         </Grid>

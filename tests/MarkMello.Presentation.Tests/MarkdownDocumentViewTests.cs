@@ -174,10 +174,11 @@ public sealed class MarkdownDocumentViewTests
         var codeBlock = GetOnlyDocumentChild<Border>(view);
         var contentGrid = Assert.IsType<Grid>(codeBlock.Child);
         var copyButton = Assert.IsType<Button>(contentGrid.Children[1]);
-        var icon = Assert.IsType<Viewbox>(copyButton.Content);
+        var icon = Assert.IsType<LucideIcon>(copyButton.Content);
         var name = AutomationProperties.GetName(copyButton);
 
-        Assert.IsType<Avalonia.Controls.Shapes.Path>(icon.Child);
+        Assert.Equal(13, icon.Width);
+        Assert.Equal(13, icon.Height);
         Assert.False(string.IsNullOrWhiteSpace(name));
         Assert.Equal(name, ToolTip.GetTip(copyButton));
         Assert.Equal(AutomationLiveSetting.Polite, AutomationProperties.GetLiveSetting(copyButton));

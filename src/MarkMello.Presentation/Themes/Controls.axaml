@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="using:MarkMello.Presentation.Views">
 
   <!--
     Всплывающие подсказки. У Fluent отступы несимметричные (5 сверху, 7 снизу —
@@ -67,57 +68,39 @@
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="Cursor" Value="Hand" />
   </Style>
+  <!--
+    Иконки (Views/LucideIcon) берут цвет из Foreground, как текст. Fluent сам
+    перекрашивает Foreground у ContentPresenter кнопки в :pointerover, :pressed,
+    :disabled и :checked, поэтому у кнопок с иконкой без подписи каждое такое
+    состояние задано явно: нейтральное — цветом покоя. Порядок правил важен —
+    при нескольких состояниях сразу побеждает правило ниже.
+  -->
+  <Style Selector="Button.topbar-ghost:disabled /template/ ContentPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+  </Style>
   <Style Selector="Button.topbar-ghost:pointerover /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
-  </Style>
-  <Style Selector="ToggleButton.topbar-ghost:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
-  </Style>
-  <Style Selector="Button.topbar-ghost:pointerover Path">
-    <Setter Property="Stroke" Value="{DynamicResource MmTextBrush}" />
-  </Style>
-  <Style Selector="ToggleButton.topbar-ghost:pointerover Path">
-    <Setter Property="Stroke" Value="{DynamicResource MmTextBrush}" />
-  </Style>
-  <Style Selector="Button.topbar-ghost:pointerover Ellipse">
-    <Setter Property="Stroke" Value="{DynamicResource MmTextBrush}" />
-  </Style>
-  <Style Selector="ToggleButton.topbar-ghost:pointerover Ellipse">
-    <Setter Property="Stroke" Value="{DynamicResource MmTextBrush}" />
-  </Style>
-  <Style Selector="Button.topbar-ghost:pointerover Line">
-    <Setter Property="Stroke" Value="{DynamicResource MmTextBrush}" />
-  </Style>
-  <Style Selector="ToggleButton.topbar-ghost:pointerover Line">
-    <Setter Property="Stroke" Value="{DynamicResource MmTextBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
   </Style>
   <Style Selector="Button.topbar-ghost:pressed /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource MmAccentSoftBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource MmAccentBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
+  </Style>
+
+  <Style Selector="ToggleButton.topbar-ghost:pressed /template/ ContentPresenter, ToggleButton.topbar-ghost:disabled /template/ ContentPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.topbar-ghost:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
   </Style>
   <Style Selector="ToggleButton.topbar-ghost:checked /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource MmAccentSoftBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource MmAccentBrush}" />
-  </Style>
-  <Style Selector="Button.topbar-ghost:pressed Path">
-    <Setter Property="Stroke" Value="{DynamicResource MmAccentBrush}" />
-  </Style>
-  <Style Selector="ToggleButton.topbar-ghost:checked Path">
-    <Setter Property="Stroke" Value="{DynamicResource MmAccentBrush}" />
-  </Style>
-  <Style Selector="Button.topbar-ghost:pressed Ellipse">
-    <Setter Property="Stroke" Value="{DynamicResource MmAccentBrush}" />
-  </Style>
-  <Style Selector="ToggleButton.topbar-ghost:checked Ellipse">
-    <Setter Property="Stroke" Value="{DynamicResource MmAccentBrush}" />
-  </Style>
-  <Style Selector="Button.topbar-ghost:pressed Line">
-    <Setter Property="Stroke" Value="{DynamicResource MmAccentBrush}" />
-  </Style>
-  <Style Selector="ToggleButton.topbar-ghost:checked Line">
-    <Setter Property="Stroke" Value="{DynamicResource MmAccentBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
   </Style>
 
   <Style Selector="ToggleButton.topbar-action">
@@ -134,15 +117,11 @@
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="Cursor" Value="Hand" />
   </Style>
+  <!-- У тумблера есть подпись, и в :pressed/:disabled иконка идёт за ней -->
   <Style Selector="ToggleButton.topbar-action:pointerover /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
-  </Style>
-  <Style Selector="ToggleButton.topbar-action:pointerover Path">
-    <Setter Property="Stroke" Value="{DynamicResource MmTextBrush}" />
-  </Style>
-  <Style Selector="ToggleButton.topbar-action:pointerover Ellipse">
-    <Setter Property="Stroke" Value="{DynamicResource MmTextBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
   </Style>
   <Style Selector="ToggleButton.topbar-action:pointerover TextBlock">
     <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
@@ -150,12 +129,7 @@
   <Style Selector="ToggleButton.topbar-action:checked /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource MmAccentSoftBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource MmAccentBrush}" />
-  </Style>
-  <Style Selector="ToggleButton.topbar-action:checked Path">
-    <Setter Property="Stroke" Value="{DynamicResource MmAccentBrush}" />
-  </Style>
-  <Style Selector="ToggleButton.topbar-action:checked Ellipse">
-    <Setter Property="Stroke" Value="{DynamicResource MmAccentBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
   </Style>
   <Style Selector="ToggleButton.topbar-action:checked TextBlock">
     <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
@@ -210,12 +184,10 @@
     <Setter Property="FontSize" Value="13" />
     <Setter Property="Cursor" Value="Hand" />
   </Style>
+  <!-- Иконка перекрашивается вместе с подписью -->
   <Style Selector="Button.welcome-secondary:pointerover /template/ ContentPresenter">
     <Setter Property="TextElement.Foreground" Value="{DynamicResource MmTextBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource MmTextSoftBrush}" />
-  </Style>
-  <Style Selector="Button.welcome-secondary:pointerover Path">
-    <Setter Property="Stroke" Value="{DynamicResource MmTextBrush}" />
   </Style>
 
   <!-- Keyboard hint pill -->
@@ -294,8 +266,10 @@
     <Setter Property="LetterSpacing" Value="1" />
   </Style>
 
+  <!-- Назад и закрыть в шапке оверлеев -->
   <Style Selector="Button.mm-settings-close">
     <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="Padding" Value="4" />
     <Setter Property="Width" Value="24" />
@@ -304,12 +278,12 @@
     <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
+  <Style Selector="Button.mm-settings-close:pressed /template/ ContentPresenter, Button.mm-settings-close:disabled /template/ ContentPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
+  </Style>
   <Style Selector="Button.mm-settings-close:pointerover /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
-  </Style>
-
-  <Style Selector="Button.mm-settings-close:pointerover Path">
-    <Setter Property="Stroke" Value="{DynamicResource MmTextBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
   </Style>
 
   <Style Selector="Border.mm-settings-body-shell">
@@ -476,6 +450,17 @@
     <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
     <Setter Property="FontSize" Value="12" />
   </Style>
+  <!-- Шеврон Fluent — залитый PathIcon. Шаблонная часть та же (12×12, цвет по
+       состояниям Fluent), а рисует её LucideIcon: цвет он наследует от PathIcon. -->
+  <Style Selector="ComboBox.mm-language-select /template/ PathIcon#DropDownGlyph">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <views:LucideIcon Data="{DynamicResource LucideChevronDownGeometry}"
+                          Width="12"
+                          Height="12" />
+      </ControlTemplate>
+    </Setter>
+  </Style>
   <Style Selector="ComboBoxItem">
     <Setter Property="MinHeight" Value="30" />
     <Setter Property="Padding" Value="10,5" />
@@ -599,17 +584,19 @@
     <Setter Property="MinHeight" Value="24" />
     <Setter Property="Padding" Value="0" />
     <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="CornerRadius" Value="4" />
     <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="Cursor" Value="Hand" />
   </Style>
+  <Style Selector="Button.mm-editor-toolbar-button:pressed /template/ ContentPresenter, Button.mm-editor-toolbar-button:disabled /template/ ContentPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+  </Style>
   <Style Selector="Button.mm-editor-toolbar-button:pointerover /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
-  </Style>
-  <Style Selector="Button.mm-editor-toolbar-button:pointerover Path">
-    <Setter Property="Stroke" Value="{DynamicResource MmTextBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
   </Style>
 
   <Style Selector="Border.mm-editor-toolbar-separator">
@@ -840,6 +827,7 @@
   -->
   <Style Selector="Button.mm-code-copy-button">
     <Setter Property="Background" Value="{DynamicResource MmCodeBackgroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource MmCodeBackgroundBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="6" />
@@ -849,17 +837,17 @@
     <Setter Property="Cursor" Value="Hand" />
   </Style>
 
-  <Style Selector="Button.mm-code-copy-button Path">
+  <Style Selector="Button.mm-code-copy-button views|LucideIcon">
     <Setter Property="Data" Value="{DynamicResource LucideCopyGeometry}" />
-    <Setter Property="Stroke" Value="{DynamicResource MmTextFaintBrush}" />
-    <Setter Property="StrokeThickness" Value="2" />
-    <Setter Property="StrokeLineCap" Value="Round" />
-    <Setter Property="StrokeJoin" Value="Round" />
   </Style>
 
   <!-- После копирования иконка ненадолго сменяется галочкой (класс ставит MarkdownDocumentView). -->
-  <Style Selector="Button.mm-code-copy-button.copied Path">
+  <Style Selector="Button.mm-code-copy-button.copied views|LucideIcon">
     <Setter Property="Data" Value="{DynamicResource LucideCheckGeometry}" />
+  </Style>
+
+  <Style Selector="Button.mm-code-copy-button:pressed /template/ ContentPresenter, Button.mm-code-copy-button:disabled /template/ ContentPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
   </Style>
 
   <!-- MmSurfaceBrush почти сливается с фоном блока кода, поэтому здесь Elevated. -->
@@ -868,8 +856,8 @@
     <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
   </Style>
 
-  <Style Selector="Button.mm-code-copy-button:pointerover Path, Button.mm-code-copy-button:focus-visible Path">
-    <Setter Property="Stroke" Value="{DynamicResource MmTextBrush}" />
+  <Style Selector="Button.mm-code-copy-button:pointerover /template/ ContentPresenter, Button.mm-code-copy-button:focus-visible /template/ ContentPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
   </Style>
 
   <Style Selector="TextBlock.mm-md-code-info">

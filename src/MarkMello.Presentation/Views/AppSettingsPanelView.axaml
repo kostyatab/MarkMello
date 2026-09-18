@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:MarkMello.Presentation.ViewModels"
+             xmlns:views="using:MarkMello.Presentation.Views"
              mc:Ignorable="d"
              x:Class="MarkMello.Presentation.Views.AppSettingsPanelView"
              x:DataType="vm:ShellViewModel">
@@ -17,12 +18,9 @@
                       Classes="mm-settings-close"
                       Command="{Binding ReturnToAppMenuCommand}"
                       ToolTip.Tip="{Binding OverlayBackToMenu}">
-                <Path Data="M9.5,1.5 L2.5,5.5 L9.5,9.5"
-                      Stroke="{DynamicResource MmTextFaintBrush}"
-                      StrokeThickness="1.4"
-                      StrokeLineCap="Round"
-                      StrokeJoin="Round"
-                      Fill="Transparent" />
+                <views:LucideIcon Data="{DynamicResource LucideArrowLeftGeometry}"
+                                  Width="14"
+                                  Height="14" />
               </Button>
               <TextBlock Classes="mm-settings-title"
                          Grid.Column="1"
@@ -32,10 +30,9 @@
                       Classes="mm-settings-close"
                       Command="{Binding CloseOverlayCommand}"
                       ToolTip.Tip="{Binding OverlayCloseSettings}">
-                <Path Data="M0,0 L10,10 M10,0 L0,10"
-                      Stroke="{DynamicResource MmTextFaintBrush}"
-                      StrokeThickness="1.4"
-                      StrokeLineCap="Round" />
+                <views:LucideIcon Data="{DynamicResource LucideXGeometry}"
+                                  Width="14"
+                                  Height="14" />
               </Button>
             </Grid>
           </Border>
