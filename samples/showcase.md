@@ -430,6 +430,45 @@ MarkMello renders Markdown with Markdig[^markdig] and draws diagrams without a b
 
     A footnote can have more than one paragraph, indented like this one.
 
+The footnotes themselves are listed at the very end of this document, after the diagrams. A label jumps to its footnote, and the number of the footnote jumps back to the label.
+
+Labels in formatted text: **inside bold[^formatted]**, *inside italic[^formatted]*, and right after `code`[^formatted] — one footnote referenced three times keeps one number.
+
+> A quote with a footnote[^quote].
+
+- A list item with a footnote[^list]
+
+| Column | With a footnote |
+|--------|-----------------|
+| Cell   | Value[^table]   |
+
+A label can be any word or number: footnotes are numbered by their first reference, not by their labels[^9].
+
+A footnote can hold a list and a code block[^blocks].
+
+Not footnotes — a label without a definition stays text: [^missing]. A footnote nobody refers to is not shown at all.
+
+[^formatted]: Referenced from bold, italic and after inline code.
+
+[^quote]: Referenced from a quote.
+
+[^list]: Referenced from a list item.
+
+[^table]: Referenced from a table cell.
+
+[^9]: Labelled `9`, but numbered by its place in the text.
+
+[^blocks]: The footnote starts with a paragraph:
+
+    - a list item
+    - another list item
+
+    ```bash
+    dotnet test MarkMello.sln
+    ```
+
+[^unused]: Nobody refers to this footnote, so it is not shown.
+
 ### Definition list
 
 Viewer mode
