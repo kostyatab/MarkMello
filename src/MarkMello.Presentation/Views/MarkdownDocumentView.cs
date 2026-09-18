@@ -1927,6 +1927,9 @@ public sealed class MarkdownDocumentView : UserControl
         {
             HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
             VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            // Without a language label the copy button sits on the first line of
+            // code, so the code stops short of it instead of running underneath.
+            Margin = infoLabel is null ? new Thickness(0, 0, CodeCopyButtonSize, 0) : default,
             Content = new Border
             {
                 Padding = new Thickness(0, 0, 0, CodeBlockHorizontalScrollBarReserve),

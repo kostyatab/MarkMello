@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Styling;
 using MarkMello.Application.Abstractions;
 using MarkMello.Domain;
 using MarkMello.Presentation.Views;
@@ -59,9 +60,44 @@ public sealed class CodeBlockCopyButtonLayoutTests
         }, CancellationToken.None);
     }
 
+    /// <summary>
+    /// Regression: in a block without a language the long first line of code ran
+    /// underneath the copy icon. The code now stops short of the button.
+    /// </summary>
+    [Fact]
+    public Task WithoutALanguageLongCodeStopsShortOfTheCopyButton()
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var longLine = string.Concat(Enumerable.Repeat("2026-09-18T09:14:03.512Z INFO Startup stage reached ", 6));
+
+            // The scroll viewer needs the theme's template to scroll.
+            var (block, button) = LayOut(new MarkdownCodeBlock(null, longLine + "\nshort line"), theme: ThemeVariant.Light);
+            var code = FindCodeScrollViewer(block);
+
+            Assert.True(code.Extent.Width > code.Viewport.Width, "the code should be wider than the block");
+            Assert.True(
+                BoxIn(code, block).Right <= BoxIn(button, block).Left,
+                $"the code ends at {BoxIn(code, block).Right}, under the button that starts at {BoxIn(button, block).Left}");
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public Task WithALanguageTheCodeTakesTheFullWidthBelowTheLabel()
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var (block, _) = LayOut(new MarkdownCodeBlock("bash", "dotnet test"));
+            var code = FindCodeScrollViewer(block);
+
+            Assert.Equal(FindInfoLabel(block).Bounds.Width, code.Bounds.Width, Tolerance);
+        }, CancellationToken.None);
+    }
+
     private static (Border Block, Button Button) LayOut(
         MarkdownCodeBlock codeBlock,
-        ReadingPreferences? preferences = null)
+        ReadingPreferences? preferences = null,
+        ThemeVariant? theme = null)
     {
         // Preferences go in before the document: a later change only rebuilds
         // the blocks after a short animated delay.
@@ -71,7 +107,11 @@ public sealed class CodeBlockCopyButtonLayoutTests
             Document = new RenderedMarkdownDocument([codeBlock])
         };
 
-        var window = new Window { Width = 600, Height = 400, Content = view };
+        var window = theme is null
+            ? new Window { Content = view }
+            : ThemedTestWindow.Create(theme, view);
+        window.Width = 600;
+        window.Height = 400;
         window.Show();
         window.UpdateLayout();
 
@@ -87,6 +127,13 @@ public sealed class CodeBlockCopyButtonLayoutTests
         var contentGrid = Assert.IsType<Grid>(block.Child);
         var body = Assert.IsType<StackPanel>(contentGrid.Children[0]);
         return Assert.IsType<TextBlock>(body.Children[0]);
+    }
+
+    private static ScrollViewer FindCodeScrollViewer(Border block)
+    {
+        var contentGrid = Assert.IsType<Grid>(block.Child);
+        var body = Assert.IsType<StackPanel>(contentGrid.Children[0]);
+        return Assert.IsType<ScrollViewer>(body.Children[^1]);
     }
 
     private static Rect BoxIn(Control control, Visual ancestor)
