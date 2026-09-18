@@ -237,7 +237,7 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
             items.Add(new MarkdownListItem(blocks, isChecked));
         }
 
-        return new MarkdownListBlock(list.IsOrdered, items, GetOrderedStartNumber(list));
+        return new MarkdownListBlock(list.IsOrdered, items, GetOrderedStartNumber(list), list.IsLoose);
     }
 
     /// <summary>

@@ -77,6 +77,12 @@ public sealed class MarkdownDocumentView : UserControl
     private const double TaskListItemTextIndent = ListItemTextIndent / 2;
     private const double TaskCheckboxIndentAfterNumber = 3;
 
+    // Расстояние между пунктами списка. Loose-список (пункты через пустую
+    // строку) разделён как абзацы, tight — чуть больше межстрочного интервала,
+    // и вложенный список читается продолжением пункта.
+    private const double LooseListItemSpacing = 18;
+    private const double TightListItemSpacing = 6;
+
     // Шапка GitHub alert: иконка заметно выше строчных букв заголовка и вплотную
     // к нему — читается как одна метка; и отступ шапки от текста alert.
     private const double AlertIconSizeToFontSize = 1.25;
@@ -1652,9 +1658,10 @@ public sealed class MarkdownDocumentView : UserControl
     /// </remarks>
     private Grid BuildList(MarkdownListBlock block, string path, bool insideQuote = false)
     {
+        var itemSpacing = block.IsLoose ? LooseListItemSpacing : TightListItemSpacing;
         var grid = new Grid
         {
-            RowSpacing = 8,
+            RowSpacing = itemSpacing,
             Margin = new Thickness(0, 0, 0, 18)
         };
 
@@ -1681,13 +1688,13 @@ public sealed class MarkdownDocumentView : UserControl
             if (hasCheckboxColumn && item.IsChecked is null)
             {
                 // Текст обычного пункта встаёт туда же, где у соседей чекбокс.
-                var content = BuildListItemContent(item, itemPath, insideQuote, TaskCheckboxIndentAfterNumber);
+                var content = BuildListItemContent(block, item, itemPath, insideQuote, TaskCheckboxIndentAfterNumber);
                 AddToGrid(grid, content, index, column: 1);
                 Grid.SetColumnSpan(content, 2);
             }
             else
             {
-                AddToGrid(grid, BuildListItemContent(item, itemPath, insideQuote, textIndent), index, contentColumn);
+                AddToGrid(grid, BuildListItemContent(block, item, itemPath, insideQuote, textIndent), index, contentColumn);
             }
         }
 
@@ -1727,7 +1734,16 @@ public sealed class MarkdownDocumentView : UserControl
         }
     }
 
-    private StackPanel BuildListItemContent(MarkdownListItem item, string path, bool insideQuote, double indent)
+    /// <summary>
+    /// Содержимое пункта. Расстояние до следующего пункта задаёт сетка списка,
+    /// поэтому нижний отступ последнего блока пункта убирается — иначе после
+    /// вложенного списка он складывался бы с отступом самого вложенного списка.
+    /// </summary>
+    /// <remarks>
+    /// В tight-списке абзац пункта отделён от следующего блока — обычно
+    /// вложенного списка — тем же интервалом, что и пункты друг от друга.
+    /// </remarks>
+    private StackPanel BuildListItemContent(MarkdownListBlock list, MarkdownListItem item, string path, bool insideQuote, double indent)
     {
         var content = new StackPanel
         {
@@ -1738,9 +1754,17 @@ public sealed class MarkdownDocumentView : UserControl
 
         for (var blockIndex = 0; blockIndex < item.Blocks.Count; blockIndex++)
         {
-            content.Children.Add(BuildBlock(item.Blocks[blockIndex], $"{path}.b{blockIndex}", nested: true, insideQuote: insideQuote));
+            var block = item.Blocks[blockIndex];
+            var control = BuildBlock(block, $"{path}.b{blockIndex}", nested: true, insideQuote: insideQuote);
+            if (!list.IsLoose && block is MarkdownParagraphBlock)
+            {
+                control.Margin = new Thickness(0, 0, 0, TightListItemSpacing);
+            }
+
+            content.Children.Add(control);
         }
 
+        RemoveTrailingBottomMargin(content);
         return content;
     }
 

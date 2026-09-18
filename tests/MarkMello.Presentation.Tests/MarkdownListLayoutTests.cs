@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.VisualTree;
 using MarkMello.Domain;
 using MarkMello.Presentation.Views;
 using MarkMello.Presentation.Views.Markdown;
@@ -124,6 +125,104 @@ public sealed class MarkdownListLayoutTests
             Assert.Equal(["7. ", "8. "], MarkerTexts(TopLevelList(view)));
         }, CancellationToken.None);
     }
+
+    /// <summary>
+    /// Пункты loose-списка разделены как абзацы, а tight-списка — заметно плотнее.
+    /// Регрессия: tight-список рисовался с абзацными отступами, как loose.
+    /// </summary>
+    [Fact]
+    public Task TightListItemsAreCloserThanLooseOnesWhichAreSpacedLikeParagraphs()
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var view = CreateView(new RenderedMarkdownDocument(
+            [
+                Paragraph("Paragraph one"),
+                Paragraph("Paragraph two"),
+                BulletList(isLoose: false, "Tight one", "Tight two"),
+                BulletList(isLoose: true, "Loose one", "Loose two")
+            ]));
+            var window = Show(view);
+
+            var paragraphs = Gap(view, "Paragraph one", "Paragraph two");
+            var tight = Gap(view, "Tight one", "Tight two");
+
+            Assert.Equal(paragraphs, Gap(view, "Loose one", "Loose two"), Tolerance);
+            Assert.True(tight > 0 && tight < paragraphs / 2, $"tight items should be close together, the gap is {tight}");
+
+            window.Close();
+        }, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// После вложенного списка до следующего пункта столько же места, сколько между
+    /// пунктами, а после списка до следующего абзаца — сколько между абзацами.
+    /// Регрессия: нижние отступы последнего абзаца, вложенного списка и сетки
+    /// складывались, и после вложенного списка зазор был вдвое больше обычного.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task NestedListEndsWithoutExtraSpace(bool isLoose)
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var view = CreateView(new RenderedMarkdownDocument(
+            [
+                new MarkdownListBlock(false,
+                [
+                    new MarkdownListItem(
+                    [
+                        Paragraph("Parent"),
+                        BulletList(isLoose: false, "Child one", "Child two")
+                    ]),
+                    new MarkdownListItem([Paragraph("Second")]),
+                    new MarkdownListItem([Paragraph("Third")])
+                ],
+                IsLoose: isLoose),
+                Paragraph("After"),
+                Paragraph("Paragraph")
+            ]));
+            var window = Show(view);
+
+            var betweenItems = Gap(view, "Second", "Third");
+            Assert.Equal(betweenItems, Gap(view, "Child two", "Second"), Tolerance);
+            Assert.Equal(Gap(view, "After", "Paragraph"), Gap(view, "Third", "After"), Tolerance);
+
+            if (!isLoose)
+            {
+                // В tight-списке вложенный список читается продолжением пункта.
+                Assert.Equal(betweenItems, Gap(view, "Parent", "Child one"), Tolerance);
+                Assert.Equal(betweenItems, Gap(view, "Child one", "Child two"), Tolerance);
+            }
+
+            window.Close();
+        }, CancellationToken.None);
+    }
+
+    private static MarkdownListBlock BulletList(bool isLoose, params string[] items)
+        => new(false, [.. items.Select(static text => new MarkdownListItem([Paragraph(text)]))], IsLoose: isLoose);
+
+    private static Window Show(MarkdownDocumentView view)
+    {
+        var window = new Window { Width = 600, Height = 800, Content = view };
+        window.Show();
+        window.UpdateLayout();
+        return window;
+    }
+
+    /// <summary>Расстояние от низа одного текста до верха следующего.</summary>
+    private static double Gap(MarkdownDocumentView view, string upper, string lower)
+    {
+        var upperText = Text(view, upper);
+        var lowerText = Text(view, lower);
+        return lowerText.TranslatePoint(default, view)!.Value.Y
+            - upperText.TranslatePoint(new Point(0, upperText.Bounds.Height), view)!.Value.Y;
+    }
+
+    private static MarkdownSelectionTextFragment Text(MarkdownDocumentView view, string text)
+        => view.GetVisualDescendants().OfType<MarkdownSelectionTextFragment>()
+            .Single(fragment => fragment.StyledText.Text == text);
 
     private static RenderedMarkdownDocument OrderedListDocument(int startNumber, params string[] items)
         => new([new MarkdownListBlock(true, [.. items.Select(static text => new MarkdownListItem([Paragraph(text)]))], startNumber)]);

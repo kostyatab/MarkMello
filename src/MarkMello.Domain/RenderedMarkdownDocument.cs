@@ -94,10 +94,16 @@ public enum MarkdownAlertKind
 /// 7, 8, 9… По CommonMark это число из маркера первого пункта, номера
 /// остальных пунктов в исходнике не важны. У маркированного списка не используется.
 /// </param>
+/// <param name="IsLoose">
+/// Loose-список по CommonMark: пункты или блоки внутри пункта разделены пустыми
+/// строками. Такой список рисуется с абзацным отступом между пунктами, а tight —
+/// плотнее.
+/// </param>
 public sealed record MarkdownListBlock(
     bool IsOrdered,
     IReadOnlyList<MarkdownListItem> Items,
-    int StartNumber = 1) : MarkdownBlock;
+    int StartNumber = 1,
+    bool IsLoose = false) : MarkdownBlock;
 
 /// <param name="Blocks">Содержимое пункта.</param>
 /// <param name="IsChecked">
