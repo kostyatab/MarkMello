@@ -28,6 +28,49 @@ public sealed class MarkdownStyledTextTests
     }
 
     [Fact]
+    public void FromInlinesMarksStrikethroughSpanWithoutBold()
+    {
+        var styled = MarkdownStyledText.FromInlines(
+        [
+            new MarkdownTextInline("was "),
+            new MarkdownStrikethroughInline([new MarkdownTextInline("10")]),
+            new MarkdownTextInline(" now 8")
+        ]);
+
+        Assert.Equal("was 10 now 8", styled.Text);
+        var span = Assert.Single(styled.Spans);
+        Assert.Equal(new DocumentTextRange(4, 6), span.Range);
+        Assert.True(span.Style.IsStrikethrough);
+        Assert.False(span.Style.IsBold);
+    }
+
+    [Fact]
+    public void FromInlinesCombinesStrikethroughWithNestedStrong()
+    {
+        var styled = MarkdownStyledText.FromInlines(
+        [
+            new MarkdownStrikethroughInline(
+            [
+                new MarkdownTextInline("a"),
+                new MarkdownStrongInline([new MarkdownTextInline("b")])
+            ])
+        ]);
+
+        Assert.Collection(
+            styled.Spans,
+            span =>
+            {
+                Assert.Equal(new DocumentTextRange(0, 1), span.Range);
+                Assert.Equal(MarkdownInlineStyleState.Default with { IsStrikethrough = true }, span.Style);
+            },
+            span =>
+            {
+                Assert.Equal(new DocumentTextRange(1, 2), span.Range);
+                Assert.Equal(MarkdownInlineStyleState.Default with { IsStrikethrough = true, IsBold = true }, span.Style);
+            });
+    }
+
+    [Fact]
     public void FromInlinesFallsBackToUrlWhenLinkHasNoLabel()
     {
         var styled = MarkdownStyledText.FromInlines(

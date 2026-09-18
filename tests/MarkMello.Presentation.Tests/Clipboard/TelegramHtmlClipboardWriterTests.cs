@@ -62,4 +62,22 @@ public sealed class TelegramHtmlClipboardWriterTests
             "• <a href=\"https://t.me/gamedev_stinger/286\">Работа с геймпадами</a><br>• <a href=\"https://t.me/gamedev_stinger/285\">UX дизайн управления</a>",
             result);
     }
+
+    [Fact]
+    public void FormatSelectionHtmlWrapsStrikethroughInSTag()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownParagraphBlock(
+            [
+                new MarkdownTextInline("was "),
+                new MarkdownStrikethroughInline([new MarkdownStrongInline([new MarkdownTextInline("10")])]),
+                new MarkdownTextInline(" now 8")
+            ])
+        ]);
+
+        var result = TelegramMarkdownFormatter.FormatSelectionHtml(document, new DocumentTextRange(0, "was 10 now 8".Length));
+
+        Assert.Equal("was <s><strong>10</strong></s> now 8", result);
+    }
 }

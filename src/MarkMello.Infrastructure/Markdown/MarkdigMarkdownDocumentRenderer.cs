@@ -318,7 +318,11 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
 
             case EmphasisInline emphasis:
                 var children = ConvertInlines(emphasis);
-                if (emphasis.DelimiterCount >= 2)
+                if (emphasis.DelimiterChar == '~' && emphasis.DelimiterCount == 2)
+                {
+                    target.Add(new MarkdownStrikethroughInline(children));
+                }
+                else if (emphasis.DelimiterCount >= 2)
                 {
                     target.Add(new MarkdownStrongInline(children));
                 }
@@ -434,6 +438,9 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
                 break;
             case MarkdownEmphasisInline emphasis:
                 AppendPlainText(emphasis.Inlines, builder);
+                break;
+            case MarkdownStrikethroughInline strikethrough:
+                AppendPlainText(strikethrough.Inlines, builder);
                 break;
             case MarkdownCodeInline code:
                 builder.Append(code.Code);

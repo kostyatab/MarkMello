@@ -296,6 +296,10 @@ internal static class TelegramHtmlClipboardWriter
                 AppendWrappedInlines(builder, emphasis.Inlines, selectedRange, "em");
                 return;
 
+            case MarkdownStrikethroughInline strikethrough:
+                AppendWrappedInlines(builder, strikethrough.Inlines, selectedRange, "s");
+                return;
+
             case MarkdownCodeInline code:
                 AppendCodeInline(builder, code.Code, selectedRange);
                 return;

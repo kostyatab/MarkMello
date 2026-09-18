@@ -131,6 +131,10 @@ public sealed class MarkdownDocumentTextMap
                 AppendPlainText(emphasis.Inlines, builder);
                 break;
 
+            case MarkdownStrikethroughInline strikethrough:
+                AppendPlainText(strikethrough.Inlines, builder);
+                break;
+
             case MarkdownCodeInline code:
                 builder.Append(code.Code);
                 break;

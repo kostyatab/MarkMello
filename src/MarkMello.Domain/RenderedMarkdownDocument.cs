@@ -158,6 +158,8 @@ public sealed record MarkdownStrongInline(IReadOnlyList<MarkdownInline> Inlines)
 
 public sealed record MarkdownEmphasisInline(IReadOnlyList<MarkdownInline> Inlines) : MarkdownInline;
 
+public sealed record MarkdownStrikethroughInline(IReadOnlyList<MarkdownInline> Inlines) : MarkdownInline;
+
 public sealed record MarkdownCodeInline(string Code) : MarkdownInline;
 
 public sealed record MarkdownImageInline(string Url, string? AltText, string? Title) : MarkdownInline;

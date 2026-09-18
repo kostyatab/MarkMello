@@ -104,6 +104,9 @@ internal static class MarkdownHeadingAnchorSlugger
             case MarkdownEmphasisInline emphasis:
                 AppendPlainText(emphasis.Inlines, builder);
                 break;
+            case MarkdownStrikethroughInline strikethrough:
+                AppendPlainText(strikethrough.Inlines, builder);
+                break;
             case MarkdownCodeInline code:
                 builder.Append(code.Code);
                 break;

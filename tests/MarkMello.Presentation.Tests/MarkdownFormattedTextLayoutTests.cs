@@ -40,6 +40,50 @@ public sealed class MarkdownFormattedTextLayoutTests
         }, CancellationToken.None);
     }
 
+    [Fact]
+    public Task StrikethroughStyleDrawsStrikethroughInTextForegroundWithoutBold()
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var factory = CreatePropertiesFactory(linkDecorations: null);
+
+            var properties = factory.Get(MarkdownInlineStyleState.Default with { IsStrikethrough = true });
+
+            var decoration = Assert.Single(properties.TextDecorations!);
+            Assert.Equal(TextDecorationLocation.Strikethrough, decoration.Location);
+            Assert.Null(decoration.Stroke);
+            Assert.Equal(FontWeight.Normal, properties.Typeface.Weight);
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public Task StrikethroughLinkKeepsLinkUnderlineAndAddsStrikethrough()
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var factory = CreatePropertiesFactory(new TextDecorationCollection
+            {
+                new TextDecoration { Location = TextDecorationLocation.Underline }
+            });
+
+            var properties = factory.Get(MarkdownInlineStyleState.Default with { IsLink = true, IsStrikethrough = true });
+
+            Assert.Equal(
+                [TextDecorationLocation.Underline, TextDecorationLocation.Strikethrough],
+                properties.TextDecorations!.Select(static decoration => decoration.Location));
+        }, CancellationToken.None);
+    }
+
+    private static MarkdownTextRunPropertiesFactory CreatePropertiesFactory(TextDecorationCollection? linkDecorations)
+        => new(
+            FontFamily.Default,
+            FontFamily.Default,
+            fontSize: 14,
+            FontWeight.Normal,
+            FontStyle.Normal,
+            Brushes.Black,
+            linkDecorations);
+
     private static Point GetLineStartPoint(MarkdownFormattedTextLineMetrics metrics)
         => new(0, metrics.Bounds.Y + metrics.Bounds.Height / 2);
 
