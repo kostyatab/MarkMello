@@ -1899,7 +1899,8 @@ public sealed class MarkdownDocumentView : UserControl
             fontStyle: FontStyle.Normal,
             fallbackClassName: "mm-md-codeblock-text",
             baseFontFamily: ResolveMonoFontFamily(),
-            textWrapping: TextWrapping.NoWrap);
+            textWrapping: TextWrapping.NoWrap,
+            baseFontFeatures: MarkdownTextRunPropertiesFactory.CodeFontFeatures);
 
         body.Children.Add(new ScrollViewer
         {
@@ -2161,7 +2162,8 @@ public sealed class MarkdownDocumentView : UserControl
         double letterSpacing = 0,
         TextAlignment textAlignment = TextAlignment.Left,
         string? baseForegroundResourceKey = null,
-        MarkdownStyledText? styledText = null)
+        MarkdownStyledText? styledText = null,
+        FontFeatureCollection? baseFontFeatures = null)
     {
         // Готовый текст — у служебных фрагментов, которых нет среди inline документа
         // (номер сноски со ссылкой обратно к метке).
@@ -2199,6 +2201,11 @@ public sealed class MarkdownDocumentView : UserControl
                 fallback.Foreground = baseForeground;
             }
 
+            if (baseFontFeatures is not null)
+            {
+                fallback.FontFeatures = baseFontFeatures;
+            }
+
             return fallback;
         }
 
@@ -2234,6 +2241,7 @@ public sealed class MarkdownDocumentView : UserControl
             StyledText = styled,
             DocumentRange = fragment.Range,
             BaseFontFamily = resolvedFontFamily,
+            BaseFontFeatures = baseFontFeatures,
             BaseFontSize = fontSize,
             BaseFontWeight = fontWeight,
             BaseFontStyle = fontStyle,

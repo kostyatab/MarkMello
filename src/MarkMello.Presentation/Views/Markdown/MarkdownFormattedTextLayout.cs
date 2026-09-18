@@ -28,7 +28,8 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
         double maxWidth,
         IBrush foreground,
         TextDecorationCollection? linkDecorations,
-        IBrush? footnoteReferenceForeground = null)
+        IBrush? footnoteReferenceForeground = null,
+        FontFeatureCollection? baseFontFeatures = null)
     {
         _displayModel = MarkdownDisplayLayoutModel.Create(styledText);
         var textProperties = new MarkdownTextRunPropertiesFactory(
@@ -38,7 +39,8 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
             baseFontWeight,
             baseFontStyle,
             foreground,
-            linkDecorations);
+            linkDecorations,
+            baseFontFeatures);
         var padMetrics = MarkdownInlineCodePadMetrics.Create(
             inlineCodeFontFamily,
             baseFontSize * MarkdownTextRunPropertiesFactory.InlineCodeFontScale,
@@ -79,7 +81,8 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
                 foreground,
                 backgroundBrush: null,
                 BaselineAlignment.Baseline,
-                CultureInfo.CurrentUICulture),
+                CultureInfo.CurrentUICulture,
+                baseFontFeatures),
             textAlignment,
             textWrapping,
             lineHeight,
@@ -416,6 +419,18 @@ internal sealed class MarkdownTextRunPropertiesFactory
 {
     internal const double InlineCodeFontScale = 0.92;
 
+    /// <summary>
+    /// Код показывается символ в символ: лигатуры моноширинного шрифта рисуют
+    /// <c>-|</c> как <c>⊣</c>, а <c>=&gt;</c> как <c>⇒</c>, и читатель видит не то,
+    /// что написано в файле. У JetBrains Mono они живут в <c>calt</c>, у других
+    /// шрифтов бывают и в <c>liga</c>.
+    /// </summary>
+    internal static FontFeatureCollection CodeFontFeatures { get; } =
+    [
+        FontFeature.Parse("-liga"),
+        FontFeature.Parse("-calt")
+    ];
+
     private readonly Dictionary<MarkdownInlineStyleState, TextRunProperties> _cache = new();
     private readonly FontFamily _baseFontFamily;
     private readonly FontFamily _inlineCodeFontFamily;
@@ -424,6 +439,7 @@ internal sealed class MarkdownTextRunPropertiesFactory
     private readonly FontStyle _fontStyle;
     private readonly IBrush _foreground;
     private readonly TextDecorationCollection? _linkDecorations;
+    private readonly FontFeatureCollection? _baseFontFeatures;
 
     public MarkdownTextRunPropertiesFactory(
         FontFamily baseFontFamily,
@@ -432,7 +448,8 @@ internal sealed class MarkdownTextRunPropertiesFactory
         FontWeight fontWeight,
         FontStyle fontStyle,
         IBrush foreground,
-        TextDecorationCollection? linkDecorations)
+        TextDecorationCollection? linkDecorations,
+        FontFeatureCollection? baseFontFeatures = null)
     {
         _baseFontFamily = baseFontFamily;
         _inlineCodeFontFamily = inlineCodeFontFamily;
@@ -441,6 +458,7 @@ internal sealed class MarkdownTextRunPropertiesFactory
         _fontStyle = fontStyle;
         _foreground = foreground;
         _linkDecorations = linkDecorations;
+        _baseFontFeatures = baseFontFeatures;
     }
 
     public TextRunProperties Get(MarkdownInlineStyleState style)
@@ -461,7 +479,8 @@ internal sealed class MarkdownTextRunPropertiesFactory
             _foreground,
             backgroundBrush: null,
             BaselineAlignment.Baseline,
-            CultureInfo.CurrentUICulture);
+            CultureInfo.CurrentUICulture,
+            style.IsCode ? CodeFontFeatures : _baseFontFeatures);
         _cache.Add(style, properties);
         return properties;
     }

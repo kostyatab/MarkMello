@@ -17,6 +17,7 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
     private readonly HashSet<int> _pendingInlineImages = [];
     private CancellationTokenSource _imageLoadCts = new();
     private FontFamily _fontFamily = FontFamily.Default;
+    private FontFeatureCollection? _fontFeatures;
     private IImageSourceResolver? _imageSourceResolver;
     private string? _baseDirectory;
     private IBrush? _baseForeground;
@@ -95,6 +96,22 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
         set
         {
             _fontFamily = value;
+            InvalidateTextLayout();
+            InvalidateMeasure();
+            InvalidateVisual();
+        }
+    }
+
+    /// <summary>
+    /// OpenType-фичи основного текста фрагмента; у inline code свои —
+    /// <see cref="MarkdownTextRunPropertiesFactory.CodeFontFeatures"/>.
+    /// </summary>
+    public FontFeatureCollection? BaseFontFeatures
+    {
+        get => _fontFeatures;
+        set
+        {
+            _fontFeatures = value;
             InvalidateTextLayout();
             InvalidateMeasure();
             InvalidateVisual();
@@ -517,7 +534,8 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
             normalizedWidth,
             ResolveBaseTextBrush(),
             BuildLinkTextDecorations(),
-            ResolveOptionalBrush("MmAccentBrush"));
+            ResolveOptionalBrush("MmAccentBrush"),
+            BaseFontFeatures);
 
         return _textLayout;
     }
