@@ -83,6 +83,45 @@ public sealed class TelegramHtmlClipboardWriterTests
     }
 
     [Fact]
+    public void FormatSelectionHtmlPutsTheAlertTitleInBoldOnTheFirstLineOfTheQuote()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownQuoteBlock(
+                [new MarkdownParagraphBlock([new MarkdownTextInline("Mind <the> gap")])],
+                MarkdownAlertKind.Caution)
+        ]);
+        static string Titles(MarkdownAlertKind kind) => "Внимание";
+
+        var textMap = MarkdownDocumentTextMap.Create(document, Titles);
+        var result = TelegramMarkdownFormatter.FormatSelectionHtml(document, new DocumentTextRange(0, textMap.Text.Length), Titles);
+
+        Assert.Equal("&gt; <strong>Внимание</strong><br>&gt; Mind &lt;the&gt; gap", result);
+    }
+
+    [Fact]
+    public void FormatSelectionHtmlOfTheAlertTitleOnlyLeavesTheBodyOut()
+    {
+        var document = AlertDocument();
+
+        var result = TelegramMarkdownFormatter.FormatSelectionHtml(document, new DocumentTextRange(0, "Note".Length));
+
+        Assert.Equal("&gt; <strong>Note</strong>", result);
+    }
+
+    [Fact]
+    public void FormatSelectionHtmlOfTheAlertBodyOnlyLeavesTheTitleOut()
+    {
+        var document = AlertDocument();
+        var textMap = MarkdownDocumentTextMap.Create(document);
+        var start = textMap.Text.IndexOf("Body", StringComparison.Ordinal);
+
+        var result = TelegramMarkdownFormatter.FormatSelectionHtml(document, new DocumentTextRange(start, start + "Body text".Length));
+
+        Assert.Equal("&gt; Body text", result);
+    }
+
+    [Fact]
     public void FormatSelectionHtmlWrapsStrikethroughInSTag()
     {
         var document = new RenderedMarkdownDocument(
@@ -99,4 +138,12 @@ public sealed class TelegramHtmlClipboardWriterTests
 
         Assert.Equal("was <s><strong>10</strong></s> now 8", result);
     }
+
+    private static RenderedMarkdownDocument AlertDocument()
+        => new(
+        [
+            new MarkdownQuoteBlock(
+                [new MarkdownParagraphBlock([new MarkdownTextInline("Body text")])],
+                MarkdownAlertKind.Note)
+        ]);
 }

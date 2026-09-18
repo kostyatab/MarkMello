@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using Markdig;
 using MarkdigMarkdown = Markdig.Markdown;
+using Markdig.Extensions.Alerts;
 using Markdig.Extensions.Tables;
 using Markdig.Extensions.TaskLists;
 using Markdig.Syntax;
@@ -78,6 +79,11 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
                     source));
                 return;
 
+            // AlertBlock — наследник QuoteBlock, поэтому ветка идёт раньше.
+            case AlertBlock alert:
+                target.Add(WithSourceSpan(ConvertAlert(alert, source), alert, source));
+                return;
+
             case QuoteBlock quote:
                 target.Add(WithSourceSpan(
                     new MarkdownQuoteBlock(ConvertBlocks(quote, source)),
@@ -140,6 +146,64 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
                 }
                 return;
         }
+    }
+
+    /// <summary>
+    /// GitHub alert: Markdig разбирает <c>&gt; [!NOTE]</c> в <see cref="AlertBlock"/>,
+    /// и маркер в текст не попадает. Вид Markdig принимает любой (<c>[!FOO]</c>),
+    /// а GitHub — только пять, в любом регистре. С неизвестным видом цитата
+    /// остаётся обычной, а маркер — текстом, как на GitHub.
+    /// </summary>
+    private static MarkdownQuoteBlock ConvertAlert(AlertBlock alert, string source)
+    {
+        var blocks = ConvertBlocks(alert, source);
+
+        // Если на строке маркера больше ничего нет, а текст начинается через
+        // пустую строку (или его нет совсем), Markdig оставляет от первой строки
+        // пустой абзац.
+        var markerParagraphIsEmpty = alert.Count > 0
+            && alert[0] is ParagraphBlock paragraph
+            && paragraph.Inline?.FirstChild is null;
+        if (markerParagraphIsEmpty && blocks.Count > 0 && blocks[0] is MarkdownParagraphBlock { Inlines.Count: 0 })
+        {
+            blocks.RemoveAt(0);
+        }
+
+        var kindName = alert.Kind.ToString();
+        if (TryGetAlertKind(kindName, out var kind))
+        {
+            return new MarkdownQuoteBlock(blocks, kind);
+        }
+
+        var marker = $"[!{kindName}]";
+        if (!markerParagraphIsEmpty && blocks.Count > 0 && blocks[0] is MarkdownParagraphBlock first)
+        {
+            // Текст шёл со следующей строки того же абзаца: перевод строки внутри
+            // абзаца — такой же пробел, как в остальном документе.
+            blocks[0] = first with { Inlines = [new MarkdownTextInline(marker + " "), .. first.Inlines] };
+        }
+        else
+        {
+            blocks.Insert(0, new MarkdownParagraphBlock([new MarkdownTextInline(marker)]));
+        }
+
+        return new MarkdownQuoteBlock(blocks);
+    }
+
+    private static bool TryGetAlertKind(string name, out MarkdownAlertKind kind)
+    {
+        MarkdownAlertKind? parsed = name.ToUpperInvariant() switch
+        {
+            "NOTE" => MarkdownAlertKind.Note,
+            "TIP" => MarkdownAlertKind.Tip,
+            "IMPORTANT" => MarkdownAlertKind.Important,
+            "WARNING" => MarkdownAlertKind.Warning,
+            "CAUTION" => MarkdownAlertKind.Caution,
+            _ => null
+        };
+
+        kind = parsed.GetValueOrDefault();
+        return parsed is not null;
     }
 
     private static MarkdownListBlock ConvertList(ListBlock list, string source)

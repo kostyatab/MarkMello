@@ -6,29 +6,47 @@ internal sealed class MarkdownSelectionFormatContext
 {
     private readonly MarkdownDocumentTextMap? _textMap;
     private readonly DocumentTextRange _selectionRange;
+    private readonly Func<MarkdownAlertKind, string> _alertTitle;
 
-    private MarkdownSelectionFormatContext(MarkdownDocumentTextMap? textMap, DocumentTextRange selectionRange)
+    private MarkdownSelectionFormatContext(
+        MarkdownDocumentTextMap? textMap,
+        DocumentTextRange selectionRange,
+        Func<MarkdownAlertKind, string>? alertTitle)
     {
         _textMap = textMap;
         _selectionRange = selectionRange;
+        _alertTitle = alertTitle ?? MarkdownDocumentTextMap.GetDefaultAlertTitle;
     }
 
     public bool IsSelection => _textMap is not null;
 
-    public static MarkdownSelectionFormatContext ForDocument() => new(null, DocumentTextRange.Empty);
+    /// <param name="alertTitle">
+    /// Заголовки GitHub alerts — те же, что показывает viewer. Без них —
+    /// <see cref="MarkdownDocumentTextMap.GetDefaultAlertTitle"/>.
+    /// </param>
+    public static MarkdownSelectionFormatContext ForDocument(Func<MarkdownAlertKind, string>? alertTitle = null)
+        => new(null, DocumentTextRange.Empty, alertTitle);
 
+    /// <param name="document">Документ.</param>
+    /// <param name="selectionRange">Выделение в текстовой карте viewer'а.</param>
+    /// <param name="alertTitle">
+    /// Заголовки GitHub alerts, с которыми viewer строил свою текстовую карту:
+    /// иначе offset'ы выделения здесь и во viewer'е разойдутся.
+    /// </param>
+    /// <param name="context">Контекст выделения.</param>
     public static bool TryCreateForSelection(
         RenderedMarkdownDocument document,
         DocumentTextRange selectionRange,
+        Func<MarkdownAlertKind, string>? alertTitle,
         out MarkdownSelectionFormatContext context)
     {
-        context = ForDocument();
+        context = ForDocument(alertTitle);
         if (document.Blocks.Count == 0 || selectionRange.IsEmpty)
         {
             return false;
         }
 
-        var textMap = MarkdownDocumentTextMap.Create(document);
+        var textMap = MarkdownDocumentTextMap.Create(document, alertTitle);
         if (textMap.Text.Length == 0)
         {
             return false;
@@ -41,9 +59,11 @@ internal sealed class MarkdownSelectionFormatContext
             return false;
         }
 
-        context = new MarkdownSelectionFormatContext(textMap, new DocumentTextRange(start, end));
+        context = new MarkdownSelectionFormatContext(textMap, new DocumentTextRange(start, end), alertTitle);
         return true;
     }
+
+    public string GetAlertTitle(MarkdownAlertKind kind) => _alertTitle(kind);
 
     public bool TryGetFragmentLocalRange(string path, out DocumentTextRange? localRange)
     {

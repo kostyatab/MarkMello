@@ -64,7 +64,28 @@ public sealed record MarkdownHeadingBlock(int Level, IReadOnlyList<MarkdownInlin
 
 public sealed record MarkdownParagraphBlock(IReadOnlyList<MarkdownInline> Inlines) : MarkdownBlock;
 
-public sealed record MarkdownQuoteBlock(IReadOnlyList<MarkdownBlock> Blocks) : MarkdownBlock;
+/// <param name="Blocks">Содержимое цитаты.</param>
+/// <param name="AlertKind">
+/// Вид GitHub alert (<c>&gt; [!NOTE]</c> и др.) или <c>null</c> для обычной цитаты.
+/// Маркер <c>[!NOTE]</c> в <paramref name="Blocks"/> не попадает: заголовок alert
+/// показывает viewer.
+/// </param>
+public sealed record MarkdownQuoteBlock(
+    IReadOnlyList<MarkdownBlock> Blocks,
+    MarkdownAlertKind? AlertKind = null) : MarkdownBlock;
+
+/// <summary>
+/// Виды GitHub alerts. Других GitHub не поддерживает: цитата с неизвестным видом
+/// (<c>&gt; [!FOO]</c>) остаётся обычной цитатой.
+/// </summary>
+public enum MarkdownAlertKind
+{
+    Note,
+    Tip,
+    Important,
+    Warning,
+    Caution
+}
 
 public sealed record MarkdownListBlock(bool IsOrdered, IReadOnlyList<MarkdownListItem> Items) : MarkdownBlock;
 

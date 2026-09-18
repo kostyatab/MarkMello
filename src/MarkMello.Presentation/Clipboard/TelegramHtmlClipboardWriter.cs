@@ -109,13 +109,41 @@ internal static class TelegramHtmlClipboardWriter
         MarkdownSelectionFormatContext context)
     {
         var inner = new StringBuilder();
-        if (!AppendNestedBlocks(inner, quote.Blocks, path, context))
+        var hasTitle = quote.AlertKind is { } alertKind && AppendAlertTitle(inner, alertKind, path, context);
+        var body = new StringBuilder();
+        if (AppendNestedBlocks(body, quote.Blocks, path, context))
+        {
+            if (hasTitle)
+            {
+                inner.Append("<br>");
+            }
+
+            inner.Append(body);
+        }
+        else if (!hasTitle)
         {
             return false;
         }
 
         builder.Append("&gt; ");
         builder.Append(inner.Replace("<br>", "<br>&gt; "));
+        return true;
+    }
+
+    /// <summary>Заголовок GitHub alert — жирной первой строкой цитаты.</summary>
+    private static bool AppendAlertTitle(
+        StringBuilder builder,
+        MarkdownAlertKind kind,
+        string path,
+        MarkdownSelectionFormatContext context)
+    {
+        var title = new StringBuilder();
+        if (!AppendTextFragment(title, $"{path}.a", context.GetAlertTitle(kind), context))
+        {
+            return false;
+        }
+
+        AppendTag(builder, "strong", title.ToString());
         return true;
     }
 

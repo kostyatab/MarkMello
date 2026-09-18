@@ -249,6 +249,70 @@ public sealed class TelegramMarkdownV2WriterTests
         Assert.Equal("```csharp\nConsole.WriteLine(x)\n```", result);
     }
 
+    [Fact]
+    public void FormatPutsTheAlertTitleInBoldOnTheFirstLineOfTheQuote()
+    {
+        var result = TelegramMarkdownFormatter.Format(AlertDocument());
+
+        Assert.Equal("> *Warning*\n> Mind the gap\\.", result);
+    }
+
+    [Fact]
+    public void FormatUsesTheAlertTitlesItIsGiven()
+    {
+        var result = TelegramMarkdownFormatter.Format(AlertDocument(), static _ => "Осторожно!");
+
+        Assert.Equal("> *Осторожно\\!*\n> Mind the gap\\.", result);
+    }
+
+    [Fact]
+    public void FormatSelectionKeepsTheAlertTitleWhenItIsSelected()
+    {
+        var document = AlertDocument();
+        var textMap = MarkdownDocumentTextMap.Create(document);
+
+        var result = TelegramMarkdownFormatter.FormatSelection(document, new DocumentTextRange(0, textMap.Text.Length));
+
+        Assert.Equal("> *Warning*\n> Mind the gap\\.", result);
+    }
+
+    [Fact]
+    public void FormatSelectionOfTheAlertBodyOnlyLeavesTheTitleOut()
+    {
+        var document = AlertDocument();
+        var textMap = MarkdownDocumentTextMap.Create(document);
+        var start = textMap.Text.IndexOf("Mind", StringComparison.Ordinal);
+
+        var result = TelegramMarkdownFormatter.FormatSelection(document, new DocumentTextRange(start, start + "Mind the gap".Length));
+
+        Assert.Equal("> Mind the gap", result);
+    }
+
+    [Fact]
+    public void FormatSelectionMeasuresOffsetsWithTheViewersAlertTitles()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownQuoteBlock([new MarkdownParagraphBlock([new MarkdownTextInline("Body")])], MarkdownAlertKind.Note),
+            new MarkdownParagraphBlock([new MarkdownTextInline("Tail")])
+        ]);
+        static string Titles(MarkdownAlertKind kind) => "Примечание";
+        var textMap = MarkdownDocumentTextMap.Create(document, Titles);
+        var start = textMap.Text.IndexOf("Tail", StringComparison.Ordinal);
+
+        var result = TelegramMarkdownFormatter.FormatSelection(document, new DocumentTextRange(start, start + "Tail".Length), Titles);
+
+        Assert.Equal("Tail", result);
+    }
+
+    private static RenderedMarkdownDocument AlertDocument()
+        => new(
+        [
+            new MarkdownQuoteBlock(
+                [new MarkdownParagraphBlock([new MarkdownTextInline("Mind the gap.")])],
+                MarkdownAlertKind.Warning)
+        ]);
+
     private static RenderedMarkdownDocument TaskListDocument(bool isOrdered)
         => new(
         [

@@ -802,6 +802,47 @@
     <Setter Property="BorderBrush" Value="{DynamicResource MmQuoteBarBrush}" />
   </Style>
 
+  <!--
+    GitHub alert (> [!NOTE] и др.) — цитата, у которой полоса и иконка в шапке
+    цвета вида. Классы вида ставит MarkdownDocumentView, он же красит заголовок
+    тем же ресурсом (заголовок — фрагмент текстового потока, а не TextBlock).
+  -->
+  <Style Selector="Border.mm-md-quote.mm-md-alert-note">
+    <Setter Property="BorderBrush" Value="{DynamicResource MmAlertNoteBrush}" />
+  </Style>
+  <Style Selector="views|LucideIcon.mm-md-alert-icon.mm-md-alert-note">
+    <Setter Property="Data" Value="{DynamicResource LucideInfoGeometry}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmAlertNoteBrush}" />
+  </Style>
+  <Style Selector="Border.mm-md-quote.mm-md-alert-tip">
+    <Setter Property="BorderBrush" Value="{DynamicResource MmAlertTipBrush}" />
+  </Style>
+  <Style Selector="views|LucideIcon.mm-md-alert-icon.mm-md-alert-tip">
+    <Setter Property="Data" Value="{DynamicResource LucideLightbulbGeometry}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmAlertTipBrush}" />
+  </Style>
+  <Style Selector="Border.mm-md-quote.mm-md-alert-important">
+    <Setter Property="BorderBrush" Value="{DynamicResource MmAlertImportantBrush}" />
+  </Style>
+  <Style Selector="views|LucideIcon.mm-md-alert-icon.mm-md-alert-important">
+    <Setter Property="Data" Value="{DynamicResource LucideMessageSquareWarningGeometry}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmAlertImportantBrush}" />
+  </Style>
+  <Style Selector="Border.mm-md-quote.mm-md-alert-warning">
+    <Setter Property="BorderBrush" Value="{DynamicResource MmAlertWarningBrush}" />
+  </Style>
+  <Style Selector="views|LucideIcon.mm-md-alert-icon.mm-md-alert-warning">
+    <Setter Property="Data" Value="{DynamicResource LucideTriangleAlertGeometry}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmAlertWarningBrush}" />
+  </Style>
+  <Style Selector="Border.mm-md-quote.mm-md-alert-caution">
+    <Setter Property="BorderBrush" Value="{DynamicResource MmAlertCautionBrush}" />
+  </Style>
+  <Style Selector="views|LucideIcon.mm-md-alert-icon.mm-md-alert-caution">
+    <Setter Property="Data" Value="{DynamicResource LucideOctagonAlertGeometry}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmAlertCautionBrush}" />
+  </Style>
+
   <Style Selector="Border.mm-md-hr">
     <Setter Property="Height" Value="1" />
     <Setter Property="Background" Value="{DynamicResource MmBorderBrush}" />

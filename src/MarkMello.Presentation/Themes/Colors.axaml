@@ -56,6 +56,18 @@
       <SolidColorBrush x:Key="MmTitleBarBrush">#F9F6F2</SolidColorBrush>
       <!-- oklch(0.40 0.01 60) -->
       <SolidColorBrush x:Key="MmTitleBarTextBrush">#4C4742</SolidColorBrush>
+      <!-- GitHub alerts: полоса, иконка и заголовок. Светлота и хрома — одни на
+           все пять видов, различается только тон; заголовок на фоне — не ниже 4.5:1 -->
+      <!-- oklch(0.53 0.13 250) -->
+      <SolidColorBrush x:Key="MmAlertNoteBrush">#226FB3</SolidColorBrush>
+      <!-- oklch(0.53 0.13 150) -->
+      <SolidColorBrush x:Key="MmAlertTipBrush">#218041</SolidColorBrush>
+      <!-- oklch(0.53 0.13 300) -->
+      <SolidColorBrush x:Key="MmAlertImportantBrush">#7857AB</SolidColorBrush>
+      <!-- oklch(0.53 0.12 75) -->
+      <SolidColorBrush x:Key="MmAlertWarningBrush">#935F00</SolidColorBrush>
+      <!-- oklch(0.53 0.15 22) -->
+      <SolidColorBrush x:Key="MmAlertCautionBrush">#B23F43</SolidColorBrush>
     </ResourceDictionary>
 
     <ResourceDictionary x:Key="Dark">
@@ -99,6 +111,17 @@
       <SolidColorBrush x:Key="MmTitleBarBrush">#100C0A</SolidColorBrush>
       <!-- oklch(0.65 0.010 70) -->
       <SolidColorBrush x:Key="MmTitleBarTextBrush">#938E89</SolidColorBrush>
+      <!-- GitHub alerts: тон как в светлой теме, светлота и хрома — под тёмный фон -->
+      <!-- oklch(0.74 0.11 250) -->
+      <SolidColorBrush x:Key="MmAlertNoteBrush">#73B0EE</SolidColorBrush>
+      <!-- oklch(0.74 0.11 150) -->
+      <SolidColorBrush x:Key="MmAlertTipBrush">#76BE86</SolidColorBrush>
+      <!-- oklch(0.74 0.11 300) -->
+      <SolidColorBrush x:Key="MmAlertImportantBrush">#B59BE6</SolidColorBrush>
+      <!-- oklch(0.74 0.10 75) -->
+      <SolidColorBrush x:Key="MmAlertWarningBrush">#D0A260</SolidColorBrush>
+      <!-- oklch(0.74 0.13 22) -->
+      <SolidColorBrush x:Key="MmAlertCautionBrush">#F28885</SolidColorBrush>
     </ResourceDictionary>
 
   </ResourceDictionary.ThemeDictionaries>

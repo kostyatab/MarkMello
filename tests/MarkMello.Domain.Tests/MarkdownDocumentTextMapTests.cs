@@ -190,6 +190,93 @@ public sealed class MarkdownDocumentTextMapTests
     }
 
     [Fact]
+    public void CreatePutsTheAlertTitleOnItsOwnLineBeforeTheAlertBody()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownParagraphBlock([new MarkdownTextInline("Before")]),
+            new MarkdownQuoteBlock([new MarkdownParagraphBlock([new MarkdownTextInline("Body")])], MarkdownAlertKind.Warning),
+            new MarkdownParagraphBlock([new MarkdownTextInline("After")])
+        ]);
+
+        var textMap = MarkdownDocumentTextMap.Create(document);
+
+        Assert.Equal("Before\n\nWarning\nBody\n\nAfter\n\n", textMap.Text);
+        Assert.Collection(
+            textMap.Fragments,
+            fragment => AssertFragment(textMap.Text, fragment, "b0", MarkdownDocumentTextFragmentKind.Paragraph, "Before"),
+            fragment => AssertFragment(textMap.Text, fragment, "b1.a", MarkdownDocumentTextFragmentKind.AlertTitle, "Warning"),
+            fragment => AssertFragment(textMap.Text, fragment, "b1.b0", MarkdownDocumentTextFragmentKind.Paragraph, "Body"),
+            fragment => AssertFragment(textMap.Text, fragment, "b2", MarkdownDocumentTextFragmentKind.Paragraph, "After"));
+    }
+
+    [Fact]
+    public void CreateTakesTheAlertTitleFromTheCaller()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownQuoteBlock([new MarkdownParagraphBlock([new MarkdownTextInline("Текст")])], MarkdownAlertKind.Note)
+        ]);
+
+        var textMap = MarkdownDocumentTextMap.Create(document, static kind => kind == MarkdownAlertKind.Note ? "Примечание" : "?");
+
+        Assert.Equal("Примечание\nТекст\n\n", textMap.Text);
+        Assert.True(textMap.TryGetFragment("b0.a", out var title));
+        Assert.Equal("Примечание", title.Text);
+    }
+
+    [Fact]
+    public void CreateKeepsAnAlertWithoutBodyAsItsTitle()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownQuoteBlock([], MarkdownAlertKind.Tip),
+            new MarkdownParagraphBlock([new MarkdownTextInline("Next")])
+        ]);
+
+        var textMap = MarkdownDocumentTextMap.Create(document);
+
+        Assert.Equal("Tip\n\nNext\n\n", textMap.Text);
+    }
+
+    [Fact]
+    public void CreateAddsNoTitleToAPlainQuote()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownQuoteBlock([new MarkdownParagraphBlock([new MarkdownTextInline("Quote")])])
+        ]);
+
+        var textMap = MarkdownDocumentTextMap.Create(document);
+
+        Assert.Equal("Quote\n\n", textMap.Text);
+        Assert.DoesNotContain(textMap.Fragments, static fragment => fragment.Kind == MarkdownDocumentTextFragmentKind.AlertTitle);
+    }
+
+    [Fact]
+    public void CreateKeepsTheParagraphBreakBeforeAnAlertWhoseTitleIsEmpty()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownParagraphBlock([new MarkdownTextInline("Before")]),
+            new MarkdownQuoteBlock([new MarkdownParagraphBlock([new MarkdownTextInline("Body")])], MarkdownAlertKind.Caution)
+        ]);
+
+        var textMap = MarkdownDocumentTextMap.Create(document, static _ => string.Empty);
+
+        Assert.Equal("Before\n\nBody\n\n", textMap.Text);
+    }
+
+    [Theory]
+    [InlineData(MarkdownAlertKind.Note, "Note")]
+    [InlineData(MarkdownAlertKind.Tip, "Tip")]
+    [InlineData(MarkdownAlertKind.Important, "Important")]
+    [InlineData(MarkdownAlertKind.Warning, "Warning")]
+    [InlineData(MarkdownAlertKind.Caution, "Caution")]
+    public void DefaultAlertTitleIsTheKindAsGitHubWritesIt(MarkdownAlertKind kind, string expected)
+        => Assert.Equal(expected, MarkdownDocumentTextMap.GetDefaultAlertTitle(kind));
+
+    [Fact]
     public void ExtractPlainTextUsesLinkTextAndFallsBackToUrlWhenLabelIsMissing()
     {
         var inlines = new MarkdownInline[]

@@ -20,6 +20,7 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
     private IImageSourceResolver? _imageSourceResolver;
     private string? _baseDirectory;
     private IBrush? _baseForeground;
+    private string? _baseForegroundResourceKey;
     private double _letterSpacing;
     private double _fontSize = 16;
     private FontWeight _fontWeight = FontWeight.Normal;
@@ -195,6 +196,27 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
             }
 
             _baseForeground = value;
+            InvalidateTextLayout();
+            InvalidateVisual();
+        }
+    }
+
+    /// <summary>
+    /// Цвет текста ресурсом темы, если <see cref="BaseForeground"/> не задан.
+    /// Кисть ищется заново при смене темы, поэтому цвет переключается вместе
+    /// с ней — в отличие от кисти, найденной заранее.
+    /// </summary>
+    public string? BaseForegroundResourceKey
+    {
+        get => _baseForegroundResourceKey;
+        set
+        {
+            if (string.Equals(_baseForegroundResourceKey, value, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _baseForegroundResourceKey = value;
             InvalidateTextLayout();
             InvalidateVisual();
         }
@@ -536,8 +558,11 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
     /// supplied (e.g. soft text inside a blockquote or a small heading),
     /// it wins. Otherwise we use the standard body-text brush.
     /// </summary>
-    private IBrush ResolveBaseTextBrush()
-        => BaseForeground ?? ResolveOptionalBrush("MmTextBrush") ?? Brushes.Black;
+    internal IBrush ResolveBaseTextBrush()
+        => BaseForeground
+            ?? (BaseForegroundResourceKey is { } resourceKey ? ResolveOptionalBrush(resourceKey) : null)
+            ?? ResolveOptionalBrush("MmTextBrush")
+            ?? Brushes.Black;
 
     private void DrawInlineCodeBackgrounds(DrawingContext context, MarkdownFormattedTextLayout layout)
     {

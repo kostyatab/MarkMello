@@ -18,6 +18,7 @@ using MarkMello.Presentation.Clipboard;
 using MarkMello.Presentation.Localization;
 using MarkMello.Presentation.Views.Markdown;
 using MarkMello.Presentation.Views.Markdown.Minimap;
+using System.ComponentModel;
 using System.Globalization;
 using System.Text;
 using System.Threading;
@@ -75,6 +76,12 @@ public sealed class MarkdownDocumentView : UserControl
     private const double TaskListItemTextIndent = ListItemTextIndent / 2;
     private const double TaskCheckboxIndentAfterNumber = 3;
 
+    // Шапка GitHub alert: иконка заметно выше строчных букв заголовка и вплотную
+    // к нему — читается как одна метка; и отступ шапки от текста alert.
+    private const double AlertIconSizeToFontSize = 1.25;
+    private const double AlertIconTitleGap = 4;
+    private const double AlertHeaderBottomMargin = 4;
+
     private static readonly DataFormat<byte[]> WindowsHtmlClipboardFormat = DataFormat.CreateBytesPlatformFormat("HTML Format");
     private static readonly DataFormat<byte[]> HtmlClipboardFormat = DataFormat.CreateBytesPlatformFormat("text/html");
 
@@ -109,6 +116,10 @@ public sealed class MarkdownDocumentView : UserControl
     private readonly List<MarkdownSourceLineVisualAnchor> _sourceLineAnchors = [];
     private List<BuiltTopLevelBlock> _builtBlocks = [];
     private MarkdownDocumentTextMap _textMap = MarkdownDocumentTextMap.Empty;
+
+    // Заголовки GitHub alerts, с которыми построены текстовая карта и блоки.
+    private MarkdownAlertTitles _alertTitles = MarkdownAlertTitles.Create(GetLocalizedString);
+    private ILocalizationService? _localization;
     private bool _isPointerPressed;
     private bool _isDraggingSelection;
     private Point _pointerPressOrigin;
@@ -171,10 +182,25 @@ public sealed class MarkdownDocumentView : UserControl
     {
         EnsureRootTransitions();
         EnsureContextMenu();
+
+        _localization = TryGetLocalization();
+        if (_localization is not null)
+        {
+            _localization.PropertyChanged += OnLocalizationChanged;
+        }
+
+        // Язык мог смениться, пока view не было в дереве.
+        RefreshAlertTitles();
     }
 
     private void OnDetachedFromVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
     {
+        if (_localization is not null)
+        {
+            _localization.PropertyChanged -= OnLocalizationChanged;
+            _localization = null;
+        }
+
         LayoutUpdated -= OnLayoutUpdatedAfterDocumentRebuild;
         _hasPendingRenderedNotification = false;
         _readingPreferencesRefreshCts?.Cancel();
@@ -774,13 +800,25 @@ public sealed class MarkdownDocumentView : UserControl
         ResetPointerState();
 
         var document = Document;
-        _textMap = document is null ? MarkdownDocumentTextMap.Empty : MarkdownDocumentTextMap.Create(document);
+
+        // Заголовки alert — часть текстового потока: если язык сменился, а в
+        // документе были alert, блоки строятся заново, иначе у переиспользованного
+        // alert остался бы заголовок на прежнем языке.
+        var alertTitles = MarkdownAlertTitles.Create(GetLocalizedString);
+        var canReuseBlocks = alertTitles.HasSameTitles(_alertTitles) || !HasAlertTitles(_textMap);
+        _alertTitles = alertTitles;
+
+        _textMap = document is null
+            ? MarkdownDocumentTextMap.Empty
+            : MarkdownDocumentTextMap.Create(document, _alertTitles.Get);
         ClearSelection();
 
         var generation = ++_renderGeneration;
         _hasPendingRenderedNotification = false;
 
-        var reusable = CreateReusableBlockIndex();
+        var reusable = canReuseBlocks
+            ? CreateReusableBlockIndex()
+            : new Dictionary<MarkdownBlock, Queue<BuiltTopLevelBlock>>(MarkdownBlockStructuralComparer.Instance);
         var previous = _builtBlocks;
         var rebuilt = new List<BuiltTopLevelBlock>(document?.Blocks.Count ?? 0);
 
@@ -1440,19 +1478,152 @@ public sealed class MarkdownDocumentView : UserControl
             Spacing = 0
         };
 
-        for (var index = 0; index < block.Blocks.Count; index++)
-        {
-            // Every descendant of this quote receives insideQuote: true so
-            // nested lists and paragraphs pick up the italic/soft treatment.
-            stack.Children.Add(BuildBlock(block.Blocks[index], $"{path}.b{index}", nested: true, insideQuote: true));
-        }
-
-        return new Border
+        var border = new Border
         {
             Classes = { "mm-md-quote" },
             Child = stack
         };
+
+        if (block.AlertKind is { } alertKind)
+        {
+            var kindClass = GetAlertClass(alertKind);
+            border.Classes.Add("mm-md-alert");
+            border.Classes.Add(kindClass);
+            stack.Children.Add(BuildAlertHeader(alertKind, kindClass, path));
+        }
+
+        // Every descendant of a plain quote receives insideQuote: true so
+        // nested lists and paragraphs pick up the italic/soft treatment.
+        // The body of a GitHub alert is plain text, as on GitHub.
+        var insideQuote = block.AlertKind is null;
+        for (var index = 0; index < block.Blocks.Count; index++)
+        {
+            stack.Children.Add(BuildBlock(block.Blocks[index], $"{path}.b{index}", nested: true, insideQuote: insideQuote));
+        }
+
+        if (block.AlertKind is not null)
+        {
+            // Нижний отступ блока — расстояние до следующего блока. У последнего
+            // блока alert следующего нет, и отступ оставлял бы под текстом пустое
+            // место больше, чем над шапкой.
+            RemoveTrailingBottomMargin(stack);
+        }
+
+        return border;
     }
+
+    /// <summary>
+    /// Убирает нижний отступ у контрола и у последнего контрола внутри него —
+    /// абзаца в конце стека, содержимого последнего пункта списка или вложенной
+    /// цитаты. Внутренний отступ вложенной цитаты остаётся: он симметричен
+    /// верхнему, и полоса цитаты заканчивается чуть ниже текста. В блок кода и
+    /// таблицу не заходим — отступы внутри них часть их собственной вёрстки.
+    /// </summary>
+    private static void RemoveTrailingBottomMargin(Control control)
+    {
+        var margin = control.Margin;
+        control.Margin = new Thickness(margin.Left, margin.Top, margin.Right, 0);
+
+        var last = control switch
+        {
+            StackPanel { Orientation: Orientation.Vertical, Children.Count: > 0 } stack => stack.Children[^1],
+            Grid { RowDefinitions.Count: > 0 } list => list.Children.LastOrDefault(child => Grid.GetRow(child) == list.RowDefinitions.Count - 1),
+            Border { Child: Control child } quote when quote.Classes.Contains("mm-md-quote") => child,
+            _ => null
+        };
+
+        if (last is not null)
+        {
+            RemoveTrailingBottomMargin(last);
+        }
+    }
+
+    /// <summary>
+    /// Шапка GitHub alert: иконка и заголовок цвета вида. Заголовок — фрагмент
+    /// текстового потока (выделяется, ищется и копируется вместе с alert), иконка —
+    /// только украшение. Иконку и цвет полосы задают стили по классу вида
+    /// (<c>Themes/Controls.axaml</c>).
+    /// </summary>
+    private StackPanel BuildAlertHeader(MarkdownAlertKind kind, string kindClass, string path)
+    {
+        var iconSize = Math.Round(ReadingPreferences.FontSize * AlertIconSizeToFontSize);
+        var icon = new LucideIcon
+        {
+            Width = iconSize,
+            Height = iconSize,
+            VerticalAlignment = VerticalAlignment.Center,
+            Classes = { "mm-md-alert-icon", kindClass }
+        };
+
+        var title = BuildSelectionFragment(
+            $"{path}.a",
+            [new MarkdownTextInline(_alertTitles.Get(kind))],
+            margin: default,
+            ReadingPreferences.FontSize,
+            GetBodyLineHeight(),
+            FontWeight.SemiBold,
+            FontStyle.Normal,
+            fallbackClassName: "mm-md-alert-title",
+            textWrapping: TextWrapping.NoWrap,
+            baseForegroundResourceKey: GetAlertBrushKey(kind));
+        title.VerticalAlignment = VerticalAlignment.Center;
+
+        return new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = AlertIconTitleGap,
+            Margin = new Thickness(0, 0, 0, AlertHeaderBottomMargin),
+            Children = { icon, title }
+        };
+    }
+
+    private static string GetAlertClass(MarkdownAlertKind kind) => kind switch
+    {
+        MarkdownAlertKind.Note => "mm-md-alert-note",
+        MarkdownAlertKind.Tip => "mm-md-alert-tip",
+        MarkdownAlertKind.Important => "mm-md-alert-important",
+        MarkdownAlertKind.Warning => "mm-md-alert-warning",
+        MarkdownAlertKind.Caution => "mm-md-alert-caution",
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
+    };
+
+    private static string GetAlertBrushKey(MarkdownAlertKind kind) => kind switch
+    {
+        MarkdownAlertKind.Note => "MmAlertNoteBrush",
+        MarkdownAlertKind.Tip => "MmAlertTipBrush",
+        MarkdownAlertKind.Important => "MmAlertImportantBrush",
+        MarkdownAlertKind.Warning => "MmAlertWarningBrush",
+        MarkdownAlertKind.Caution => "MmAlertCautionBrush",
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
+    };
+
+    private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)
+        => RefreshAlertTitles();
+
+    /// <summary>
+    /// Смена языка меняет заголовки alert, а с ними и текстовый поток: документ
+    /// с alert пересобирается. Смена языка шлёт несколько уведомлений подряд —
+    /// пересборка случается на первом, остальные видят те же заголовки.
+    /// </summary>
+    private void RefreshAlertTitles()
+    {
+        var alertTitles = MarkdownAlertTitles.Create(GetLocalizedString);
+        if (alertTitles.HasSameTitles(_alertTitles))
+        {
+            return;
+        }
+
+        if (HasAlertTitles(_textMap))
+        {
+            Rebuild();
+            return;
+        }
+
+        _alertTitles = alertTitles;
+    }
+
+    private static bool HasAlertTitles(MarkdownDocumentTextMap textMap)
+        => textMap.Fragments.Any(static fragment => fragment.Kind == MarkdownDocumentTextFragmentKind.AlertTitle);
 
     /// <summary>
     /// Список — одна сетка на все пункты: строка на пункт, общие колонки маркеров
@@ -1904,7 +2075,8 @@ public sealed class MarkdownDocumentView : UserControl
         TextWrapping textWrapping = TextWrapping.Wrap,
         IBrush? baseForeground = null,
         double letterSpacing = 0,
-        TextAlignment textAlignment = TextAlignment.Left)
+        TextAlignment textAlignment = TextAlignment.Left,
+        string? baseForegroundResourceKey = null)
     {
         var styled = MarkdownStyledText.FromInlines(inlines);
         if (styled.Text.Length == 0)
@@ -1980,6 +2152,7 @@ public sealed class MarkdownDocumentView : UserControl
             BaseFontStyle = fontStyle,
             BaseLineHeight = lineHeight,
             BaseForeground = baseForeground,
+            BaseForegroundResourceKey = baseForegroundResourceKey,
             BaseLetterSpacing = letterSpacing,
             LayoutTextWrapping = textWrapping,
             LayoutTextAlignment = textAlignment,
@@ -2346,7 +2519,8 @@ public sealed class MarkdownDocumentView : UserControl
 
         return TelegramMarkdownFormatter.GetSelectionLinkUrls(
             document,
-            new DocumentTextRange(SelectionStart, SelectionEnd));
+            new DocumentTextRange(SelectionStart, SelectionEnd),
+            _alertTitles.Get);
     }
 
     private async void OnCopyTelegramMarkdownMenuItemClick(object? sender, RoutedEventArgs e)
@@ -2357,8 +2531,8 @@ public sealed class MarkdownDocumentView : UserControl
         }
 
         var selectionRange = new DocumentTextRange(SelectionStart, SelectionEnd);
-        var markdown = TelegramMarkdownFormatter.FormatSelection(document, selectionRange);
-        var html = TelegramMarkdownFormatter.FormatSelectionHtml(document, selectionRange);
+        var markdown = TelegramMarkdownFormatter.FormatSelection(document, selectionRange, _alertTitles.Get);
+        var html = TelegramMarkdownFormatter.FormatSelectionHtml(document, selectionRange, _alertTitles.Get);
         await CopyTelegramMarkdownToClipboardAsync(markdown, html).ConfigureAwait(true);
     }
 
@@ -2711,10 +2885,14 @@ public sealed class MarkdownDocumentView : UserControl
             ? brush
             : null;
 
+    private static ILocalizationService? TryGetLocalization()
+        => Avalonia.Application.Current?.Resources.TryGetResource("Localization", null, out var resource) == true
+            ? resource as ILocalizationService
+            : null;
+
     private static string GetLocalizedString(string key, string fallback)
     {
-        if (Avalonia.Application.Current?.Resources.TryGetResource("Localization", null, out var resource) == true
-            && resource is ILocalizationService localization)
+        if (TryGetLocalization() is { } localization)
         {
             var value = localization[key];
             return string.IsNullOrWhiteSpace(value) || value.StartsWith("[[", StringComparison.Ordinal)

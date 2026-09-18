@@ -43,6 +43,7 @@ internal sealed class MarkdownBlockStructuralComparer : IEqualityComparer<Markdo
             MarkdownParagraphBlock paragraph => y is MarkdownParagraphBlock other
                 && InlinesEqual(paragraph.Inlines, other.Inlines),
             MarkdownQuoteBlock quote => y is MarkdownQuoteBlock other
+                && quote.AlertKind == other.AlertKind
                 && BlocksEqual(quote.Blocks, other.Blocks),
             MarkdownListBlock list => y is MarkdownListBlock other
                 && list.IsOrdered == other.IsOrdered
@@ -91,6 +92,7 @@ internal sealed class MarkdownBlockStructuralComparer : IEqualityComparer<Markdo
                 AddInlines(ref hash, paragraph.Inlines);
                 break;
             case MarkdownQuoteBlock quote:
+                hash.Add(quote.AlertKind);
                 AddBlocks(ref hash, quote.Blocks);
                 break;
             case MarkdownListBlock list:

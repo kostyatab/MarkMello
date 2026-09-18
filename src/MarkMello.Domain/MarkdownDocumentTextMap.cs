@@ -40,7 +40,16 @@ public sealed class MarkdownDocumentTextMap
         return end <= start ? string.Empty : Text[start..end];
     }
 
-    public static MarkdownDocumentTextMap Create(RenderedMarkdownDocument document)
+    /// <param name="document">Документ.</param>
+    /// <param name="alertTitle">
+    /// Заголовок GitHub alert в text flow — тот, что показывает viewer (он
+    /// локализован). Без него — <see cref="GetDefaultAlertTitle"/>. Карта, по
+    /// которой считают выделение, и карта, по которой его копируют, должны
+    /// строиться с одними и теми же заголовками, иначе offset'ы разойдутся.
+    /// </param>
+    public static MarkdownDocumentTextMap Create(
+        RenderedMarkdownDocument document,
+        Func<MarkdownAlertKind, string>? alertTitle = null)
     {
         ArgumentNullException.ThrowIfNull(document);
 
@@ -49,7 +58,7 @@ public sealed class MarkdownDocumentTextMap
             return Empty;
         }
 
-        var builder = new Builder();
+        var builder = new Builder(alertTitle ?? GetDefaultAlertTitle);
         for (var index = 0; index < document.Blocks.Count; index++)
         {
             builder.AppendBlock(document.Blocks[index], $"b{index}", isTopLevel: true);
@@ -81,6 +90,20 @@ public sealed class MarkdownDocumentTextMap
     /// какие пункты отмечены.
     /// </summary>
     public static string GetTaskCheckboxText(bool isChecked) => isChecked ? "☑ " : "☐ ";
+
+    /// <summary>
+    /// Заголовок GitHub alert, когда локализованного нет: имя вида, как его пишет
+    /// GitHub, — «Note», «Tip», «Important», «Warning», «Caution».
+    /// </summary>
+    public static string GetDefaultAlertTitle(MarkdownAlertKind kind) => kind switch
+    {
+        MarkdownAlertKind.Note => "Note",
+        MarkdownAlertKind.Tip => "Tip",
+        MarkdownAlertKind.Important => "Important",
+        MarkdownAlertKind.Warning => "Warning",
+        MarkdownAlertKind.Caution => "Caution",
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
+    };
 
     public static string ExtractPlainText(IReadOnlyList<MarkdownInline> inlines)
     {
@@ -202,7 +225,7 @@ public sealed class MarkdownDocumentTextMap
             : image.Url;
     }
 
-    private sealed class Builder
+    private sealed class Builder(Func<MarkdownAlertKind, string> alertTitle)
     {
         private readonly StringBuilder _text = new();
         private readonly List<MarkdownDocumentTextFragment> _fragments = new();
@@ -227,6 +250,14 @@ public sealed class MarkdownDocumentTextMap
                     return;
 
                 case MarkdownQuoteBlock quote:
+                    if (quote.AlertKind is { } alertKind
+                        && alertTitle(alertKind) is { Length: > 0 } title)
+                    {
+                        // Заголовок alert — отдельная строка перед телом.
+                        AppendTextFragment($"{path}.a", MarkdownDocumentTextFragmentKind.AlertTitle, title);
+                        EnsureSingleLineBreakAtEnd();
+                    }
+
                     for (var index = 0; index < quote.Blocks.Count; index++)
                     {
                         AppendBlock(quote.Blocks[index], $"{path}.b{index}", isTopLevel: false);
