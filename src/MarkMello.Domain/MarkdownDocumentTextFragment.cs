@@ -49,5 +49,6 @@ public enum MarkdownDocumentTextFragmentKind
     Fallback = 4,
     ListMarker = 5,
     TaskCheckbox = 6,
-    AlertTitle = 7
+    AlertTitle = 7,
+    FootnoteMarker = 8
 }

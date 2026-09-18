@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using Markdig;
 using MarkdigMarkdown = Markdig.Markdown;
 using Markdig.Extensions.Alerts;
+using Markdig.Extensions.Footnotes;
 using Markdig.Extensions.Tables;
 using Markdig.Extensions.TaskLists;
 using Markdig.Syntax;
@@ -35,6 +36,7 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
 
         var document = MarkdigMarkdown.Parse(markdown, Pipeline);
         KeepMisplacedTaskListMarkersAsText(document, markdown);
+        RemoveFootnoteBackLinks(document);
         var blocks = ConvertBlocks(document, markdown);
         return new RenderedMarkdownDocument(blocks);
     }
@@ -115,6 +117,14 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
 
             case Table table:
                 target.Add(WithSourceSpan(ConvertTable(table, source), table, source));
+                return;
+
+            // FootnoteGroup — ContainerBlock, поэтому ветка идёт раньше общей.
+            case FootnoteGroup footnoteGroup:
+                if (ConvertFootnotes(footnoteGroup, source) is { } footnotes)
+                {
+                    target.Add(footnotes);
+                }
                 return;
 
             case HtmlBlock htmlBlock:
@@ -303,6 +313,74 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
         else
         {
             blocks[0] = paragraph with { Inlines = inlines };
+        }
+    }
+
+    /// <summary>
+    /// Сноски: Markdig собирает определения <c>[^label]: …</c> в <see cref="FootnoteGroup"/>
+    /// в конце документа, по порядку первых ссылок, и выкидывает сноски без ссылок.
+    /// Номер сноски — её <see cref="Footnote.Order"/>.
+    /// </summary>
+    /// <returns>Блок сносок или <c>null</c>, если сносок нет.</returns>
+    private static MarkdownFootnotesBlock? ConvertFootnotes(FootnoteGroup group, string source)
+    {
+        var footnotes = new List<MarkdownFootnote>(group.Count);
+        MarkdownSourceSpan? sourceSpan = null;
+
+        foreach (var child in group)
+        {
+            if (child is not Footnote { Order: > 0 } footnote)
+            {
+                continue;
+            }
+
+            footnotes.Add(new MarkdownFootnote(footnote.Order, ConvertBlocks(footnote, source)));
+
+            // Строки группы Markdig не заполняет: у неё Line = 0 и Span от начала
+            // документа, поэтому место в исходнике считается по самим сноскам.
+            if (CreateSourceSpan(footnote, source) is { } footnoteSpan)
+            {
+                sourceSpan = sourceSpan is { } span
+                    ? new MarkdownSourceSpan(
+                        Math.Min(span.StartLine, footnoteSpan.StartLine),
+                        Math.Max(span.EndLine, footnoteSpan.EndLine))
+                    : footnoteSpan;
+            }
+        }
+
+        return footnotes.Count == 0
+            ? null
+            : new MarkdownFootnotesBlock(footnotes) { SourceSpan = sourceSpan };
+    }
+
+    /// <summary>
+    /// Markdig дописывает в последний абзац каждой сноски обратные ссылки
+    /// (<see cref="FootnoteLink.IsBackLink"/>) к меткам в тексте, а если сноска
+    /// кончается не абзацем — добавляет для них отдельный абзац. Возврат к метке во
+    /// viewer делает номер сноски, поэтому обратные ссылки убираются вместе с таким
+    /// абзацем: он пустой и без строки в исходнике.
+    /// </summary>
+    private static void RemoveFootnoteBackLinks(MarkdownDocument document)
+    {
+        // Группу сносок Markdig ставит последним блоком документа, и обратные ссылки
+        // есть только в ней: документ без сносок обходить не нужно.
+        if (document.LastChild is not FootnoteGroup group)
+        {
+            return;
+        }
+
+        foreach (var backLink in group.Descendants<FootnoteLink>().Where(static link => link.IsBackLink).ToList())
+        {
+            // Документ разбирается заново на каждый рендер, поэтому AST можно менять.
+            backLink.Remove();
+        }
+
+        foreach (var footnote in group.OfType<Footnote>())
+        {
+            if (footnote.LastChild is ParagraphBlock { Inline.FirstChild: null } backLinkParagraph)
+            {
+                footnote.Remove(backLinkParagraph);
+            }
         }
     }
 
@@ -509,6 +587,10 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
                 HandleInlineHtmlTag(htmlInline.Tag, target);
                 return;
 
+            case FootnoteLink { IsBackLink: false } footnoteLink:
+                target.Add(new MarkdownFootnoteReferenceInline(footnoteLink.Footnote.Order));
+                return;
+
             case ContainerInline nested:
                 foreach (var child in ConvertInlines(nested))
                 {
@@ -625,6 +707,9 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
                 break;
             case MarkdownLineBreakInline:
                 builder.AppendLine();
+                break;
+            case MarkdownFootnoteReferenceInline footnote:
+                builder.Append(MarkdownDocumentTextMap.GetFootnoteReferenceText(footnote.Number));
                 break;
         }
     }

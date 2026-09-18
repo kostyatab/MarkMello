@@ -68,6 +68,8 @@ internal sealed class MarkdownBlockStructuralComparer : IEqualityComparer<Markdo
                 && string.Equals(diagram.Info, other.Info, StringComparison.Ordinal)
                 && string.Equals(diagram.Title, other.Title, StringComparison.Ordinal)
                 && Equals(diagram.RenderResult, other.RenderResult),
+            MarkdownFootnotesBlock footnotes => y is MarkdownFootnotesBlock other
+                && FootnotesEqual(footnotes.Footnotes, other.Footnotes),
 
             // Неизвестный тип блока: считаем изменившимся, чтобы новый рендерер
             // не начал молча переиспользовать чужой контрол.
@@ -137,6 +139,15 @@ internal sealed class MarkdownBlockStructuralComparer : IEqualityComparer<Markdo
                 hash.Add(diagram.Info, StringComparer.Ordinal);
                 hash.Add(diagram.Title, StringComparer.Ordinal);
                 break;
+            case MarkdownFootnotesBlock footnotes:
+                hash.Add(footnotes.Footnotes.Count);
+                foreach (var footnote in footnotes.Footnotes)
+                {
+                    hash.Add(footnote.Number);
+                    AddBlocks(ref hash, footnote.Blocks);
+                }
+
+                break;
             default:
                 break;
         }
@@ -172,6 +183,25 @@ internal sealed class MarkdownBlockStructuralComparer : IEqualityComparer<Markdo
         for (var index = 0; index < left.Count; index++)
         {
             if (left[index].IsChecked != right[index].IsChecked
+                || !BlocksEqual(left[index].Blocks, right[index].Blocks))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool FootnotesEqual(IReadOnlyList<MarkdownFootnote> left, IReadOnlyList<MarkdownFootnote> right)
+    {
+        if (left.Count != right.Count)
+        {
+            return false;
+        }
+
+        for (var index = 0; index < left.Count; index++)
+        {
+            if (left[index].Number != right[index].Number
                 || !BlocksEqual(left[index].Blocks, right[index].Blocks))
             {
                 return false;
@@ -260,6 +290,7 @@ internal sealed class MarkdownBlockStructuralComparer : IEqualityComparer<Markdo
                 string.Equals(a.Url, b.Url, StringComparison.Ordinal)
                 && string.Equals(a.Title, b.Title, StringComparison.Ordinal)
                 && InlinesEqual(a.Inlines, b.Inlines),
+            (MarkdownFootnoteReferenceInline a, MarkdownFootnoteReferenceInline b) => a.Number == b.Number,
             _ => false
         };
     }
@@ -312,6 +343,9 @@ internal sealed class MarkdownBlockStructuralComparer : IEqualityComparer<Markdo
                 case MarkdownLinkInline link:
                     hash.Add(link.Url, StringComparer.Ordinal);
                     AddInlines(ref hash, link.Inlines);
+                    break;
+                case MarkdownFootnoteReferenceInline footnote:
+                    hash.Add(footnote.Number);
                     break;
                 default:
                     break;

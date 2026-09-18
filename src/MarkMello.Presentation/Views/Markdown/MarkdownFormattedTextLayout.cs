@@ -10,6 +10,7 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
 {
     private readonly MarkdownDisplayLayoutModel _displayModel;
     private readonly MarkdownInlineCodePadMetrics _codePadMetrics;
+    private readonly MarkdownFootnoteReferenceMetrics? _footnoteMetrics;
     private readonly List<FormattedLine> _lines = new();
 
     public MarkdownFormattedTextLayout(
@@ -26,7 +27,8 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
         TextAlignment textAlignment,
         double maxWidth,
         IBrush foreground,
-        TextDecorationCollection? linkDecorations)
+        TextDecorationCollection? linkDecorations,
+        IBrush? footnoteReferenceForeground = null)
     {
         _displayModel = MarkdownDisplayLayoutModel.Create(styledText);
         var textProperties = new MarkdownTextRunPropertiesFactory(
@@ -51,6 +53,15 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
             baseFontStyle,
             lineHeight,
             foreground);
+        // Метрики сносок нужны редкому абзацу — пробный layout только для него.
+        _footnoteMetrics = styledText.FootnoteReferences.Count == 0
+            ? null
+            : MarkdownFootnoteReferenceMetrics.Create(
+                baseFontFamily,
+                baseFontSize,
+                baseFontWeight,
+                baseFontStyle,
+                footnoteReferenceForeground ?? foreground);
         var source = new MarkdownTextSource(
             _displayModel,
             styledText.Images,
@@ -58,7 +69,8 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
             textProperties,
             padMetrics,
             imageMetrics,
-            maxWidth);
+            maxWidth,
+            _footnoteMetrics);
         var paragraphProperties = new GenericTextParagraphProperties(
             new GenericTextRunProperties(
                 new Typeface(baseFontFamily, baseFontStyle, baseFontWeight),
@@ -171,15 +183,35 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
             return 0;
         }
 
+        var hit = GetCharacterHit(point);
+        var displayCaret = hit.FirstCharacterIndex + hit.TrailingLength;
+        return _displayModel.GetCanonicalCaretForDisplayCaret(displayCaret);
+    }
+
+    /// <summary>
+    /// Offset символа под точкой — в отличие от каретки, не зависит от того, в какую
+    /// половину символа попала точка. Метка сноски на экране — один символ, и по
+    /// каретке в её правой половине попадание вело бы уже за неё.
+    /// </summary>
+    public int GetCanonicalCharacterOffset(Point point)
+    {
+        if (_lines.Count == 0)
+        {
+            return 0;
+        }
+
+        return _displayModel.GetCanonicalCaretForDisplayCaret(GetCharacterHit(point).FirstCharacterIndex);
+    }
+
+    private CharacterHit GetCharacterHit(Point point)
+    {
         var lineIndex = FindLineIndex(point.Y);
         var line = _lines[lineIndex];
         // Distances are measured from the paragraph edge: a centred or
         // right-aligned line starts at TextLine.Start, not at 0.
         var lineStart = line.TextLine.Start;
         var localX = Math.Clamp(point.X, lineStart, lineStart + Math.Max(line.TextLine.WidthIncludingTrailingWhitespace, 0));
-        var hit = line.TextLine.GetCharacterHitFromDistance(localX);
-        var displayCaret = hit.FirstCharacterIndex + hit.TrailingLength;
-        return _displayModel.GetCanonicalCaretForDisplayCaret(displayCaret);
+        return line.TextLine.GetCharacterHitFromDistance(localX);
     }
 
     public bool IsPointInsideText(Point point)
@@ -205,6 +237,7 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
         }
 
         _lines.Clear();
+        _footnoteMetrics?.Dispose();
     }
 
     private void BuildLines(MarkdownTextSource source, TextParagraphProperties paragraphProperties)
@@ -311,6 +344,7 @@ internal sealed class MarkdownTextSource : ITextSource
     private readonly MarkdownTextRunPropertiesFactory _propertiesFactory;
     private readonly MarkdownInlineCodePadMetrics _padMetrics;
     private readonly MarkdownInlineImageMetrics _imageMetrics;
+    private readonly MarkdownFootnoteReferenceMetrics? _footnoteMetrics;
 
     public MarkdownTextSource(
         MarkdownDisplayLayoutModel displayModel,
@@ -319,7 +353,8 @@ internal sealed class MarkdownTextSource : ITextSource
         MarkdownTextRunPropertiesFactory propertiesFactory,
         MarkdownInlineCodePadMetrics padMetrics,
         MarkdownInlineImageMetrics imageMetrics,
-        double maxWidth = 100_000)
+        double maxWidth = 100_000,
+        MarkdownFootnoteReferenceMetrics? footnoteMetrics = null)
     {
         _displayModel = displayModel;
         _images = images;
@@ -327,6 +362,7 @@ internal sealed class MarkdownTextSource : ITextSource
         _propertiesFactory = propertiesFactory;
         _padMetrics = padMetrics;
         _imageMetrics = imageMetrics;
+        _footnoteMetrics = footnoteMetrics;
         MaxWidth = maxWidth;
     }
 
@@ -357,6 +393,8 @@ internal sealed class MarkdownTextSource : ITextSource
             MarkdownDisplaySegmentKind.Image => CreateImageRun(segment),
             MarkdownDisplaySegmentKind.CodePaddingLeft => MarkdownSpacerTextRun.Left(_padMetrics),
             MarkdownDisplaySegmentKind.CodePaddingRight => MarkdownSpacerTextRun.Right(_padMetrics),
+            MarkdownDisplaySegmentKind.FootnoteReference when _footnoteMetrics is not null
+                => new MarkdownFootnoteReferenceTextRun(segment.Text, _footnoteMetrics),
             _ => new TextEndOfParagraph(1)
         };
     }
@@ -450,6 +488,162 @@ internal sealed class MarkdownTextRunPropertiesFactory
         combined.AddRange(TextDecorations.Strikethrough);
         return combined;
     }
+}
+
+/// <summary>
+/// Метрики метки сноски: номер мельче основного текста и поднят над его базовой
+/// линией, как <c>&lt;sup&gt;</c> в браузере. Раскладки номеров кэшируются: каждая
+/// строится один раз на абзац, а не на каждую перерисовку, и освобождается вместе
+/// с раскладкой абзаца.
+/// </summary>
+internal sealed class MarkdownFootnoteReferenceMetrics : IDisposable
+{
+    private const double FontSizeRatio = 0.75;
+    private const double RaiseRatio = 0.33;
+
+    private readonly Dictionary<string, TextLayout> _numberLayouts = new(StringComparer.Ordinal);
+
+    private MarkdownFootnoteReferenceMetrics(
+        TextRunProperties baseProperties,
+        Typeface typeface,
+        double fontSize,
+        double raise,
+        double height,
+        double baseline,
+        IBrush foreground)
+    {
+        BaseProperties = baseProperties;
+        Typeface = typeface;
+        FontSize = fontSize;
+        Raise = raise;
+        Height = height;
+        Baseline = baseline;
+        Foreground = foreground;
+    }
+
+    /// <summary>Свойства основного текста: метка занимает в строке столько же места по высоте.</summary>
+    public TextRunProperties BaseProperties { get; }
+
+    public Typeface Typeface { get; }
+
+    /// <summary>Кегль номера.</summary>
+    public double FontSize { get; }
+
+    /// <summary>Подъём базовой линии номера над базовой линией строки.</summary>
+    public double Raise { get; }
+
+    /// <summary>Высота и базовая линия основного текста.</summary>
+    public double Height { get; }
+
+    public double Baseline { get; }
+
+    public IBrush Foreground { get; }
+
+    public static MarkdownFootnoteReferenceMetrics Create(
+        FontFamily fontFamily,
+        double fontSize,
+        FontWeight fontWeight,
+        FontStyle fontStyle,
+        IBrush foreground)
+    {
+        var typeface = new Typeface(fontFamily, fontStyle, fontWeight);
+        using var probe = CreateTextLayout("M", typeface, fontSize, foreground);
+
+        var baseProperties = new GenericTextRunProperties(
+            typeface,
+            fontSize,
+            textDecorations: null,
+            foreground,
+            backgroundBrush: null,
+            BaselineAlignment.Baseline,
+            CultureInfo.CurrentUICulture);
+
+        return new MarkdownFootnoteReferenceMetrics(
+            baseProperties,
+            typeface,
+            fontSize * FontSizeRatio,
+            fontSize * RaiseRatio,
+            Math.Max(1, probe.Height),
+            Math.Clamp(probe.Baseline, 0, Math.Max(1, probe.Height)),
+            foreground);
+    }
+
+    /// <summary>Раскладка номера; принадлежит метрикам, освобождать её не нужно.</summary>
+    public TextLayout GetNumberLayout(string number)
+    {
+        if (!_numberLayouts.TryGetValue(number, out var layout))
+        {
+            layout = CreateTextLayout(number, Typeface, FontSize, Foreground);
+            _numberLayouts.Add(number, layout);
+        }
+
+        return layout;
+    }
+
+    public void Dispose()
+    {
+        foreach (var layout in _numberLayouts.Values)
+        {
+            layout.Dispose();
+        }
+
+        _numberLayouts.Clear();
+    }
+
+    private static TextLayout CreateTextLayout(string text, Typeface typeface, double fontSize, IBrush foreground)
+        => new(
+            text,
+            typeface,
+            fontSize,
+            foreground,
+            TextAlignment.Left,
+            TextWrapping.NoWrap,
+            textTrimming: null,
+            textDecorations: null,
+            flowDirection: FlowDirection.LeftToRight,
+            maxWidth: double.PositiveInfinity,
+            maxHeight: double.PositiveInfinity,
+            lineHeight: double.NaN,
+            letterSpacing: 0,
+            maxLines: 0,
+            textStyleOverrides: null);
+}
+
+/// <summary>
+/// Метка сноски в строке: номер верхним индексом. По высоте и базовой линии run
+/// совпадает с основным текстом, поэтому строка с меткой не выше соседних; номер
+/// рисуется выше базовой линии, в пределах межстрочного интервала.
+/// </summary>
+internal sealed class MarkdownFootnoteReferenceTextRun : DrawableTextRun
+{
+    // Метка узкая — по паре пикселей с боков, чтобы в неё было проще попасть мышью.
+    private const double HorizontalPadding = 1;
+
+    private readonly TextLayout _numberLayout;
+    private readonly MarkdownFootnoteReferenceMetrics _metrics;
+    private readonly Size _size;
+    private readonly double _textOffsetY;
+
+    public MarkdownFootnoteReferenceTextRun(string number, MarkdownFootnoteReferenceMetrics metrics)
+    {
+        _metrics = metrics;
+        _numberLayout = metrics.GetNumberLayout(number);
+        _size = new Size(_numberLayout.WidthIncludingTrailingWhitespace + HorizontalPadding * 2, metrics.Height);
+        _textOffsetY = metrics.Baseline - metrics.Raise - _numberLayout.Baseline;
+    }
+
+    public override int Length => 1;
+
+    public override ReadOnlyMemory<char> Text => " ".AsMemory();
+
+    public override TextRunProperties Properties => _metrics.BaseProperties;
+
+    public override Size Size => _size;
+
+    public override double Baseline => _metrics.Baseline;
+
+    public override void Draw(DrawingContext drawingContext, Point origin)
+        => _numberLayout.Draw(drawingContext, new Point(origin.X + HorizontalPadding, origin.Y + _textOffsetY));
 }
 
 internal readonly record struct MarkdownInlineCodePadMetrics(

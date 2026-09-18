@@ -28,6 +28,40 @@ public sealed class MarkdownStyledTextTests
     }
 
     [Fact]
+    public void FromInlinesMakesAFootnoteReferenceALinkToTheFootnote()
+    {
+        var styled = MarkdownStyledText.FromInlines(
+        [
+            new MarkdownStrongInline([new MarkdownTextInline("Word"), new MarkdownFootnoteReferenceInline(12)]),
+            new MarkdownTextInline(" next")
+        ]);
+
+        Assert.Equal("Word[12] next", styled.Text);
+        var reference = Assert.Single(styled.FootnoteReferences);
+        Assert.Equal(new DocumentTextRange(4, 8), reference.Range);
+        Assert.Equal(12, reference.Number);
+
+        var link = Assert.Single(styled.Links);
+        Assert.Equal(reference.Range, link.Range);
+        Assert.Equal(new MarkdownFootnoteLinkTarget(12, IsBackReference: false), link.Footnote);
+
+        // Верхний индекс рисуется своим стилем: жирный слова на метку не переходит.
+        Assert.Equal(new DocumentTextRange(0, 4), Assert.Single(styled.Spans).Range);
+    }
+
+    [Fact]
+    public void ForFootnoteMarkerMakesTheNumberALinkBackToTheReference()
+    {
+        var styled = MarkdownStyledText.ForFootnoteMarker(3);
+
+        Assert.Equal("3. ", styled.Text);
+        var link = Assert.Single(styled.Links);
+        Assert.Equal(new DocumentTextRange(0, 2), link.Range);
+        Assert.Equal(new MarkdownFootnoteLinkTarget(3, IsBackReference: true), link.Footnote);
+        Assert.Equal(string.Empty, link.Url);
+    }
+
+    [Fact]
     public void FromInlinesMarksStrikethroughSpanWithoutBold()
     {
         var styled = MarkdownStyledText.FromInlines(

@@ -51,6 +51,17 @@ internal static class MarkdownSelectionLinkCollector
                 }
                 break;
 
+            case MarkdownFootnotesBlock footnotes:
+                for (var footnoteIndex = 0; footnoteIndex < footnotes.Footnotes.Count; footnoteIndex++)
+                {
+                    var footnote = footnotes.Footnotes[footnoteIndex];
+                    for (var blockIndex = 0; blockIndex < footnote.Blocks.Count; blockIndex++)
+                    {
+                        CollectBlockLinkUrls(footnote.Blocks[blockIndex], $"{path}.f{footnoteIndex}.b{blockIndex}", context, urls);
+                    }
+                }
+                break;
+
             case MarkdownTableBlock table:
                 for (var cellIndex = 0; cellIndex < table.Header.Count; cellIndex++)
                 {

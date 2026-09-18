@@ -36,6 +36,31 @@ public sealed class MarkdownSelectionLinkCollectorTests
     }
 
     [Fact]
+    public void GetSelectionLinkUrlsFindsLinksInFootnotesButNotTheFootnoteLabels()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownParagraphBlock([new MarkdownTextInline("Text"), new MarkdownFootnoteReferenceInline(1)]),
+            new MarkdownFootnotesBlock(
+            [
+                new MarkdownFootnote(1,
+                [
+                    new MarkdownParagraphBlock(
+                    [
+                        new MarkdownTextInline("See "),
+                        new MarkdownLinkInline([new MarkdownTextInline("docs")], "https://example.com/docs", null)
+                    ])
+                ])
+            ])
+        ]);
+        var textMap = MarkdownDocumentTextMap.Create(document);
+
+        var result = TelegramMarkdownFormatter.GetSelectionLinkUrls(document, new DocumentTextRange(0, textMap.Text.Length));
+
+        Assert.Equal(["https://example.com/docs"], result);
+    }
+
+    [Fact]
     public void GetSelectionLinkUrlsIgnoresLinksOutsideSelection()
     {
         var document = new RenderedMarkdownDocument(

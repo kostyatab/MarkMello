@@ -83,6 +83,24 @@ public sealed class TelegramHtmlClipboardWriterTests
     }
 
     [Fact]
+    public void FormatSelectionHtmlWritesFootnoteLabelsInBracketsAndFootnotesAsANumberedList()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownParagraphBlock([new MarkdownTextInline("Markdig"), new MarkdownFootnoteReferenceInline(1)]),
+            new MarkdownFootnotesBlock(
+            [
+                new MarkdownFootnote(1, [new MarkdownParagraphBlock([new MarkdownTextInline("Fast & small.")])])
+            ])
+        ]);
+
+        var textMap = MarkdownDocumentTextMap.Create(document);
+        var result = TelegramMarkdownFormatter.FormatSelectionHtml(document, new DocumentTextRange(0, textMap.Text.Length));
+
+        Assert.Equal("Markdig[1]<br><br>1. Fast &amp; small.", result);
+    }
+
+    [Fact]
     public void FormatSelectionHtmlPutsTheAlertTitleInBoldOnTheFirstLineOfTheQuote()
     {
         var document = new RenderedMarkdownDocument(

@@ -58,6 +58,7 @@ internal static class MarkdownClipboardTextHelpers
                 ? GetPlainTextLength(link.Inlines)
                 : link.Url.Length,
             MarkdownLineBreakInline => 1,
+            MarkdownFootnoteReferenceInline footnote => MarkdownDocumentTextMap.GetFootnoteReferenceText(footnote.Number).Length,
             _ => 0
         };
 
@@ -157,6 +158,10 @@ internal static class MarkdownClipboardTextHelpers
 
             case MarkdownLineBreakInline:
                 builder.Append('\n');
+                break;
+
+            case MarkdownFootnoteReferenceInline footnote:
+                builder.Append(MarkdownDocumentTextMap.GetFootnoteReferenceText(footnote.Number));
                 break;
         }
     }

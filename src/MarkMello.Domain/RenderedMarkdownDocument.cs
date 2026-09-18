@@ -97,6 +97,20 @@ public sealed record MarkdownListBlock(bool IsOrdered, IReadOnlyList<MarkdownLis
 /// </param>
 public sealed record MarkdownListItem(IReadOnlyList<MarkdownBlock> Blocks, bool? IsChecked = null);
 
+/// <summary>
+/// Сноски документа (<c>[^label]: текст</c>) — один блок в конце документа, где
+/// бы ни стояли определения в исходнике. Сноски идут по номерам; сноска, на
+/// которую нет ни одной ссылки, в блок не попадает.
+/// </summary>
+public sealed record MarkdownFootnotesBlock(IReadOnlyList<MarkdownFootnote> Footnotes) : MarkdownBlock;
+
+/// <param name="Number">
+/// Номер сноски (1, 2, …) — по порядку первых ссылок на неё в тексте. Тот же номер
+/// показывают все метки <see cref="MarkdownFootnoteReferenceInline"/> этой сноски.
+/// </param>
+/// <param name="Blocks">Содержимое сноски: один или несколько абзацев и другие блоки.</param>
+public sealed record MarkdownFootnote(int Number, IReadOnlyList<MarkdownBlock> Blocks);
+
 public sealed record MarkdownHorizontalRuleBlock() : MarkdownBlock;
 
 public sealed record MarkdownCodeBlock(string? Info, string Code) : MarkdownBlock;
@@ -221,3 +235,10 @@ public sealed record MarkdownImageInline(string Url, string? AltText, string? Ti
 public sealed record MarkdownLinkInline(IReadOnlyList<MarkdownInline> Inlines, string Url, string? Title) : MarkdownInline;
 
 public sealed record MarkdownLineBreakInline() : MarkdownInline;
+
+/// <summary>
+/// Метка сноски в тексте (<c>[^label]</c>). Повторная ссылка на ту же сноску даёт
+/// ту же метку.
+/// </summary>
+/// <param name="Number">Номер сноски — <see cref="MarkdownFootnote.Number"/>.</param>
+public sealed record MarkdownFootnoteReferenceInline(int Number) : MarkdownInline;

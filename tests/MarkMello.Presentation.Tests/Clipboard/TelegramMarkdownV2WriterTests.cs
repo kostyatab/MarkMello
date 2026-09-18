@@ -305,6 +305,58 @@ public sealed class TelegramMarkdownV2WriterTests
         Assert.Equal("Tail", result);
     }
 
+    [Fact]
+    public void FormatWritesFootnoteLabelsInBracketsAndFootnotesAsANumberedList()
+    {
+        var result = TelegramMarkdownFormatter.Format(FootnoteDocument());
+
+        Assert.Equal("Markdig\\[1\\] and Naiad\\[2\\]\\.\n\n1\\. Fast\\.\n2\\. In process\\.\n\nNo browser\\.", result);
+    }
+
+    [Fact]
+    public void FormatSelectionKeepsTheFootnoteLabelOfTheSelectedWord()
+    {
+        var document = FootnoteDocument();
+
+        var result = TelegramMarkdownFormatter.FormatSelection(document, new DocumentTextRange(0, "Markdig[1]".Length));
+
+        Assert.Equal("Markdig\\[1\\]", result);
+    }
+
+    [Fact]
+    public void FormatSelectionOfOneFootnoteKeepsItsNumber()
+    {
+        var document = FootnoteDocument();
+        var textMap = MarkdownDocumentTextMap.Create(document);
+        var start = textMap.Text.IndexOf("1. Fast.", StringComparison.Ordinal);
+
+        var result = TelegramMarkdownFormatter.FormatSelection(document, new DocumentTextRange(start, start + "1. Fast.".Length));
+
+        Assert.Equal("1\\. Fast\\.", result);
+    }
+
+    private static RenderedMarkdownDocument FootnoteDocument()
+        => new(
+        [
+            new MarkdownParagraphBlock(
+            [
+                new MarkdownTextInline("Markdig"),
+                new MarkdownFootnoteReferenceInline(1),
+                new MarkdownTextInline(" and Naiad"),
+                new MarkdownFootnoteReferenceInline(2),
+                new MarkdownTextInline(".")
+            ]),
+            new MarkdownFootnotesBlock(
+            [
+                new MarkdownFootnote(1, [new MarkdownParagraphBlock([new MarkdownTextInline("Fast.")])]),
+                new MarkdownFootnote(2,
+                [
+                    new MarkdownParagraphBlock([new MarkdownTextInline("In process.")]),
+                    new MarkdownParagraphBlock([new MarkdownTextInline("No browser.")])
+                ])
+            ])
+        ]);
+
     private static RenderedMarkdownDocument AlertDocument()
         => new(
         [

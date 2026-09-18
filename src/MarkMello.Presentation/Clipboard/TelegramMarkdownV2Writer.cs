@@ -90,6 +90,7 @@ internal static class TelegramMarkdownV2Writer
             MarkdownTableBlock table => AppendTable(builder, table, path, context),
             MarkdownImageBlock image => AppendImageBlock(builder, image, context),
             MarkdownDiagramBlock diagram => AppendDiagramBlock(builder, diagram, context),
+            MarkdownFootnotesBlock footnotes => AppendFootnotes(builder, footnotes, path, context),
             MarkdownHorizontalRuleBlock => false,
             _ => AppendFallbackBlock(builder, block, path, context)
         };
@@ -213,6 +214,44 @@ internal static class TelegramMarkdownV2Writer
             }
 
             builder.Append(itemBuilder);
+            appended = true;
+        }
+
+        return appended;
+    }
+
+    /// <summary>Сноски — как нумерованный список: «1\. текст сноски».</summary>
+    private static bool AppendFootnotes(
+        StringBuilder builder,
+        MarkdownFootnotesBlock footnotes,
+        string path,
+        MarkdownSelectionFormatContext context)
+    {
+        var appended = false;
+        for (var index = 0; index < footnotes.Footnotes.Count; index++)
+        {
+            var footnote = footnotes.Footnotes[index];
+            var footnoteBuilder = new StringBuilder();
+            var marker = MarkdownDocumentTextMap.GetFootnoteMarkerText(footnote.Number);
+            AppendTextFragment(footnoteBuilder, $"{path}.f{index}.m", marker, context, MarkdownV2Escaper.EscapeText);
+
+            var content = new StringBuilder();
+            AppendNestedBlocks(content, footnote.Blocks, $"{path}.f{index}", context);
+            MarkdownClipboardTextHelpers.TrimTrailingLineBreaks(content, maxAllowed: 0);
+            footnoteBuilder.Append(content);
+
+            MarkdownClipboardTextHelpers.TrimTrailingLineBreaks(footnoteBuilder, maxAllowed: 0);
+            if (footnoteBuilder.Length == 0)
+            {
+                continue;
+            }
+
+            if (appended)
+            {
+                builder.Append('\n');
+            }
+
+            builder.Append(footnoteBuilder);
             appended = true;
         }
 
@@ -437,6 +476,14 @@ internal static class TelegramMarkdownV2Writer
 
             case MarkdownLineBreakInline:
                 builder.Append('\n');
+                return;
+
+            case MarkdownFootnoteReferenceInline footnote:
+                AppendEscapedSlice(
+                    builder,
+                    MarkdownDocumentTextMap.GetFootnoteReferenceText(footnote.Number),
+                    selectedRange,
+                    MarkdownV2Escaper.EscapeText);
                 return;
         }
     }

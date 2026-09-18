@@ -321,7 +321,7 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
             return false;
         }
 
-        var localOffset = GetLocalTextOffset(localPoint, preferPreviousCharacterAtBoundary: true);
+        var localOffset = Math.Clamp(layout.GetCanonicalCharacterOffset(localPoint), 0, StyledText.Text.Length);
         if ((uint)localOffset >= (uint)StyledText.Text.Length)
         {
             return false;
@@ -516,7 +516,8 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
             LayoutTextAlignment,
             normalizedWidth,
             ResolveBaseTextBrush(),
-            BuildLinkTextDecorations());
+            BuildLinkTextDecorations(),
+            ResolveOptionalBrush("MmAccentBrush"));
 
         return _textLayout;
     }

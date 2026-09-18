@@ -92,6 +92,18 @@ public sealed class MarkdownDocumentTextMap
     public static string GetTaskCheckboxText(bool isChecked) => isChecked ? "☑ " : "☐ ";
 
     /// <summary>
+    /// Метка сноски в text flow: «[1]». На экране это номер верхним индексом, а в
+    /// выделение, поиск и буфер обмена идёт этот текст — в скопированном тексте метка
+    /// не теряется и не сливается с соседним числом.
+    /// </summary>
+    public static string GetFootnoteReferenceText(int number)
+        => string.Create(CultureInfo.InvariantCulture, $"[{number}]");
+
+    /// <summary>Номер сноски в блоке сносок: «1. ».</summary>
+    public static string GetFootnoteMarkerText(int number)
+        => string.Create(CultureInfo.InvariantCulture, $"{number}. ");
+
+    /// <summary>
     /// Заголовок GitHub alert, когда локализованного нет: имя вида, как его пишет
     /// GitHub, — «Note», «Tip», «Important», «Warning», «Caution».
     /// </summary>
@@ -134,6 +146,8 @@ public sealed class MarkdownDocumentTextMap
             MarkdownDiagramBlock => string.Empty,
             MarkdownCodeBlock code => code.Code,
             MarkdownTableBlock table => ExtractPlainText(table),
+            MarkdownFootnotesBlock footnotes => string.Join(Environment.NewLine, footnotes.Footnotes.Select(static footnote =>
+                GetFootnoteMarkerText(footnote.Number) + string.Join(Environment.NewLine, footnote.Blocks.Select(ExtractPlainText)))),
             _ => block.ToString() ?? string.Empty
         };
     }
@@ -204,6 +218,10 @@ public sealed class MarkdownDocumentTextMap
 
             case MarkdownLineBreakInline:
                 builder.Append('\n');
+                break;
+
+            case MarkdownFootnoteReferenceInline footnote:
+                builder.Append(GetFootnoteReferenceText(footnote.Number));
                 break;
         }
     }
@@ -296,6 +314,30 @@ public sealed class MarkdownDocumentTextMap
                         }
 
                         if (itemIndex < list.Items.Count - 1)
+                        {
+                            EnsureSingleLineBreakAtEnd();
+                        }
+                    }
+
+                    AppendBlockSeparator(doubleBreak: true);
+                    return;
+
+                case MarkdownFootnotesBlock footnotes:
+                    // Как нумерованный список: номер, затем содержимое сноски.
+                    for (var footnoteIndex = 0; footnoteIndex < footnotes.Footnotes.Count; footnoteIndex++)
+                    {
+                        var footnote = footnotes.Footnotes[footnoteIndex];
+                        AppendTextFragment(
+                            $"{path}.f{footnoteIndex}.m",
+                            MarkdownDocumentTextFragmentKind.FootnoteMarker,
+                            GetFootnoteMarkerText(footnote.Number));
+
+                        for (var blockIndex = 0; blockIndex < footnote.Blocks.Count; blockIndex++)
+                        {
+                            AppendBlock(footnote.Blocks[blockIndex], $"{path}.f{footnoteIndex}.b{blockIndex}", isTopLevel: false);
+                        }
+
+                        if (footnoteIndex < footnotes.Footnotes.Count - 1)
                         {
                             EnsureSingleLineBreakAtEnd();
                         }

@@ -76,8 +76,19 @@ public sealed class RenderMarkdownDocumentUseCase
         },
         MarkdownQuoteBlock quote => quote with { Blocks = MaterializeBlocks(quote.Blocks) },
         MarkdownListBlock list => list with { Items = MaterializeListItems(list.Items) },
+        MarkdownFootnotesBlock footnotes => footnotes with { Footnotes = MaterializeFootnotes(footnotes.Footnotes) },
         _ => block,
     };
+
+    private List<MarkdownFootnote> MaterializeFootnotes(IReadOnlyList<MarkdownFootnote> footnotes)
+    {
+        var result = new List<MarkdownFootnote>(footnotes.Count);
+        foreach (var footnote in footnotes)
+        {
+            result.Add(footnote with { Blocks = MaterializeBlocks(footnote.Blocks) });
+        }
+        return result;
+    }
 
     private List<MarkdownListItem> MaterializeListItems(IReadOnlyList<MarkdownListItem> items)
     {
@@ -103,6 +114,15 @@ public sealed class RenderMarkdownDocumentUseCase
                     foreach (var item in list.Items)
                     {
                         if (ContainsAnyDiagramBlock(item.Blocks))
+                        {
+                            return true;
+                        }
+                    }
+                    break;
+                case MarkdownFootnotesBlock footnotes:
+                    foreach (var footnote in footnotes.Footnotes)
+                    {
+                        if (ContainsAnyDiagramBlock(footnote.Blocks))
                         {
                             return true;
                         }

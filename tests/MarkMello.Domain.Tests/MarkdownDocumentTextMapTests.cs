@@ -190,6 +190,70 @@ public sealed class MarkdownDocumentTextMapTests
     }
 
     [Fact]
+    public void CreateWritesAFootnoteReferenceAsTheNumberInBrackets()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownParagraphBlock(
+            [
+                new MarkdownTextInline("Markdig"),
+                new MarkdownFootnoteReferenceInline(1),
+                new MarkdownTextInline(" and again"),
+                new MarkdownFootnoteReferenceInline(1),
+                new MarkdownTextInline(".")
+            ])
+        ]);
+
+        var textMap = MarkdownDocumentTextMap.Create(document);
+
+        Assert.Equal("Markdig[1] and again[1].\n\n", textMap.Text);
+    }
+
+    [Fact]
+    public void CreateListsFootnotesWithNumbersAndKeepsEveryParagraph()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownParagraphBlock([new MarkdownTextInline("Text"), new MarkdownFootnoteReferenceInline(1)]),
+            new MarkdownFootnotesBlock(
+            [
+                new MarkdownFootnote(1, [new MarkdownParagraphBlock([new MarkdownTextInline("One")])]),
+                new MarkdownFootnote(2,
+                [
+                    new MarkdownParagraphBlock([new MarkdownTextInline("Two")]),
+                    new MarkdownParagraphBlock([new MarkdownTextInline("More")])
+                ])
+            ])
+        ]);
+
+        var textMap = MarkdownDocumentTextMap.Create(document);
+
+        Assert.Equal("Text[1]\n\n1. One\n2. Two\nMore\n\n", textMap.Text);
+        Assert.Collection(
+            textMap.Fragments,
+            fragment => AssertFragment(textMap.Text, fragment, "b0", MarkdownDocumentTextFragmentKind.Paragraph, "Text[1]"),
+            fragment => AssertFragment(textMap.Text, fragment, "b1.f0.m", MarkdownDocumentTextFragmentKind.FootnoteMarker, "1. "),
+            fragment => AssertFragment(textMap.Text, fragment, "b1.f0.b0", MarkdownDocumentTextFragmentKind.Paragraph, "One"),
+            fragment => AssertFragment(textMap.Text, fragment, "b1.f1.m", MarkdownDocumentTextFragmentKind.FootnoteMarker, "2. "),
+            fragment => AssertFragment(textMap.Text, fragment, "b1.f1.b0", MarkdownDocumentTextFragmentKind.Paragraph, "Two"),
+            fragment => AssertFragment(textMap.Text, fragment, "b1.f1.b1", MarkdownDocumentTextFragmentKind.Paragraph, "More"));
+    }
+
+    [Fact]
+    public void CreatePutsTheFootnotesAfterAParagraphBreak()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownListBlock(false, [new MarkdownListItem([new MarkdownParagraphBlock([new MarkdownTextInline("Item")])])]),
+            new MarkdownFootnotesBlock([new MarkdownFootnote(1, [new MarkdownParagraphBlock([new MarkdownTextInline("Note")])])])
+        ]);
+
+        var textMap = MarkdownDocumentTextMap.Create(document);
+
+        Assert.Equal("• Item\n\n1. Note\n\n", textMap.Text);
+    }
+
+    [Fact]
     public void CreatePutsTheAlertTitleOnItsOwnLineBeforeTheAlertBody()
     {
         var document = new RenderedMarkdownDocument(

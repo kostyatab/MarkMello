@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
+using MarkMello.Domain;
 using MarkMello.Presentation.Views.Markdown;
 
 namespace MarkMello.Presentation.Tests;
@@ -79,6 +80,71 @@ public sealed class MarkdownFormattedTextLayoutTests
         }, CancellationToken.None);
     }
 
+    [Theory]
+    [InlineData("before the comma", ", and more words after it to wrap.")]
+    [InlineData("before the period", ". More words after it to wrap the line.")]
+    [InlineData("before a space", " and more words after it to wrap the line.")]
+    public Task FootnoteReferenceNeverWrapsAwayFromItsWord(string before, string after)
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var styled = MarkdownStyledText.FromInlines(
+            [
+                new MarkdownTextInline("Some words " + before),
+                new MarkdownFootnoteReferenceInline(1),
+                new MarkdownTextInline(after)
+            ]);
+            var label = Assert.Single(styled.FootnoteReferences).Range;
+            var lastLetter = new DocumentTextRange(label.Start - 1, label.Start);
+            var nextCharacter = new DocumentTextRange(label.End, label.End + 1);
+            var wordStart = "Some words ".Length + before.LastIndexOf(' ') + 1;
+            var spaceBeforeWord = new DocumentTextRange(wordStart - 1, wordStart);
+            var wordStartsALine = false;
+
+            // Каждая ширина, при которой слово перед меткой помещается в строку:
+            // перенос где угодно, но метка остаётся со словом и со знаком за ней,
+            // как <sup> в браузере.
+            for (var width = 120; width <= 500; width++)
+            {
+                using var layout = CreateLayout(styled, TextWrapping.Wrap, width);
+
+                var letterTop = Assert.Single(layout.GetSelectionRects(lastLetter)).Y;
+                var labelTop = Assert.Single(layout.GetSelectionRects(label)).Y;
+                var nextTop = Assert.Single(layout.GetSelectionRects(nextCharacter)).Y;
+                Assert.True(letterTop == labelTop, $"The label wrapped away from its word at width {width}.");
+                Assert.True(labelTop == nextTop, $"The character after the label wrapped away from it at width {width}.");
+
+                wordStartsALine |= Assert.Single(layout.GetSelectionRects(spaceBeforeWord)).Y != letterTop;
+            }
+
+            // Тест проверяет что-то, только если перенос хоть раз пришёлся на слово с меткой.
+            Assert.True(wordStartsALine);
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public Task FootnoteNumberIsLaidOutOncePerParagraphAndFreedWithIt()
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var metrics = MarkdownFootnoteReferenceMetrics.Create(
+                FontFamily.Default,
+                14,
+                FontWeight.Normal,
+                FontStyle.Normal,
+                Brushes.Black);
+
+            // Метки с одним номером и все перерисовки берут одну раскладку.
+            var layout = metrics.GetNumberLayout("3");
+            Assert.Same(layout, metrics.GetNumberLayout("3"));
+            Assert.NotSame(layout, metrics.GetNumberLayout("4"));
+
+            metrics.Dispose();
+            Assert.NotSame(layout, metrics.GetNumberLayout("3"));
+            metrics.Dispose();
+        }, CancellationToken.None);
+    }
+
     [Fact]
     public Task StrikethroughStyleDrawsStrikethroughInTextForegroundWithoutBold()
     {
@@ -125,6 +191,23 @@ public sealed class MarkdownFormattedTextLayoutTests
 
     private static Point GetLineStartPoint(MarkdownFormattedTextLineMetrics metrics)
         => new(0, metrics.Bounds.Y + metrics.Bounds.Height / 2);
+
+    private static MarkdownFormattedTextLayout CreateLayout(MarkdownStyledText styledText, TextWrapping textWrapping, double maxWidth)
+        => new(
+            styledText,
+            inlineImages: null,
+            baseFontFamily: FontFamily.Default,
+            inlineCodeFontFamily: FontFamily.Default,
+            baseFontSize: 14,
+            baseFontWeight: FontWeight.Normal,
+            baseFontStyle: FontStyle.Normal,
+            lineHeight: 21,
+            letterSpacing: 0,
+            textWrapping: textWrapping,
+            textAlignment: TextAlignment.Left,
+            maxWidth: maxWidth,
+            foreground: Brushes.Black,
+            linkDecorations: null);
 
     private static MarkdownFormattedTextLayout CreateLayout(
         string text,

@@ -1,3 +1,4 @@
+using System.Globalization;
 using MarkMello.Domain;
 
 namespace MarkMello.Presentation.Views.Markdown;
@@ -102,8 +103,10 @@ internal sealed class MarkdownDisplayLayoutModel
             var text = _styledText.Text;
             var spans = _styledText.Spans;
             var images = _styledText.Images;
+            var footnotes = _styledText.FootnoteReferences;
             var spanIndex = 0;
             var imageIndex = 0;
+            var footnoteIndex = 0;
             var index = 0;
 
             while (index < text.Length)
@@ -118,11 +121,24 @@ internal sealed class MarkdownDisplayLayoutModel
                     imageIndex++;
                 }
 
+                while (footnoteIndex < footnotes.Count && footnotes[footnoteIndex].Range.End <= index)
+                {
+                    footnoteIndex++;
+                }
+
                 if (imageIndex < images.Count && images[imageIndex].Range.Start == index)
                 {
                     var image = images[imageIndex];
                     AppendImageSegment(image);
                     index = image.Range.End;
+                    continue;
+                }
+
+                if (footnoteIndex < footnotes.Count && footnotes[footnoteIndex].Range.Start == index)
+                {
+                    var footnote = footnotes[footnoteIndex];
+                    AppendFootnoteReferenceSegment(footnote);
+                    index = footnote.Range.End;
                     continue;
                 }
 
@@ -150,6 +166,11 @@ internal sealed class MarkdownDisplayLayoutModel
                 if (imageIndex < images.Count && images[imageIndex].Range.Start > index)
                 {
                     end = Math.Min(end, images[imageIndex].Range.Start);
+                }
+
+                if (footnoteIndex < footnotes.Count && footnotes[footnoteIndex].Range.Start > index)
+                {
+                    end = Math.Min(end, footnotes[footnoteIndex].Range.Start);
                 }
 
                 if (end <= index)
@@ -241,6 +262,25 @@ internal sealed class MarkdownDisplayLayoutModel
             _displayCaretToCanonicalCaret.Add(_canonicalOffset);
         }
 
+        /// <summary>
+        /// Метка сноски: «[1]» в тексте — один символ на экране, номер верхним
+        /// индексом. Как и картинка, выделяется и подсвечивается целиком.
+        /// </summary>
+        private void AppendFootnoteReferenceSegment(MarkdownFootnoteReferenceSpan footnote)
+        {
+            _segments.Add(new MarkdownDisplaySegment(
+                MarkdownDisplaySegmentKind.FootnoteReference,
+                _displayOffset,
+                1,
+                footnote.Range,
+                footnote.Number.ToString(CultureInfo.InvariantCulture),
+                MarkdownInlineStyleState.Default));
+
+            _displayOffset++;
+            _canonicalOffset = footnote.Range.End;
+            _displayCaretToCanonicalCaret.Add(_canonicalOffset);
+        }
+
         private void AppendTextSegments(string text, MarkdownInlineStyleState style)
         {
             if (string.IsNullOrEmpty(text))
@@ -315,12 +355,21 @@ internal sealed class MarkdownDisplayLayoutModel
         {
             foreach (var segment in _segments)
             {
-                if (segment.Kind != MarkdownDisplaySegmentKind.Image || segment.CanonicalRange.IsEmpty)
+                if (segment.CanonicalRange.IsEmpty)
                 {
                     continue;
                 }
 
-                for (var caret = segment.CanonicalRange.Start; caret <= segment.CanonicalRange.End; caret++)
+                // Метка сноски захватывается целиком, только если граница выделения
+                // внутри «[1]»: выделение соседнего слова вплотную к метке её не красит.
+                var (first, last) = segment.Kind switch
+                {
+                    MarkdownDisplaySegmentKind.Image => (segment.CanonicalRange.Start, segment.CanonicalRange.End),
+                    MarkdownDisplaySegmentKind.FootnoteReference => (segment.CanonicalRange.Start + 1, segment.CanonicalRange.End - 1),
+                    _ => (0, -1)
+                };
+
+                for (var caret = first; caret <= last; caret++)
                 {
                     canonicalCaretToDisplayStart[caret] = segment.DisplayStart;
                     canonicalCaretToDisplayEnd[caret] = segment.DisplayEnd;
@@ -356,5 +405,6 @@ internal enum MarkdownDisplaySegmentKind
     LineBreak,
     Image,
     CodePaddingLeft,
-    CodePaddingRight
+    CodePaddingRight,
+    FootnoteReference
 }

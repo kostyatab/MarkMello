@@ -82,6 +82,7 @@ internal static class TelegramHtmlClipboardWriter
             MarkdownListBlock list => AppendList(builder, list, path, context),
             MarkdownCodeBlock code => AppendCodeBlock(builder, code, path, context),
             MarkdownTableBlock table => AppendTable(builder, table, path, context),
+            MarkdownFootnotesBlock footnotes => AppendFootnotes(builder, footnotes, path, context),
             _ => AppendTextFragment(builder, path, MarkdownDocumentTextMap.ExtractPlainText(block), context)
         };
 
@@ -175,6 +176,36 @@ internal static class TelegramHtmlClipboardWriter
                 builder.Append("<br>");
             }
             builder.Append(itemBuilder);
+            appended = true;
+        }
+
+        return appended;
+    }
+
+    /// <summary>Сноски — как нумерованный список: «1. текст сноски».</summary>
+    private static bool AppendFootnotes(
+        StringBuilder builder,
+        MarkdownFootnotesBlock footnotes,
+        string path,
+        MarkdownSelectionFormatContext context)
+    {
+        var appended = false;
+        for (var index = 0; index < footnotes.Footnotes.Count; index++)
+        {
+            var footnote = footnotes.Footnotes[index];
+            var footnoteBuilder = new StringBuilder();
+            AppendTextFragment(footnoteBuilder, $"{path}.f{index}.m", MarkdownDocumentTextMap.GetFootnoteMarkerText(footnote.Number), context);
+            AppendNestedBlocks(footnoteBuilder, footnote.Blocks, $"{path}.f{index}", context);
+            if (footnoteBuilder.Length == 0)
+            {
+                continue;
+            }
+
+            if (appended)
+            {
+                builder.Append("<br>");
+            }
+            builder.Append(footnoteBuilder);
             appended = true;
         }
 
@@ -348,6 +379,10 @@ internal static class TelegramHtmlClipboardWriter
 
             case MarkdownLineBreakInline:
                 builder.Append("<br>");
+                return;
+
+            case MarkdownFootnoteReferenceInline footnote:
+                AppendEscapedSlice(builder, MarkdownDocumentTextMap.GetFootnoteReferenceText(footnote.Number), selectedRange);
                 return;
         }
     }

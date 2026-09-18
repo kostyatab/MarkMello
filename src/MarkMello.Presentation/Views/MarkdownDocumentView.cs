@@ -19,6 +19,7 @@ using MarkMello.Presentation.Localization;
 using MarkMello.Presentation.Views.Markdown;
 using MarkMello.Presentation.Views.Markdown.Minimap;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
 using System.Threading;
@@ -132,6 +133,10 @@ public sealed class MarkdownDocumentView : UserControl
     private MenuItem? _selectAllMenuItem;
     private MarkdownLinkSpan? _contextMenuLink;
     private IReadOnlyList<string> _contextMenuSelectedLinkUrls = Array.Empty<string>();
+
+    // Метка сноски, с которой читатель перешёл к сноске: номер сноски в блоке
+    // сносок возвращает именно к ней, а не к первой ссылке на ту же сноску.
+    private (MarkdownSelectionTextFragment Fragment, MarkdownLinkSpan Link)? _footnoteReturnTarget;
     private CancellationTokenSource? _readingPreferencesRefreshCts;
     private long _renderGeneration;
     private bool _hasPendingRenderedNotification;
@@ -841,6 +846,12 @@ public sealed class MarkdownDocumentView : UserControl
         SyncRootChildren(rebuilt);
         RebuildHeadingAnchorIndex();
 
+        // Метка, к которой вернёт номер сноски, могла уйти вместе с изменившимся блоком.
+        if (_footnoteReturnTarget is { } returnTarget && !_selectionFragments.Contains(returnTarget.Fragment))
+        {
+            _footnoteReturnTarget = null;
+        }
+
         // Re-apply the active query against the rebuilt fragments, and do it
         // even when the document is empty or null so match counts do not go
         // stale after the content disappears.
@@ -1387,6 +1398,7 @@ public sealed class MarkdownDocumentView : UserControl
             MarkdownTableBlock table => BuildTable(table, path),
             MarkdownImageBlock image => BuildImageBlock(image),
             MarkdownDiagramBlock diagram => BuildDiagramBlock(diagram),
+            MarkdownFootnotesBlock footnotes => BuildFootnotes(footnotes, path),
             _ => BuildFallback(block)
         };
 
@@ -1784,6 +1796,78 @@ public sealed class MarkdownDocumentView : UserControl
         return grid;
     }
 
+    /// <summary>
+    /// Блок сносок в конце документа: короткая черта слева, как в книге, и под ней
+    /// сноски с номерами — как пункты нумерованного списка. Номер сноски — ссылка
+    /// обратно к метке в тексте.
+    /// </summary>
+    private StackPanel BuildFootnotes(MarkdownFootnotesBlock block, string path)
+    {
+        var rule = new Border { Classes = { "mm-md-hr" } };
+        var ruleRow = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("*,2*"),
+            Margin = new Thickness(0, 14, 0, 16),
+            Children = { rule }
+        };
+
+        var grid = new Grid { RowSpacing = 8 };
+        grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+        grid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
+
+        for (var index = 0; index < block.Footnotes.Count; index++)
+        {
+            grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+
+            var footnote = block.Footnotes[index];
+            var footnotePath = $"{path}.f{index}";
+            AddToGrid(grid, BuildFootnoteMarker(footnote.Number, $"{footnotePath}.m"), index, column: 0);
+
+            var content = new StackPanel
+            {
+                Orientation = Orientation.Vertical,
+                Spacing = 0,
+                Margin = new Thickness(ListItemTextIndent, 0, 0, 0)
+            };
+
+            for (var blockIndex = 0; blockIndex < footnote.Blocks.Count; blockIndex++)
+            {
+                content.Children.Add(BuildBlock(footnote.Blocks[blockIndex], $"{footnotePath}.b{blockIndex}", nested: true));
+            }
+
+            AddToGrid(grid, content, index, column: 1);
+        }
+
+        return new StackPanel
+        {
+            Orientation = Orientation.Vertical,
+            Spacing = 0,
+            Margin = new Thickness(0, 0, 0, 18),
+            Classes = { "mm-md-footnotes" },
+            Children = { ruleRow, grid }
+        };
+    }
+
+    private Control BuildFootnoteMarker(int number, string path)
+    {
+        var marker = BuildSelectionFragment(
+            path,
+            Array.Empty<MarkdownInline>(),
+            margin: default,
+            ReadingPreferences.FontSize,
+            GetBodyLineHeight(),
+            FontWeight.Normal,
+            FontStyle.Normal,
+            fallbackClassName: "mm-md-footnote-marker",
+            textWrapping: TextWrapping.NoWrap,
+            baseForegroundResourceKey: "MmAccentBrush",
+            styledText: MarkdownStyledText.ForFootnoteMarker(number));
+
+        marker.HorizontalAlignment = HorizontalAlignment.Right;
+        marker.VerticalAlignment = VerticalAlignment.Top;
+        return marker;
+    }
+
     private Border BuildCodeBlock(MarkdownCodeBlock block, string path)
     {
         var body = new StackPanel
@@ -2076,9 +2160,12 @@ public sealed class MarkdownDocumentView : UserControl
         IBrush? baseForeground = null,
         double letterSpacing = 0,
         TextAlignment textAlignment = TextAlignment.Left,
-        string? baseForegroundResourceKey = null)
+        string? baseForegroundResourceKey = null,
+        MarkdownStyledText? styledText = null)
     {
-        var styled = MarkdownStyledText.FromInlines(inlines);
+        // Готовый текст — у служебных фрагментов, которых нет среди inline документа
+        // (номер сноски со ссылкой обратно к метке).
+        var styled = styledText ?? MarkdownStyledText.FromInlines(inlines);
         if (styled.Text.Length == 0)
         {
             return new Border
@@ -2188,7 +2275,8 @@ public sealed class MarkdownDocumentView : UserControl
         var currentPoint = e.GetCurrentPoint(this);
         if (currentPoint.Properties.IsRightButtonPressed)
         {
-            _contextMenuLink = TryResolveLinkAtDocumentPoint(e.GetPosition(this), out var link)
+            // У перехода по сноске нет адреса, который можно скопировать.
+            _contextMenuLink = TryResolveLinkAtDocumentPoint(e.GetPosition(this), out var link) && link.Footnote is null
                 ? link
                 : null;
             return;
@@ -2617,6 +2705,12 @@ public sealed class MarkdownDocumentView : UserControl
 
         var pressedLink = _pressedLink!.Value;
 
+        if (pressedLink.Footnote is { } footnote)
+        {
+            NavigateFootnote(_pressedFragment, pressedLink, footnote);
+            return;
+        }
+
         if (TryScrollToHeadingAnchor(pressedLink.Url))
         {
             return;
@@ -2662,7 +2756,84 @@ public sealed class MarkdownDocumentView : UserControl
         return TryScrollTargetIntoView(target);
     }
 
-    private bool TryScrollTargetIntoView(Control target)
+    /// <summary>
+    /// Переход по сноске, как по якорю заголовка: метка в тексте прокручивает к
+    /// сноске, номер сноски — обратно к метке, с которой пришли, а если пришли не по
+    /// метке — к первой ссылке на эту сноску.
+    /// </summary>
+    private void NavigateFootnote(
+        MarkdownDocumentSelectionFragmentBase source,
+        MarkdownLinkSpan link,
+        MarkdownFootnoteLinkTarget footnote)
+    {
+        if (footnote.IsBackReference)
+        {
+            TryScrollToFootnoteReference(footnote.Number);
+            return;
+        }
+
+        if (TryScrollToFootnote(footnote.Number))
+        {
+            _footnoteReturnTarget = source is MarkdownSelectionTextFragment fragment
+                ? (fragment, link)
+                : null;
+        }
+    }
+
+    private bool TryScrollToFootnote(int number)
+        => TryFindFootnoteLink(new MarkdownFootnoteLinkTarget(number, IsBackReference: true), out var marker, out _)
+            && TryScrollTargetIntoView(marker);
+
+    private bool TryScrollToFootnoteReference(int number)
+    {
+        if (_footnoteReturnTarget is { } returnTarget
+            && returnTarget.Link.Footnote?.Number == number)
+        {
+            return TryScrollTextIntoView(returnTarget.Fragment, returnTarget.Link.Range.Start);
+        }
+
+        return TryFindFootnoteLink(new MarkdownFootnoteLinkTarget(number, IsBackReference: false), out var fragment, out var reference)
+            && TryScrollTextIntoView(fragment, reference.Range.Start);
+    }
+
+    /// <summary>
+    /// Первая в документе ссылка сноски — метка в тексте или номер в блоке сносок.
+    /// Ищется в момент перехода, поэтому ничего не стоит при построении документа.
+    /// </summary>
+    private bool TryFindFootnoteLink(
+        MarkdownFootnoteLinkTarget target,
+        [NotNullWhen(true)] out MarkdownSelectionTextFragment? fragment,
+        out MarkdownLinkSpan link)
+    {
+        foreach (var candidate in _selectionFragments)
+        {
+            if (candidate is not MarkdownSelectionTextFragment textFragment)
+            {
+                continue;
+            }
+
+            foreach (var candidateLink in textFragment.StyledText.Links)
+            {
+                if (candidateLink.Footnote == target)
+                {
+                    fragment = textFragment;
+                    link = candidateLink;
+                    return true;
+                }
+            }
+        }
+
+        fragment = null;
+        link = default;
+        return false;
+    }
+
+    private bool TryScrollTextIntoView(MarkdownSelectionTextFragment fragment, int localOffset)
+        => TryScrollTargetIntoView(
+            fragment,
+            fragment.TryGetLineTopForLocalOffset(localOffset, out var lineTop) ? lineTop : 0);
+
+    private bool TryScrollTargetIntoView(Control target, double targetOffsetY = 0)
     {
         var scrollViewer = this.FindAncestorOfType<ScrollViewer>();
         if (scrollViewer is null)
@@ -2670,7 +2841,7 @@ public sealed class MarkdownDocumentView : UserControl
             return false;
         }
 
-        var targetPoint = target.TranslatePoint(new Point(0, 0), scrollViewer);
+        var targetPoint = target.TranslatePoint(new Point(0, targetOffsetY), scrollViewer);
         if (targetPoint is null)
         {
             return false;
