@@ -107,6 +107,12 @@ Open a file from the command line:
 dotnet run --project ./src/MarkMello.Desktop/MarkMello.Desktop.csproj -- ./sample.md
 ```
 
+Open the showcase with the common Markdown elements, to check how each of them renders:
+
+```bash
+dotnet run --project ./src/MarkMello.Desktop/MarkMello.Desktop.csproj -- ./samples/showcase.md
+```
+
 ## Keyboard shortcuts
 
 | Action | Windows / Linux | macOS |
