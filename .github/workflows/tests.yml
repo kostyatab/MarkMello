@@ -1,0 +1,71 @@
+name: Tests
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+  push:
+    branches:
+      - develop
+      - main
+  workflow_dispatch:
+  # Релизный workflow вызывает этот же набор как ворота перед публикацией.
+  workflow_call:
+
+# Новый пуш в PR отменяет устаревший прогон. Push и релиз получают свою группу
+# на каждый запуск, поэтому никогда не ждут в очереди и не отменяются.
+concurrency:
+  group: tests-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  AVALONIA_TELEMETRY_OPTOUT: "1"
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+
+    strategy:
+      # Упавшая ОС не должна прятать результат остальных.
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - ubuntu-latest
+          - macos-latest
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore solution
+        run: dotnet restore ./MarkMello.sln -m:1
+
+      - name: Test domain layer
+        run: dotnet test ./tests/MarkMello.Domain.Tests/MarkMello.Domain.Tests.csproj --no-restore -m:1 -nologo
+
+      # Avalonia.Headless рисует заглушкой без Skia, шрифты берёт из своей
+      # заглушки, а HarfBuzz приезжает из NuGet и требует только glibc —
+      # поэтому на Linux не нужны ни дисплей (xvfb), ни fontconfig.
+      - name: Test presentation layer
+        run: dotnet test ./tests/MarkMello.Presentation.Tests/MarkMello.Presentation.Tests.csproj --no-restore -m:1 -nologo
+
+      # Тестовые проекты не ссылаются на Desktop — без этого шага поломка
+      # composition root прошла бы зелёной.
+      - name: Build desktop app in Release
+        run: dotnet build ./src/MarkMello.Desktop/MarkMello.Desktop.csproj -c Release --no-restore -m:1 -nologo

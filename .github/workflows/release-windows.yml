@@ -42,34 +42,10 @@ env:
   AVALONIA_TELEMETRY_OPTOUT: "1"
 
 jobs:
+  # Тесты на Windows, macOS и Linux — тот же набор, что гоняется на PR и push.
   verify:
     name: Verify Release Candidate
-    runs-on: windows-latest
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-
-      - name: Set up .NET SDK
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: 10.0.x
-
-      - name: Restore solution
-        shell: pwsh
-        run: dotnet restore .\MarkMello.sln -m:1
-
-      - name: Test domain layer
-        shell: pwsh
-        run: dotnet test .\tests\MarkMello.Domain.Tests\MarkMello.Domain.Tests.csproj --no-restore -m:1 -nologo
-
-      - name: Test presentation layer
-        shell: pwsh
-        run: dotnet test .\tests\MarkMello.Presentation.Tests\MarkMello.Presentation.Tests.csproj --no-restore -m:1 -nologo
-
-      - name: Build desktop app in Release
-        shell: pwsh
-        run: dotnet build .\src\MarkMello.Desktop\MarkMello.Desktop.csproj -c Release --no-restore -m:1 -nologo
+    uses: ./.github/workflows/tests.yml
 
   prepare_release:
     name: Ensure GitHub Release
