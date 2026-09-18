@@ -416,6 +416,7 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
                     continue;
                 }
 
+                UnescapeCodeSpanPipes(cell);
                 cells.Add(new MarkdownTableCell(ConvertBlocksToInlines(cell, source)));
             }
 
@@ -430,6 +431,21 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
         }
 
         return new MarkdownTableBlock(header, rows, ConvertColumnAlignments(table));
+    }
+
+    /// <summary>
+    /// По GFM <c>\|</c> в ячейке — пайп, который не делит строку на ячейки, в том
+    /// числе внутри code span. Строку на ячейки Markdig делит правильно, но в code
+    /// span оставляет экранирование как есть, и <c>`a \| b`</c> показывался как
+    /// <c>a \| b</c>. Обычный текст ячейки Markdig разэкранирует сам.
+    /// </summary>
+    private static void UnescapeCodeSpanPipes(TableCell cell)
+    {
+        foreach (var code in cell.Descendants<CodeInline>())
+        {
+            // Документ разбирается заново на каждый рендер, поэтому AST можно менять.
+            code.Content = code.Content.Replace(@"\|", "|", StringComparison.Ordinal);
+        }
     }
 
     private static MarkdownTableColumnAlignment[] ConvertColumnAlignments(Table table)
