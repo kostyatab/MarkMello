@@ -197,6 +197,32 @@ An empty task item:
 > [!CAUTION]
 > Advises about risks or negative outcomes of certain actions.
 
+An alert with more content:
+
+> [!TIP]
+> **Bold**, *italic*, `code` and a [link](https://example.com) inside an alert.
+>
+> A second paragraph, then a list and a code block:
+>
+> - A regular item
+> - [x] A done task
+>
+> ```bash
+> dotnet test MarkMello.sln
+> ```
+
+The marker is case-insensitive:
+
+> [!note]
+> Written as `[!note]`.
+
+Not alerts — these stay plain quotes and keep the marker as text:
+
+> [!FOO]
+> An unknown kind.
+
+> [!WARNING] Text on the same line as the marker.
+
 ## Tables
 
 ### Wide table
