@@ -44,6 +44,12 @@
       <SolidColorBrush x:Key="MmCodeBackgroundBrush">#F2EEE9</SolidColorBrush>
       <!-- oklch(0.90 0.008 75) -->
       <SolidColorBrush x:Key="MmCodeBorderBrush">#E1DDD8</SolidColorBrush>
+      <!-- Клавиша (<kbd>): крышка светлее фона кода, край темнее его рамки,
+           чтобы клавиша не читалась как inline-код -->
+      <!-- oklch(0.975 0.006 80) -->
+      <SolidColorBrush x:Key="MmKeyboardBackgroundBrush">#F9F6F2</SolidColorBrush>
+      <!-- oklch(0.84 0.012 65) -->
+      <SolidColorBrush x:Key="MmKeyboardBorderBrush">#D0C9C3</SolidColorBrush>
       <!-- oklch(0.80 0.012 60) -->
       <SolidColorBrush x:Key="MmQuoteBarBrush">#C4BCB6</SolidColorBrush>
       <!-- Selection: warm highlight aligned with accent-soft -->
@@ -99,6 +105,11 @@
       <SolidColorBrush x:Key="MmCodeBackgroundBrush">#1E1A16</SolidColorBrush>
       <!-- oklch(0.28 0.010 60) -->
       <SolidColorBrush x:Key="MmCodeBorderBrush">#2D2824</SolidColorBrush>
+      <!-- Клавиша (<kbd>): крышка светлее фона кода, край светлее его рамки -->
+      <!-- oklch(0.24 0.010 60) -->
+      <SolidColorBrush x:Key="MmKeyboardBackgroundBrush">#231E1B</SolidColorBrush>
+      <!-- oklch(0.38 0.012 60) -->
+      <SolidColorBrush x:Key="MmKeyboardBorderBrush">#47413C</SolidColorBrush>
       <!-- oklch(0.40 0.012 60) -->
       <SolidColorBrush x:Key="MmQuoteBarBrush">#4D4641</SolidColorBrush>
       <!-- Selection: warm highlight, aligned with dark accent-soft -->

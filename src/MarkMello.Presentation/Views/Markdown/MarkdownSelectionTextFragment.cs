@@ -590,14 +590,11 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
             return;
         }
 
-        var fill = ResolveOptionalBrush("MmCodeBackgroundBrush");
-        if (fill is null)
-        {
-            return;
-        }
-
-        var borderBrush = ResolveOptionalBrush("MmCodeBorderBrush");
-        var pen = borderBrush is null ? null : new Pen(borderBrush, 1);
+        var codeFill = ResolveOptionalBrush("MmCodeBackgroundBrush");
+        var codeBorder = ResolveOptionalBrush("MmCodeBorderBrush");
+        var codePen = codeBorder is null ? null : new Pen(codeBorder, 1);
+        var keyFill = ResolveOptionalBrush("MmKeyboardBackgroundBrush");
+        var keyEdge = ResolveOptionalBrush("MmKeyboardBorderBrush");
 
         const double cornerRadius = 3;
 
@@ -605,9 +602,32 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
         {
             foreach (var rect in layout.GetCodeBoxRects(codeBox))
             {
-                context.DrawRectangle(fill, pen, rect, cornerRadius, cornerRadius);
+                if (codeBox.IsKeyboard)
+                {
+                    DrawKeyboardKey(context, rect, keyFill, keyEdge, cornerRadius);
+                }
+                else if (codeFill is not null)
+                {
+                    context.DrawRectangle(codeFill, codePen, rect, cornerRadius, cornerRadius);
+                }
             }
         }
+    }
+
+    /// <summary>
+    /// Клавиша рисуется как на клавиатуре: рамка с толстым нижним краем, будто у
+    /// клавиши есть высота. Под крышку клавиши кладётся прямоугольник цвета края,
+    /// и крышка открывает его на 1px сверху и по бокам и на 2px снизу.
+    /// </summary>
+    private static void DrawKeyboardKey(DrawingContext context, Rect rect, IBrush? fill, IBrush? edge, double cornerRadius)
+    {
+        if (fill is null || edge is null)
+        {
+            return;
+        }
+
+        context.DrawRectangle(edge, null, rect, cornerRadius, cornerRadius);
+        context.DrawRectangle(fill, null, rect.Deflate(new Thickness(1, 1, 1, 2)), cornerRadius - 1, cornerRadius - 1);
     }
 
     private IBrush? ResolveOptionalBrush(string resourceKey)

@@ -353,6 +353,11 @@ internal static class TelegramHtmlClipboardWriter
                 AppendEscapedSlice(builder, text.Text, selectedRange);
                 return;
 
+            // У Telegram нет разметки клавиш: клавиша копируется текстом.
+            case MarkdownKeyboardInline keyboard:
+                AppendEscapedSlice(builder, keyboard.Text, selectedRange);
+                return;
+
             case MarkdownStrongInline strong:
                 AppendWrappedInlines(builder, strong.Inlines, selectedRange, "strong");
                 return;

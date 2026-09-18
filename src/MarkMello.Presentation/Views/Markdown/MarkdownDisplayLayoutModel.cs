@@ -178,7 +178,7 @@ internal sealed class MarkdownDisplayLayoutModel
                     end = Math.Min(text.Length, index + 1);
                 }
 
-                if (style.IsCode)
+                if (style.IsBoxed)
                 {
                     AppendCodeSegment(text[index..end], style);
                 }
@@ -229,7 +229,8 @@ internal sealed class MarkdownDisplayLayoutModel
             _codeBoxes.Add(new MarkdownDisplayCodeBox(
                 new DocumentTextRange(canonicalStart, _canonicalOffset),
                 displayStart,
-                _displayOffset - displayStart));
+                _displayOffset - displayStart,
+                style.IsKeyboard));
         }
 
         private void AppendPadding(MarkdownDisplaySegmentKind kind, char marker, MarkdownInlineStyleState style)
@@ -379,10 +380,12 @@ internal sealed class MarkdownDisplayLayoutModel
     }
 }
 
+/// <summary>Рамка inline-кода или клавиши (<paramref name="IsKeyboard"/>).</summary>
 internal readonly record struct MarkdownDisplayCodeBox(
     DocumentTextRange CanonicalRange,
     int DisplayStart,
-    int DisplayLength)
+    int DisplayLength,
+    bool IsKeyboard = false)
 {
     public int DisplayEnd => DisplayStart + DisplayLength;
 }

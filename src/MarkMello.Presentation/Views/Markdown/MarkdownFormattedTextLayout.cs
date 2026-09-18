@@ -468,8 +468,8 @@ internal sealed class MarkdownTextRunPropertiesFactory
             return properties;
         }
 
-        var family = style.IsCode ? _inlineCodeFontFamily : _baseFontFamily;
-        var fontSize = style.IsCode ? _fontSize * InlineCodeFontScale : _fontSize;
+        var family = style.IsBoxed ? _inlineCodeFontFamily : _baseFontFamily;
+        var fontSize = style.IsBoxed ? _fontSize * InlineCodeFontScale : _fontSize;
         var weight = style.IsBold ? FontWeight.Bold : _fontWeight;
         var fontStyle = style.IsItalic ? FontStyle.Italic : _fontStyle;
         properties = new GenericTextRunProperties(
@@ -480,7 +480,7 @@ internal sealed class MarkdownTextRunPropertiesFactory
             backgroundBrush: null,
             BaselineAlignment.Baseline,
             CultureInfo.CurrentUICulture,
-            style.IsCode ? CodeFontFeatures : _baseFontFeatures);
+            style.IsBoxed ? CodeFontFeatures : _baseFontFeatures);
         _cache.Add(style, properties);
         return properties;
     }

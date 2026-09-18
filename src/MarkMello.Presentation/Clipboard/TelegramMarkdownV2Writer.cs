@@ -450,6 +450,11 @@ internal static class TelegramMarkdownV2Writer
                 AppendEscapedSlice(builder, text.Text, selectedRange, MarkdownV2Escaper.EscapeText);
                 return;
 
+            // У Telegram нет разметки клавиш: клавиша копируется текстом.
+            case MarkdownKeyboardInline keyboard:
+                AppendEscapedSlice(builder, keyboard.Text, selectedRange, MarkdownV2Escaper.EscapeText);
+                return;
+
             case MarkdownStrongInline strong:
                 AppendWrappedInlines(builder, strong.Inlines, selectedRange, '*', '*');
                 return;

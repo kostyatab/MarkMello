@@ -202,6 +202,10 @@ public sealed class MarkdownDocumentTextMap
                 builder.Append(code.Code);
                 break;
 
+            case MarkdownKeyboardInline keyboard:
+                builder.Append(keyboard.Text);
+                break;
+
             case MarkdownImageInline image:
                 builder.Append(GetImageInlinePlainText(image));
                 break;

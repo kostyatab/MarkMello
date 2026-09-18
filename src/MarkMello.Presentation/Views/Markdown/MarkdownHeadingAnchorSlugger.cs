@@ -110,6 +110,9 @@ internal static class MarkdownHeadingAnchorSlugger
             case MarkdownCodeInline code:
                 builder.Append(code.Code);
                 break;
+            case MarkdownKeyboardInline keyboard:
+                builder.Append(keyboard.Text);
+                break;
             case MarkdownImageInline image:
                 builder.Append(GetImagePlainText(image));
                 break;

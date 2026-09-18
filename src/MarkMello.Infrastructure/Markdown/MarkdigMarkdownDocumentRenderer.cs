@@ -519,12 +519,52 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
 
         var result = new List<MarkdownInline>();
 
-        foreach (var inline in container)
+        for (var inline = container.FirstChild; inline is not null; inline = inline.NextSibling)
         {
+            if (TryAddKeyboard(inline, result) is { } closingTag)
+            {
+                inline = closingTag;
+                continue;
+            }
+
             AddConvertedInline(inline, result);
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// <c>&lt;kbd&gt;Ctrl&lt;/kbd&gt;</c>: Markdig отдаёт открывающий и закрывающий теги
+    /// отдельными <see cref="HtmlInline"/>, а то, что между ними, — соседними узлами.
+    /// Пара тегов становится клавишей с простым текстом содержимого. Тег без пары,
+    /// как и остальные теги, снимается (<see cref="HandleInlineHtmlTag"/>).
+    /// </summary>
+    /// <returns>Закрывающий тег клавиши или <c>null</c>, если <paramref name="inline"/> — не клавиша.</returns>
+    private static HtmlInline? TryAddKeyboard(Inline inline, List<MarkdownInline> target)
+    {
+        if (inline is not HtmlInline opening || !KeyboardOpeningTagPattern.IsMatch(opening.Tag))
+        {
+            return null;
+        }
+
+        var content = new List<MarkdownInline>();
+        for (var next = inline.NextSibling; next is not null; next = next.NextSibling)
+        {
+            if (next is HtmlInline closing && KeyboardClosingTagPattern.IsMatch(closing.Tag))
+            {
+                var text = ExtractPlainText(content);
+                if (text.Length > 0)
+                {
+                    target.Add(new MarkdownKeyboardInline(text));
+                }
+
+                return closing;
+            }
+
+            AddConvertedInline(next, content);
+        }
+
+        return null;
     }
 
     private static void AddConvertedInline(Inline inline, List<MarkdownInline> target)
@@ -720,6 +760,9 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
             case MarkdownCodeInline code:
                 builder.Append(code.Code);
                 break;
+            case MarkdownKeyboardInline keyboard:
+                builder.Append(keyboard.Text);
+                break;
             case MarkdownImageInline image:
                 builder.Append(GetImageInlinePlainText(image));
                 break;
@@ -882,6 +925,14 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
 
     private static readonly Regex HeightAttrPattern = new(
         @"\bheight\s*=\s*(?:""([^""]*)""|'([^']*)'|([^\s""'>/]+))",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex KeyboardOpeningTagPattern = new(
+        @"^<kbd(?:\s[^>]*)?>$",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex KeyboardClosingTagPattern = new(
+        @"^</kbd\s*>$",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private static readonly Regex LineBreakTagPattern = new(

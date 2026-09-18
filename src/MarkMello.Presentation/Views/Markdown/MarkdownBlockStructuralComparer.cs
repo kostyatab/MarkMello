@@ -282,6 +282,7 @@ internal sealed class MarkdownBlockStructuralComparer : IEqualityComparer<Markdo
         {
             (MarkdownTextInline a, MarkdownTextInline b) => string.Equals(a.Text, b.Text, StringComparison.Ordinal),
             (MarkdownCodeInline a, MarkdownCodeInline b) => string.Equals(a.Code, b.Code, StringComparison.Ordinal),
+            (MarkdownKeyboardInline a, MarkdownKeyboardInline b) => string.Equals(a.Text, b.Text, StringComparison.Ordinal),
             (MarkdownStrongInline a, MarkdownStrongInline b) => InlinesEqual(a.Inlines, b.Inlines),
             (MarkdownEmphasisInline a, MarkdownEmphasisInline b) => InlinesEqual(a.Inlines, b.Inlines),
             (MarkdownStrikethroughInline a, MarkdownStrikethroughInline b) => InlinesEqual(a.Inlines, b.Inlines),
@@ -330,6 +331,9 @@ internal sealed class MarkdownBlockStructuralComparer : IEqualityComparer<Markdo
                     break;
                 case MarkdownCodeInline code:
                     hash.Add(code.Code, StringComparer.Ordinal);
+                    break;
+                case MarkdownKeyboardInline keyboard:
+                    hash.Add(keyboard.Text, StringComparer.Ordinal);
                     break;
                 case MarkdownStrongInline strong:
                     AddInlines(ref hash, strong.Inlines);

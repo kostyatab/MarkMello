@@ -246,6 +246,12 @@ public sealed record MarkdownStrikethroughInline(IReadOnlyList<MarkdownInline> I
 
 public sealed record MarkdownCodeInline(string Code) : MarkdownInline;
 
+/// <summary>
+/// Клавиша (<c>&lt;kbd&gt;Ctrl&lt;/kbd&gt;</c>): показывается как клавиша, а в тексте
+/// документа — выделении, поиске, копировании — это обычный текст <paramref name="Text"/>.
+/// </summary>
+public sealed record MarkdownKeyboardInline(string Text) : MarkdownInline;
+
 public sealed record MarkdownImageInline(string Url, string? AltText, string? Title) : MarkdownInline;
 
 public sealed record MarkdownLinkInline(IReadOnlyList<MarkdownInline> Inlines, string Url, string? Title) : MarkdownInline;

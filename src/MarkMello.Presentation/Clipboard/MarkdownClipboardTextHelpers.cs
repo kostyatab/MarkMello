@@ -53,6 +53,7 @@ internal static class MarkdownClipboardTextHelpers
             MarkdownEmphasisInline emphasis => GetPlainTextLength(emphasis.Inlines),
             MarkdownStrikethroughInline strikethrough => GetPlainTextLength(strikethrough.Inlines),
             MarkdownCodeInline code => code.Code.Length,
+            MarkdownKeyboardInline keyboard => keyboard.Text.Length,
             MarkdownImageInline image => GetImageInlinePlainText(image).Length,
             MarkdownLinkInline link => link.Inlines.Count > 0
                 ? GetPlainTextLength(link.Inlines)
@@ -146,6 +147,10 @@ internal static class MarkdownClipboardTextHelpers
 
             case MarkdownCodeInline code:
                 builder.Append(code.Code);
+                break;
+
+            case MarkdownKeyboardInline keyboard:
+                builder.Append(keyboard.Text);
                 break;
 
             case MarkdownImageInline image:

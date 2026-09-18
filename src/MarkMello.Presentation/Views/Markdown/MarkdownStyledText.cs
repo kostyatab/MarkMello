@@ -107,6 +107,10 @@ internal sealed record MarkdownStyledText(
                 AppendStyledText(code.Code, builder, spans, style with { IsCode = true });
                 return;
 
+            case MarkdownKeyboardInline keyboard:
+                AppendStyledText(keyboard.Text, builder, spans, style with { IsKeyboard = true });
+                return;
+
             case MarkdownImageInline image:
                 AppendImage(image, builder, spans, images, style);
                 return;
@@ -256,7 +260,9 @@ internal sealed record MarkdownStyledText(
         }
 
         var range = new DocumentTextRange(start, start + length);
-        if (spans.Count > 0)
+
+        // Клавиши вплотную (<kbd>Ctrl</kbd><kbd>C</kbd>) — две клавиши, а не одна.
+        if (spans.Count > 0 && !style.IsKeyboard)
         {
             var last = spans[^1];
             if (last.Style == style && last.Range.End == range.Start)
@@ -300,7 +306,19 @@ internal readonly record struct MarkdownInlineImageSpan(
     string PlaceholderText,
     MarkdownInlineStyleState Style);
 
-internal readonly record struct MarkdownInlineStyleState(bool IsBold, bool IsItalic, bool IsCode, bool IsLink, bool IsStrikethrough)
+/// <param name="IsKeyboard">Клавиша (<c>&lt;kbd&gt;</c>).</param>
+internal readonly record struct MarkdownInlineStyleState(
+    bool IsBold,
+    bool IsItalic,
+    bool IsCode,
+    bool IsLink,
+    bool IsStrikethrough,
+    bool IsKeyboard = false)
 {
     public static MarkdownInlineStyleState Default { get; } = new(false, false, false, false, false);
+
+    /// <summary>
+    /// Код и клавиша: моноширинный шрифт и рамка вокруг текста с отступами по бокам.
+    /// </summary>
+    public bool IsBoxed => IsCode || IsKeyboard;
 }
