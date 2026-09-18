@@ -1536,19 +1536,17 @@ public sealed class MarkdownDocumentView : UserControl
 
     private Button CreateCodeCopyButton(string code)
     {
-        // The geometry, stroke and the copy -> check swap on .copied come from
-        // the theme; the Path is sized to Lucide's 24x24 grid and the Viewbox
-        // scales that grid down, stroke included.
+        // The geometry, its colour and the copy -> check swap on .copied come
+        // from the theme.
         var button = new Button
         {
             Classes = { "mm-code-copy-button" },
             Width = CodeCopyButtonSize,
             Height = CodeCopyButtonSize,
-            Content = new Viewbox
+            Content = new LucideIcon
             {
                 Width = CodeCopyIconSize,
-                Height = CodeCopyIconSize,
-                Child = new Avalonia.Controls.Shapes.Path { Width = 24, Height = 24 }
+                Height = CodeCopyIconSize
             },
             IsTabStop = true
         };

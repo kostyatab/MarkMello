@@ -94,7 +94,7 @@ public sealed class CodeBlockCopyButtonLayoutTests
 
     private static double IconInkInset(Button button)
     {
-        var icon = Assert.IsType<Viewbox>(button.Content);
+        var icon = Assert.IsType<LucideIcon>(button.Content);
         return (button.Bounds.Width - icon.Width) / 2 + icon.Width * IconInkInsetInGrid;
     }
 }

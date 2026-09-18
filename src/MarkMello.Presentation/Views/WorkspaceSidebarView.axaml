@@ -47,6 +47,11 @@
       <Setter Property="Background" Value="{DynamicResource MmSurfaceHoverBrush}" />
       <Setter Property="CornerRadius" Value="4" />
     </Style>
+    <!-- Иконки шапки не перекрашиваются: наведение и checked показывает только фон.
+         Цвет стоит на самой иконке — Foreground кнопки Fluent меняет по состояниям. -->
+    <Style Selector="ToggleButton.mm-sidebar-icon views|LucideIcon">
+      <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+    </Style>
 
     <Style Selector="TreeView.mm-tree">
       <Setter Property="Background" Value="Transparent" />
@@ -89,12 +94,28 @@
       <Setter Property="Margin"
               Value="{Binding $parent[TreeViewItem].Level, Converter={x:Static views:TreeLevelIndentConverter.Instance}}" />
     </Style>
+    <!-- Шеврон Lucide вместо залитого глифа Fluent: тот же ToggleButton (мышь и
+         клавиатура раскрывают папку как раньше), другой шаблон. Цвет — тот, каким
+         Fluent красит свой шеврон; раскрытая папка поворачивает его вниз. -->
     <Style Selector="TreeView.mm-tree TreeViewItem /template/ ToggleButton#PART_ExpandCollapseChevron">
       <Setter Property="Width" Value="12" />
       <Setter Property="Height" Value="12" />
       <Setter Property="Margin" Value="0" />
       <Setter Property="Padding" Value="0" />
       <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="Transparent">
+            <views:LucideIcon Data="{DynamicResource LucideChevronRightGeometry}"
+                              Foreground="{DynamicResource TreeViewItemForeground}"
+                              Width="12"
+                              Height="12" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="TreeView.mm-tree TreeViewItem /template/ ToggleButton#PART_ExpandCollapseChevron:checked /template/ views|LucideIcon">
+      <Setter Property="RenderTransform" Value="rotate(90deg)" />
     </Style>
 
     <!-- Выделение и наведение: без этого TreeViewItem красится системным акцентом,
@@ -161,6 +182,12 @@
     <!-- Активный поиск обводится акцентом: дерево в этот момент скрыто, и это единственный признак -->
     <Style Selector="Border.mm-search-shell.active">
       <Setter Property="BorderBrush" Value="{DynamicResource MmAccentBrush}" />
+    </Style>
+    <Style Selector="Border.mm-search-shell views|LucideIcon">
+      <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
+    </Style>
+    <Style Selector="Border.mm-search-shell.active views|LucideIcon">
+      <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
     </Style>
 
     <Style Selector="TextBox.mm-search-input">
@@ -279,6 +306,9 @@
       <Setter Property="Background" Value="{DynamicResource MmSurfaceHoverBrush}" />
       <Setter Property="CornerRadius" Value="4" />
     </Style>
+    <Style Selector="Button.mm-sidebar-action views|LucideIcon">
+      <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+    </Style>
 
     <!-- Инлайн-ввод имени встаёт в дерево, а не в диалог: видно, куда попадёт элемент -->
     <Style Selector="TextBox.mm-tree-edit-input">
@@ -346,13 +376,9 @@
                       Command="{Binding ToggleAppMenuCommand}"
                       IsVisible="{Binding ShowsAppMenuControl}"
                       ToolTip.Tip="{Binding AppMenuTooltip}">
-          <Path Data="M2.5 4H11.5 M2.5 7H11.5 M2.5 10H11.5"
-                Width="14"
-                Height="14"
-                Stroke="{DynamicResource MmTextSoftBrush}"
-                StrokeThickness="1.5"
-                StrokeLineCap="Round"
-                StrokeJoin="Round" />
+          <views:LucideIcon Data="{DynamicResource LucideMenuGeometry}"
+                            Width="14"
+                            Height="14" />
         </ToggleButton>
 
         <TextBlock Grid.Column="1"
@@ -365,68 +391,41 @@
                 Classes="mm-sidebar-action"
                 Command="{Binding Workspace.StartNewFileCommand}"
                 ToolTip.Tip="{Binding SidebarNewFile}">
-          <Path Data="M7 2.5V11.5M2.5 7H11.5"
-                Width="14"
-                Height="14"
-                Stroke="{DynamicResource MmTextSoftBrush}"
-                StrokeThickness="1.5"
-                StrokeLineCap="Round" />
+          <views:LucideIcon Data="{DynamicResource LucideFilePlusGeometry}"
+                            Width="14"
+                            Height="14" />
         </Button>
 
         <Button Grid.Column="4"
                 Classes="mm-sidebar-action"
                 Command="{Binding ToggleSidebarCommand}"
                 ToolTip.Tip="{Binding SidebarCollapse}">
-          <Path Data="M8.5 3.5L4.5 7L8.5 10.5"
-                Width="14"
-                Height="14"
-                Stroke="{DynamicResource MmTextSoftBrush}"
-                StrokeThickness="1.5"
-                StrokeLineCap="Round"
-                StrokeJoin="Round" />
+          <views:LucideIcon Data="{DynamicResource LucidePanelLeftCloseGeometry}"
+                            Width="14"
+                            Height="14" />
         </Button>
 
         <Button Grid.Column="3"
                 Classes="mm-sidebar-action"
                 Command="{Binding Workspace.StartNewFolderCommand}"
                 ToolTip.Tip="{Binding SidebarNewFolder}">
-          <Path Data="M1.75 4.25A0.75 0.75 0 0 1 2.5 3.5H5.25L6.5 5H11.5A0.75 0.75 0 0 1 12.25 5.75V10.5A0.75 0.75 0 0 1 11.5 11.25H2.5A0.75 0.75 0 0 1 1.75 10.5Z M7 6.75V9.75M5.5 8.25H8.5"
-                Width="14"
-                Height="14"
-                Stretch="Uniform"
-                Stroke="{DynamicResource MmTextSoftBrush}"
-                StrokeThickness="1.3"
-                StrokeLineCap="Round"
-                StrokeJoin="Round"
-                Fill="Transparent" />
+          <views:LucideIcon Data="{DynamicResource LucideFolderPlusGeometry}"
+                            Width="14"
+                            Height="14" />
         </Button>
       </Grid>
 
-      <!-- Поиск по именам: поле и лупа получают акцент, пока запрос активен -->
+      <!-- Поиск по именам: поле и лупа получают акцент, пока запрос активен (класс active) -->
       <Border Grid.Row="1"
               Classes="mm-search-shell"
               Classes.active="{Binding Workspace.HasSearchQuery}">
         <Grid ColumnDefinitions="Auto,*,Auto"
               ColumnSpacing="7">
-          <Panel Grid.Column="0"
-                 Width="12"
-                 Height="12"
-                 VerticalAlignment="Center">
-            <Path Data="M9.25 9.25L12 12 M2.5 6.25A3.75 3.75 0 1 1 10 6.25A3.75 3.75 0 1 1 2.5 6.25Z"
-                  Stretch="Uniform"
-                  IsVisible="{Binding Workspace.ShowsTree}"
-                  Stroke="{DynamicResource MmTextFaintBrush}"
-                  StrokeThickness="1.4"
-                  StrokeLineCap="Round"
-                  Fill="Transparent" />
-            <Path Data="M9.25 9.25L12 12 M2.5 6.25A3.75 3.75 0 1 1 10 6.25A3.75 3.75 0 1 1 2.5 6.25Z"
-                  Stretch="Uniform"
-                  IsVisible="{Binding Workspace.HasSearchQuery}"
-                  Stroke="{DynamicResource MmAccentBrush}"
-                  StrokeThickness="1.4"
-                  StrokeLineCap="Round"
-                  Fill="Transparent" />
-          </Panel>
+          <views:LucideIcon Grid.Column="0"
+                            Data="{DynamicResource LucideSearchGeometry}"
+                            Width="12"
+                            Height="12"
+                            VerticalAlignment="Center" />
 
           <!-- Esc вешается в code-behind: TextBox помечает клавишу обработанной,
                и обработчик из разметки до неё не доходит. -->

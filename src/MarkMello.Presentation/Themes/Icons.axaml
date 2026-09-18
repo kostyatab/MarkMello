@@ -2,15 +2,111 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
   <!--
-    Иконки Lucide (https://lucide.dev), лицензия ISC — см. LUCIDE_LICENSE.txt рядом.
+    Иконки Lucide (https://lucide.dev) версии 1.47.0 (пакет lucide-static),
+    лицензия ISC — см. LUCIDE_LICENSE.txt рядом.
 
-    Геометрия в исходной сетке Lucide 24×24. Рисовать как в оригинале: обводка 2,
-    скруглённые концы и стыки, без заливки; Path размером 24×24, до нужного
-    размера масштабировать через Viewbox, а не Stretch (Stretch растягивает
-    по границам фигуры и искажает иконки, не заполняющие сетку).
+    Правило для всего интерфейса:
+    - иконки — только Lucide; рисует их Views/LucideIcon, геометрии живут только
+      в этом файле; самописные иконки в Views/*.axaml (Path, Canvas, фигуры
+      с обводкой) ловит guard-тест;
+    - размер у каждой иконки задаётся явно (Width и Height): своего у LucideIcon
+      нет, без него она схлопывается в 0×0;
+    - обводка каноничная: 2 единицы на сетке 24, масштабируется вместе с иконкой,
+      скруглённые концы и стыки, без заливки;
+    - размеры: 14px у основных кнопок (top bar, шапка сайдбара, тулбар редактора,
+      welcome, оверлеи), 12px у компактных (тумблер Edit/Read, поиск в сайдбаре,
+      дерево, вкладки, find bar, ComboBox); кнопка копирования в блоке кода — 13px;
+    - исключение — кнопки заголовка окна Windows: они остаются системными
+      (constitution §9).
 
-    Path data скопированы из SVG как есть; <rect> переписан в эквивалентный path.
+    Новую иконку брать из той же версии Lucide. Path data скопированы из SVG как
+    есть, с двумя правками: <circle>, <rect> и <line> переписаны в эквивалентный
+    path, а ведущее "m" каждого <path> — в абсолютное "M x y" с явным "l" дальше:
+    в SVG первая точка контура всегда абсолютная, а в склеенной геометрии "m"
+    отсчитывалась бы от конца предыдущего контура.
   -->
+
+  <!-- ======================= Top bar и шапка сайдбара ======================= -->
+
+  <!-- menu -->
+  <StreamGeometry x:Key="LucideMenuGeometry">M4 5h16 M4 12h16 M4 19h16</StreamGeometry>
+
+  <!-- panel-left-open -->
+  <StreamGeometry x:Key="LucidePanelLeftOpenGeometry">M5 3H19A2 2 0 0 1 21 5V19A2 2 0 0 1 19 21H5A2 2 0 0 1 3 19V5A2 2 0 0 1 5 3Z M9 3v18 M14 9l3 3-3 3</StreamGeometry>
+
+  <!-- panel-left-close -->
+  <StreamGeometry x:Key="LucidePanelLeftCloseGeometry">M5 3H19A2 2 0 0 1 21 5V19A2 2 0 0 1 19 21H5A2 2 0 0 1 3 19V5A2 2 0 0 1 5 3Z M9 3v18 M16 15l-3-3 3-3</StreamGeometry>
+
+  <!-- moon -->
+  <StreamGeometry x:Key="LucideMoonGeometry">M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401</StreamGeometry>
+
+  <!-- sun -->
+  <StreamGeometry x:Key="LucideSunGeometry">M8 12A4 4 0 1 0 16 12A4 4 0 1 0 8 12Z M12 2v2 M12 20v2 M4.93 4.93l1.41 1.41 M17.66 17.66l1.41 1.41 M2 12h2 M20 12h2 M6.34 17.66l-1.41 1.41 M19.07 4.93l-1.41 1.41</StreamGeometry>
+
+  <!-- settings-2 -->
+  <StreamGeometry x:Key="LucideSettings2Geometry">M14 17H5 M19 7h-9 M14 17A3 3 0 1 0 20 17A3 3 0 1 0 14 17Z M4 7A3 3 0 1 0 10 7A3 3 0 1 0 4 7Z</StreamGeometry>
+
+  <!-- pen-line -->
+  <StreamGeometry x:Key="LucidePenLineGeometry">M13 21h8 M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z</StreamGeometry>
+
+  <!-- eye -->
+  <StreamGeometry x:Key="LucideEyeGeometry">M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0 M9 12A3 3 0 1 0 15 12A3 3 0 1 0 9 12Z</StreamGeometry>
+
+  <!-- ======================= Файлы и папки ======================= -->
+
+  <!-- file-plus -->
+  <StreamGeometry x:Key="LucideFilePlusGeometry">M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z M14 2v5a1 1 0 0 0 1 1h5 M9 15h6 M12 18v-6</StreamGeometry>
+
+  <!-- folder-plus -->
+  <StreamGeometry x:Key="LucideFolderPlusGeometry">M12 10v6 M9 13h6 M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z</StreamGeometry>
+
+  <!-- folder-open -->
+  <StreamGeometry x:Key="LucideFolderOpenGeometry">M6 14l1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2</StreamGeometry>
+
+  <!-- ======================= Поиск, дерево, вкладки, find bar, оверлеи ======================= -->
+
+  <!-- search -->
+  <StreamGeometry x:Key="LucideSearchGeometry">M21 21l-4.34-4.34 M3 11A8 8 0 1 0 19 11A8 8 0 1 0 3 11Z</StreamGeometry>
+
+  <!-- chevron-right -->
+  <StreamGeometry x:Key="LucideChevronRightGeometry">M9 18l6-6-6-6</StreamGeometry>
+
+  <!-- chevron-down -->
+  <StreamGeometry x:Key="LucideChevronDownGeometry">M6 9l6 6 6-6</StreamGeometry>
+
+  <!-- x -->
+  <StreamGeometry x:Key="LucideXGeometry">M18 6 6 18 M6 6l12 12</StreamGeometry>
+
+  <!-- arrow-up -->
+  <StreamGeometry x:Key="LucideArrowUpGeometry">M5 12l7-7 7 7 M12 19V5</StreamGeometry>
+
+  <!-- arrow-down -->
+  <StreamGeometry x:Key="LucideArrowDownGeometry">M12 5v14 M19 12l-7 7-7-7</StreamGeometry>
+
+  <!-- arrow-left -->
+  <StreamGeometry x:Key="LucideArrowLeftGeometry">M12 19l-7-7 7-7 M19 12H5</StreamGeometry>
+
+  <!-- ======================= Тулбар редактора ======================= -->
+
+  <!-- bold -->
+  <StreamGeometry x:Key="LucideBoldGeometry">M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8</StreamGeometry>
+
+  <!-- italic -->
+  <StreamGeometry x:Key="LucideItalicGeometry">M19 4L10 4 M14 20L5 20 M15 4L9 20</StreamGeometry>
+
+  <!-- code -->
+  <StreamGeometry x:Key="LucideCodeGeometry">M16 18l6-6-6-6 M8 6l-6 6 6 6</StreamGeometry>
+
+  <!-- link -->
+  <StreamGeometry x:Key="LucideLinkGeometry">M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71 M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71</StreamGeometry>
+
+  <!-- list -->
+  <StreamGeometry x:Key="LucideListGeometry">M3 5h.01 M3 12h.01 M3 19h.01 M8 5h13 M8 12h13 M8 19h13</StreamGeometry>
+
+  <!-- text-quote -->
+  <StreamGeometry x:Key="LucideTextQuoteGeometry">M17 5H3 M21 12H8 M21 19H8 M3 12v7</StreamGeometry>
+
+  <!-- ======================= Блок кода ======================= -->
 
   <!-- copy -->
   <StreamGeometry x:Key="LucideCopyGeometry">M10 8H20A2 2 0 0 1 22 10V20A2 2 0 0 1 20 22H10A2 2 0 0 1 8 20V10A2 2 0 0 1 10 8Z M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2</StreamGeometry>

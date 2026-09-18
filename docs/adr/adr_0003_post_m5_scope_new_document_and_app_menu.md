@@ -54,7 +54,7 @@ Accepted
 
 Решение:
 
-- на welcome screen слева от `Open file…` появляется outline-кнопка с иконкой `+` и текстом `Создать MD`
+- на welcome screen слева от `Open file…` появляется outline-кнопка с иконкой создания файла (Lucide `file-plus`) и текстом `Создать MD`
 - `Open file…` остаётся primary CTA
 - `Create MD` трактуется как осознанный вход в authoring path и сразу переводит пользователя в edit mode
 - новый документ стартует как unsaved draft, а не как фиктивный file-backed document
