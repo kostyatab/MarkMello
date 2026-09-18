@@ -80,11 +80,38 @@ public sealed record MarkdownHorizontalRuleBlock() : MarkdownBlock;
 
 public sealed record MarkdownCodeBlock(string? Info, string Code) : MarkdownBlock;
 
+/// <param name="Header">Ячейки строки заголовка.</param>
+/// <param name="Rows">Строки данных.</param>
+/// <param name="ColumnAlignments">
+/// Выравнивание колонок из строки-разделителя, по индексу колонки. Колонка без
+/// записи (или всей таблицы без списка) выравнивается по левому краю.
+/// </param>
 public sealed record MarkdownTableBlock(
     IReadOnlyList<MarkdownTableCell> Header,
-    IReadOnlyList<IReadOnlyList<MarkdownTableCell>> Rows) : MarkdownBlock;
+    IReadOnlyList<IReadOnlyList<MarkdownTableCell>> Rows,
+    IReadOnlyList<MarkdownTableColumnAlignment>? ColumnAlignments = null) : MarkdownBlock
+{
+    public IReadOnlyList<MarkdownTableColumnAlignment> ColumnAlignments { get; init; } =
+        ColumnAlignments ?? Array.Empty<MarkdownTableColumnAlignment>();
+
+    public MarkdownTableColumnAlignment GetColumnAlignment(int columnIndex)
+        => (uint)columnIndex < (uint)ColumnAlignments.Count
+            ? ColumnAlignments[columnIndex]
+            : MarkdownTableColumnAlignment.Left;
+}
 
 public sealed record MarkdownTableCell(IReadOnlyList<MarkdownInline> Inlines);
+
+/// <summary>
+/// Выравнивание колонки таблицы: <c>:---</c> и колонка без маркера (<c>---</c>) —
+/// по левому краю, <c>:---:</c> — по центру, <c>---:</c> — по правому краю.
+/// </summary>
+public enum MarkdownTableColumnAlignment
+{
+    Left,
+    Center,
+    Right
+}
 
 /// <summary>
 /// Block-level image. Emitted when a markdown source paragraph contains

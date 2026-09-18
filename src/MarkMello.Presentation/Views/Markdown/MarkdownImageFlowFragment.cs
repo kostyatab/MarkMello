@@ -377,7 +377,10 @@ internal sealed class MarkdownImageFlowFragment : MarkdownDocumentSelectionFragm
 
             x = singleImage ? size.Width : left + size.Width + InlineGap;
             rowHeight = Math.Max(rowHeight, size.Height);
-            contentWidth = Math.Max(contentWidth, rect.Right);
+
+            // A single image is centred in the width it is given, but it only
+            // needs its own width: the centring offset is not part of it.
+            contentWidth = Math.Max(contentWidth, singleImage ? size.Width : rect.Right);
         }
 
         return new ImageFlowLayout(new Size(Math.Min(contentWidth, availableWidth), y + rowHeight), entries);

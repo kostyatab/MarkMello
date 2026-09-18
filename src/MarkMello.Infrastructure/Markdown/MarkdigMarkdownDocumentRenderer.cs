@@ -275,7 +275,23 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
             }
         }
 
-        return new MarkdownTableBlock(header, rows);
+        return new MarkdownTableBlock(header, rows, ConvertColumnAlignments(table));
+    }
+
+    private static MarkdownTableColumnAlignment[] ConvertColumnAlignments(Table table)
+    {
+        var alignments = new MarkdownTableColumnAlignment[table.ColumnDefinitions.Count];
+        for (var index = 0; index < alignments.Length; index++)
+        {
+            alignments[index] = table.ColumnDefinitions[index].Alignment switch
+            {
+                TableColumnAlign.Center => MarkdownTableColumnAlignment.Center,
+                TableColumnAlign.Right => MarkdownTableColumnAlignment.Right,
+                _ => MarkdownTableColumnAlignment.Left
+            };
+        }
+
+        return alignments;
     }
 
     private static IReadOnlyList<MarkdownInline> ConvertBlocksToInlines(ContainerBlock container, string source)

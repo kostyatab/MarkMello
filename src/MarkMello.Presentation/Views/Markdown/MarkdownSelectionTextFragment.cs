@@ -28,6 +28,7 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
     private MarkdownFormattedTextLayout? _textLayout;
     private double _layoutWidth = double.NaN;
     private TextWrapping _textWrapping = TextWrapping.Wrap;
+    private TextAlignment _textAlignment = TextAlignment.Left;
     private bool _disposed;
 
     public MarkdownSelectionTextFragment()
@@ -155,6 +156,25 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
             _textWrapping = value;
             InvalidateTextLayout();
             InvalidateMeasure();
+            InvalidateVisual();
+        }
+    }
+
+    /// <summary>
+    /// Alignment of every line within the fragment's width (table columns).
+    /// </summary>
+    public TextAlignment LayoutTextAlignment
+    {
+        get => _textAlignment;
+        set
+        {
+            if (_textAlignment == value)
+            {
+                return;
+            }
+
+            _textAlignment = value;
+            InvalidateTextLayout();
             InvalidateVisual();
         }
     }
@@ -424,6 +444,32 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
         return true;
     }
 
+    /// <summary>
+    /// Returns the horizontal extent (in this fragment's coordinates) of the text
+    /// between two local offsets on its first line, for horizontal scrolling.
+    /// </summary>
+    internal bool TryGetHorizontalExtentForLocalRange(int localStart, int localEnd, out double left, out double right)
+    {
+        left = 0;
+        right = 0;
+        var start = Math.Clamp(localStart, 0, StyledText.Text.Length);
+        var end = Math.Clamp(localEnd, start, StyledText.Text.Length);
+        if (end <= start)
+        {
+            return false;
+        }
+
+        var rects = GetOrCreateTextLayout(Math.Max(Bounds.Width, 1)).GetSelectionRects(new DocumentTextRange(start, end));
+        if (rects.Count == 0)
+        {
+            return false;
+        }
+
+        left = rects[0].Left;
+        right = rects[0].Right;
+        return true;
+    }
+
     private MarkdownFormattedTextLayout GetOrCreateTextLayout(double availableWidth)
     {
         var normalizedWidth = NormalizeLayoutWidth(availableWidth);
@@ -445,6 +491,7 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
             double.IsNaN(BaseLineHeight) ? double.NaN : BaseLineHeight,
             _letterSpacing,
             LayoutTextWrapping,
+            LayoutTextAlignment,
             normalizedWidth,
             ResolveBaseTextBrush(),
             BuildLinkTextDecorations());

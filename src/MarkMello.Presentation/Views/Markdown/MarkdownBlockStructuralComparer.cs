@@ -52,6 +52,7 @@ internal sealed class MarkdownBlockStructuralComparer : IEqualityComparer<Markdo
                 && string.Equals(code.Info, other.Info, StringComparison.Ordinal)
                 && string.Equals(code.Code, other.Code, StringComparison.Ordinal),
             MarkdownTableBlock table => y is MarkdownTableBlock other
+                && table.ColumnAlignments.SequenceEqual(other.ColumnAlignments)
                 && CellsEqual(table.Header, other.Header)
                 && RowsEqual(table.Rows, other.Rows),
             MarkdownImageBlock image => y is MarkdownImageBlock other
@@ -107,6 +108,12 @@ internal sealed class MarkdownBlockStructuralComparer : IEqualityComparer<Markdo
                 hash.Add(code.Code, StringComparer.Ordinal);
                 break;
             case MarkdownTableBlock table:
+                hash.Add(table.ColumnAlignments.Count);
+                foreach (var alignment in table.ColumnAlignments)
+                {
+                    hash.Add(alignment);
+                }
+
                 AddCells(ref hash, table.Header);
                 hash.Add(table.Rows.Count);
                 foreach (var row in table.Rows)

@@ -23,6 +23,7 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
         double lineHeight,
         double letterSpacing,
         TextWrapping textWrapping,
+        TextAlignment textAlignment,
         double maxWidth,
         IBrush foreground,
         TextDecorationCollection? linkDecorations)
@@ -67,7 +68,7 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
                 backgroundBrush: null,
                 BaselineAlignment.Baseline,
                 CultureInfo.CurrentUICulture),
-            TextAlignment.Left,
+            textAlignment,
             textWrapping,
             lineHeight,
             letterSpacing);
@@ -95,7 +96,7 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
         {
             result.Add(new MarkdownFormattedTextLineMetrics(
                 new Rect(
-                    0,
+                    line.TextLine.Start,
                     line.Y,
                     Math.Max(1, line.TextLine.WidthIncludingTrailingWhitespace),
                     Math.Max(1, line.TextLine.Height))));
@@ -172,7 +173,10 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
 
         var lineIndex = FindLineIndex(point.Y);
         var line = _lines[lineIndex];
-        var localX = Math.Clamp(point.X, 0, Math.Max(line.TextLine.WidthIncludingTrailingWhitespace, 0));
+        // Distances are measured from the paragraph edge: a centred or
+        // right-aligned line starts at TextLine.Start, not at 0.
+        var lineStart = line.TextLine.Start;
+        var localX = Math.Clamp(point.X, lineStart, lineStart + Math.Max(line.TextLine.WidthIncludingTrailingWhitespace, 0));
         var hit = line.TextLine.GetCharacterHitFromDistance(localX);
         var displayCaret = hit.FirstCharacterIndex + hit.TrailingLength;
         return _displayModel.GetCanonicalCaretForDisplayCaret(displayCaret);
@@ -189,8 +193,8 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
         var line = _lines[lineIndex];
         return point.Y >= line.Y
             && point.Y <= line.Y + line.TextLine.Height
-            && point.X >= 0
-            && point.X <= line.TextLine.WidthIncludingTrailingWhitespace;
+            && point.X >= line.TextLine.Start
+            && point.X <= line.TextLine.Start + line.TextLine.WidthIncludingTrailingWhitespace;
     }
 
     public void Dispose()

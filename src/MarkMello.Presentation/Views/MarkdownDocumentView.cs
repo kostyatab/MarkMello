@@ -50,6 +50,7 @@ public sealed class MarkdownDocumentView : UserControl
 
     private const double DragSelectionThreshold = 4;
     private const double CodeBlockHorizontalScrollBarReserve = 16;
+    private const double TableHorizontalScrollBarReserve = 16;
     private static readonly TimeSpan CodeCopyConfirmationDuration = TimeSpan.FromSeconds(1.5);
 
     // The code block copy button is a 24px hit target around a 13px Lucide icon.
@@ -138,6 +139,11 @@ public sealed class MarkdownDocumentView : UserControl
         IsTabStop = true;
         UseLayoutRounding = true;
         HorizontalAlignment = HorizontalAlignment.Stretch;
+
+        // Wide tables extend into the page margins (MarkdownTableHost): the view
+        // must neither clip them nor their hit testing. The page's own
+        // ScrollViewer still clips to the window.
+        ClipToBounds = false;
         _root.UseLayoutRounding = true;
         AttachedToVisualTree += OnAttachedToVisualTree;
         DetachedFromVisualTree += OnDetachedFromVisualTree;
@@ -1172,6 +1178,62 @@ public sealed class MarkdownDocumentView : UserControl
             scrollViewer.ScrollBarMaximum.Y);
 
         scrollViewer.Offset = new Vector(scrollViewer.Offset.X, nextOffsetY);
+
+        if (fragment is MarkdownSelectionTextFragment matchFragment)
+        {
+            ScrollMatchIntoHorizontalView(matchFragment, match, scrollViewer);
+        }
+    }
+
+    /// <summary>
+    /// A match in a wide table or a long code line can be off to the side of the
+    /// block's own horizontal scroll area: scroll that area so the match is in
+    /// view, clear of the table's edge fade.
+    /// </summary>
+    private void ScrollMatchIntoHorizontalView(
+        MarkdownSelectionTextFragment fragment,
+        DocumentTextRange match,
+        ScrollViewer pageScrollViewer)
+    {
+        var blockScrollViewer = fragment.FindAncestorOfType<ScrollViewer>();
+        if (blockScrollViewer is null
+            || ReferenceEquals(blockScrollViewer, pageScrollViewer)
+            || !this.IsVisualAncestorOf(blockScrollViewer)
+            || !fragment.TryGetHorizontalExtentForLocalRange(
+                match.Start - fragment.DocumentRange.Start,
+                match.End - fragment.DocumentRange.Start,
+                out var localLeft,
+                out var localRight)
+            || fragment.TranslatePoint(new Point(localLeft, 0), blockScrollViewer) is not { } matchLeft)
+        {
+            return;
+        }
+
+        const double inset = MarkdownTableHost.EdgeFadeWidth;
+        var left = matchLeft.X;
+        var right = left + (localRight - localLeft);
+        var viewportWidth = blockScrollViewer.Viewport.Width;
+
+        var delta = 0d;
+        if (right > viewportWidth - inset)
+        {
+            delta = right - (viewportWidth - inset);
+        }
+
+        // A match wider than the view shows its start.
+        if (left - delta < inset)
+        {
+            delta = left - inset;
+        }
+
+        if (Math.Abs(delta) < 0.5)
+        {
+            return;
+        }
+
+        blockScrollViewer.Offset = new Vector(
+            Math.Clamp(blockScrollViewer.Offset.X + delta, 0, blockScrollViewer.ScrollBarMaximum.X),
+            blockScrollViewer.Offset.Y);
     }
 
     private MarkdownDocumentSelectionFragmentBase? FindFragmentForDocumentOffset(int offset)
@@ -1694,71 +1756,50 @@ public sealed class MarkdownDocumentView : UserControl
             return BuildFallback(table);
         }
 
-        var grid = new Grid
-        {
-            ColumnSpacing = 0,
-            RowSpacing = 0,
-            HorizontalAlignment = HorizontalAlignment.Stretch
-        };
-
-        for (var columnIndex = 0; columnIndex < columnCount; columnIndex++)
-        {
-            grid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
-        }
-
-        var totalRows = table.Rows.Count + (table.Header.Count > 0 ? 1 : 0);
-        for (var rowIndex = 0; rowIndex < totalRows; rowIndex++)
-        {
-            grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
-        }
+        var panel = new MarkdownTablePanel(columnCount);
 
         // Design `.mm-table` switches to the sans stack at 0.92em of body.
         var sansFontFamily = LookupFontFamily("MmDocumentSansFontFamily");
         var bodyCellFontSize = ReadingPreferences.FontSize * 0.92;
         var headerCellFontSize = ReadingPreferences.FontSize * 0.85;
 
-        // Index of the last *data* row (not the header). Used to suppress
-        // the trailing bottom border so the table does not end on a line.
-        var lastDataRowIndex = table.Rows.Count > 0 ? totalRows - 1 : -1;
-
-        var currentRow = 0;
         if (table.Header.Count > 0)
         {
             AddTableRow(
-                grid, table.Header, currentRow,
+                panel, table, table.Header,
                 isHeader: true, isLastDataRow: false,
                 pathPrefix: $"{path}.h",
                 fontFamily: sansFontFamily,
                 headerFontSize: headerCellFontSize,
                 bodyFontSize: bodyCellFontSize);
-            currentRow++;
         }
 
         for (var rowIndex = 0; rowIndex < table.Rows.Count; rowIndex++)
         {
+            // The last data row gets no bottom border so the table does not
+            // end on a line.
             AddTableRow(
-                grid, table.Rows[rowIndex], currentRow,
-                isHeader: false, isLastDataRow: currentRow == lastDataRowIndex,
+                panel, table, table.Rows[rowIndex],
+                isHeader: false, isLastDataRow: rowIndex == table.Rows.Count - 1,
                 pathPrefix: $"{path}.r{rowIndex}.c",
                 fontFamily: sansFontFamily,
                 headerFontSize: headerCellFontSize,
                 bodyFontSize: bodyCellFontSize);
-            currentRow++;
         }
 
         return new Border
         {
             Classes = { "mm-md-table" },
-            Child = grid,
+            Child = new MarkdownTableHost(panel, TableHorizontalScrollBarReserve),
             // Design `.mm-table` margin is 1.4em top and bottom.
             Margin = new Thickness(0, (int)(ReadingPreferences.FontSize * 1.4), 0, (int)(ReadingPreferences.FontSize * 1.4))
         };
     }
 
     private void AddTableRow(
-        Grid grid,
+        MarkdownTablePanel panel,
+        MarkdownTableBlock table,
         IReadOnlyList<MarkdownTableCell> cells,
-        int rowIndex,
         bool isHeader,
         bool isLastDataRow,
         string pathPrefix,
@@ -1766,11 +1807,17 @@ public sealed class MarkdownDocumentView : UserControl
         double headerFontSize,
         double bodyFontSize)
     {
-        for (var columnIndex = 0; columnIndex < grid.ColumnDefinitions.Count; columnIndex++)
+        for (var columnIndex = 0; columnIndex < panel.ColumnCount; columnIndex++)
         {
             var cell = columnIndex < cells.Count
                 ? cells[columnIndex]
                 : new MarkdownTableCell(Array.Empty<MarkdownInline>());
+            var textAlignment = table.GetColumnAlignment(columnIndex) switch
+            {
+                MarkdownTableColumnAlignment.Center => TextAlignment.Center,
+                MarkdownTableColumnAlignment.Right => TextAlignment.Right,
+                _ => TextAlignment.Left
+            };
 
             Control content;
             if (isHeader)
@@ -1791,8 +1838,10 @@ public sealed class MarkdownDocumentView : UserControl
                     fontStyle: FontStyle.Normal,
                     fallbackClassName: "mm-md-table-header",
                     baseFontFamily: fontFamily,
+                    textWrapping: TextWrapping.NoWrap,
                     baseForeground: LookupBrush("MmTextSoftBrush"),
-                    letterSpacing: headerFontSize * 0.05);
+                    letterSpacing: headerFontSize * 0.05,
+                    textAlignment: textAlignment);
             }
             else
             {
@@ -1805,7 +1854,9 @@ public sealed class MarkdownDocumentView : UserControl
                     fontWeight: FontWeight.Normal,
                     fontStyle: FontStyle.Normal,
                     fallbackClassName: "mm-md-table-text",
-                    baseFontFamily: fontFamily);
+                    baseFontFamily: fontFamily,
+                    textWrapping: TextWrapping.NoWrap,
+                    textAlignment: textAlignment);
             }
 
             var border = new Border
@@ -1813,6 +1864,7 @@ public sealed class MarkdownDocumentView : UserControl
                 Classes = { isHeader ? "mm-md-table-header-cell" : "mm-md-table-cell" },
                 Child = content
             };
+            MarkdownTablePanel.SetIsShrinkable(border, content is MarkdownImageFlowFragment);
 
             if (!isHeader && isLastDataRow)
             {
@@ -1821,9 +1873,7 @@ public sealed class MarkdownDocumentView : UserControl
                 border.Classes.Add("mm-md-table-cell-last");
             }
 
-            Grid.SetRow(border, rowIndex);
-            Grid.SetColumn(border, columnIndex);
-            grid.Children.Add(border);
+            panel.Children.Add(border);
         }
     }
 
@@ -1853,7 +1903,8 @@ public sealed class MarkdownDocumentView : UserControl
         FontFamily? baseFontFamily = null,
         TextWrapping textWrapping = TextWrapping.Wrap,
         IBrush? baseForeground = null,
-        double letterSpacing = 0)
+        double letterSpacing = 0,
+        TextAlignment textAlignment = TextAlignment.Left)
     {
         var styled = MarkdownStyledText.FromInlines(inlines);
         if (styled.Text.Length == 0)
@@ -1879,6 +1930,7 @@ public sealed class MarkdownDocumentView : UserControl
                 LineHeight = lineHeight,
                 LetterSpacing = letterSpacing,
                 TextWrapping = textWrapping,
+                TextAlignment = textAlignment,
                 UseLayoutRounding = true,
                 Classes = { fallbackClassName }
             };
@@ -1896,6 +1948,13 @@ public sealed class MarkdownDocumentView : UserControl
             var imageFlow = new MarkdownImageFlowFragment(imageItems)
             {
                 Margin = margin,
+                // The flow is as wide as its images, so it is aligned as a whole.
+                HorizontalAlignment = textAlignment switch
+                {
+                    TextAlignment.Center => HorizontalAlignment.Center,
+                    TextAlignment.Right => HorizontalAlignment.Right,
+                    _ => HorizontalAlignment.Stretch
+                },
                 DocumentRange = fragment.Range,
                 ImageSourceResolver = ImageSourceResolver,
                 BaseDirectory = Document?.BaseDirectory,
@@ -1923,6 +1982,7 @@ public sealed class MarkdownDocumentView : UserControl
             BaseForeground = baseForeground,
             BaseLetterSpacing = letterSpacing,
             LayoutTextWrapping = textWrapping,
+            LayoutTextAlignment = textAlignment,
             ImageSourceResolver = ImageSourceResolver,
             BaseDirectory = Document?.BaseDirectory,
             Cursor = TryCreateCursor(StandardCursorType.Ibeam)

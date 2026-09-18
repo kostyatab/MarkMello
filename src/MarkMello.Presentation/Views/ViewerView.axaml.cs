@@ -5,6 +5,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using MarkMello.Domain;
 using MarkMello.Presentation.ViewModels;
+using MarkMello.Presentation.Views.Markdown;
 using MarkMello.Presentation.Views.Markdown.Minimap;
 using System.ComponentModel;
 
@@ -478,6 +479,8 @@ public partial class ViewerView : UserControl, IFindHost
             _minimapHost.Content = null;
             _minimapHost.IsHitTestVisible = false;
         }
+
+        ReserveMinimapSpaceForWideTables(visible: false);
     }
 
     private void OnMinimapScrollRequested(object? sender, DocumentMinimapScrollRequestedEventArgs e)
@@ -513,6 +516,23 @@ public partial class ViewerView : UserControl, IFindHost
         var visible = ShouldShowMinimap();
         _minimapHost.IsVisible = visible;
         _minimapHost.IsHitTestVisible = visible;
+        ReserveMinimapSpaceForWideTables(visible);
+    }
+
+    /// <summary>
+    /// Wide tables extend into the page margins; they stop short of the minimap
+    /// so they do not run underneath it.
+    /// </summary>
+    private void ReserveMinimapSpaceForWideTables(bool visible)
+    {
+        if (_scroll is null || _minimapHost is null)
+        {
+            return;
+        }
+
+        MarkdownTableHost.SetPageEndReserve(
+            _scroll,
+            visible ? _minimapHost.Width + _minimapHost.Margin.Right : 0);
     }
 
     private bool HasMinimapLayoutMetricsChanged()
