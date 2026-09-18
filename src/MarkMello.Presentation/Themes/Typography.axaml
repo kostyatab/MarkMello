@@ -16,8 +16,13 @@
     следом на случай, если ресурс не зарегистрирован (например, в design-time).
 
       Source Serif 4  — Assets/Fonts/*.ttf        (static: Regular/Bold/Italic/BoldIt)
-      Inter           — Assets/Fonts/Inter        (variable: opsz + wght, + italic)
+      Inter           — Assets/Fonts/Inter        (static: Regular/Medium/SemiBold/Bold,
+                                                   Italic/SemiBoldItalic/BoldItalic)
       JetBrains Mono  — Assets/Fonts/JetBrainsMono (static: Regular/Bold)
+
+    Только статические начертания: Avalonia не применяет ось wght variable-шрифта
+    и рисует любой вес из такого файла как Regular. Новый вес Inter в разметке —
+    это новый файл из extras/ttf релиза github.com/rsms/inter (сейчас v4.1).
 
     Лицензии (OFL) лежат рядом со шрифтами.
   -->
