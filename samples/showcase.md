@@ -9,7 +9,7 @@ This file collects the common Markdown elements in one place. Open it to see how
 - [Tables](#tables)
 - [Code blocks](#code-blocks)
 - [Links and images](#links-and-images)
-- [Footnotes, definitions and rules](#footnotes-definitions-and-rules)
+- [Footnotes and rules](#footnotes-and-rules)
 - [Diagrams](#diagrams)
 
 ## Text and inlines
@@ -418,7 +418,7 @@ An HTML image with a fixed width:
 
 <img src="../assets/cover.png" width="240" alt="MarkMello cover, 240 pixels wide">
 
-## Footnotes, definitions and rules
+## Footnotes and rules
 
 ### Footnotes
 
@@ -468,15 +468,6 @@ Not footnotes — a label without a definition stays text: [^missing]. A footnot
     ```
 
 [^unused]: Nobody refers to this footnote, so it is not shown.
-
-### Definition list
-
-Viewer mode
-:   The default mode. The document is rendered and read-only.
-
-Edit mode
-:   A split view with the source on the left and the preview on the right.
-:   Loaded only when you ask for it.
 
 ### Horizontal rules
 
