@@ -8,6 +8,7 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
+using Avalonia.Logging;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -2026,10 +2027,24 @@ public sealed class MarkdownDocumentView : UserControl
             return false;
         }
 
-        await ClipboardExtensions.SetTextAsync(
-            clipboard,
-            text.Replace("\n", Environment.NewLine, StringComparison.Ordinal));
-        return true;
+        try
+        {
+            await ClipboardExtensions.SetTextAsync(
+                clipboard,
+                text.Replace("\n", Environment.NewLine, StringComparison.Ordinal));
+            return true;
+        }
+        catch (Exception exception)
+        {
+            // Another process can hold the OS clipboard (on Windows Avalonia gives
+            // up with a TimeoutException). Every caller is an async void UI
+            // handler, so letting this through would take the app down.
+            Logger.TryGet(LogEventLevel.Warning, LogArea.Control)?.Log(
+                this,
+                "Could not copy text to the clipboard: {Exception}",
+                exception);
+            return false;
+        }
     }
 
     private ContextMenu BuildContextMenu()
