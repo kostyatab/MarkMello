@@ -142,6 +142,22 @@ An ordered list that starts at seven:
 
 1. [x] Ordered task that is done
 2. [ ] Ordered task that is open
+3. A regular ordered item keeps its number
+
+Task items with more content:
+
+- [x] **Bold** right after the checkbox, then *italic*, `code` and a [link](https://example.com)
+- [X] Checked with a capital X
+- [ ] A long open task that wraps onto a second line, so the checkbox has to stay on the first line of the item text and not drift to the middle of the item
+- [ ] A task with a second paragraph
+
+  The second paragraph lines up with the text of the item, not with the checkbox.
+
+- Brackets in the middle of an item stay text: [x] and [ ]
+
+An empty task item:
+
+- [ ]
 
 ### Quotes
 
@@ -157,6 +173,8 @@ An ordered list that starts at seven:
 >
 > - Run the tests
 > - Measure the startup time
+> - [x] Update the changelog
+> - [ ] Tag the release
 >
 > ```bash
 > dotnet test MarkMello.sln
