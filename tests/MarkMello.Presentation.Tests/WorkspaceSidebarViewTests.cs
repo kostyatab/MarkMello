@@ -30,7 +30,7 @@ public sealed class WorkspaceSidebarViewTests
         return _fixture.RunAsync(async () =>
         {
             var viewModel = CreateViewModel();
-            await viewModel.OpenFolderPathAsync(@"C:\docs");
+            await viewModel.OpenFolderPathAsync(TestPaths.At("docs"));
 
             var window = new Window
             {
@@ -62,14 +62,14 @@ public sealed class WorkspaceSidebarViewTests
     /// висело на смене выделения, и файл открывался даже правым кликом.
     /// </summary>
     [Theory]
-    [InlineData(MouseButton.Left, @"C:\docs\notes.md")]
-    [InlineData(MouseButton.Right, @"C:\docs\README.md")]
-    public Task OnlyTheLeftClickOpensTheDocument(MouseButton button, string? expectedPath)
+    [InlineData(MouseButton.Left, "notes.md")]
+    [InlineData(MouseButton.Right, "README.md")]
+    public Task OnlyTheLeftClickOpensTheDocument(MouseButton button, string expectedFileName)
     {
         return _fixture.RunAsync(async () =>
         {
             var viewModel = CreateViewModel();
-            await viewModel.OpenFolderPathAsync(@"C:\docs");
+            await viewModel.OpenFolderPathAsync(TestPaths.At("docs"));
 
             var sidebar = new WorkspaceSidebarView();
             var window = new Window
@@ -89,7 +89,7 @@ public sealed class WorkspaceSidebarViewTests
             sidebar.ActivateFromPointer(button, node);
             await Task.Yield();
 
-            Assert.Equal(expectedPath, viewModel.CurrentDocumentPath);
+            Assert.Equal(TestPaths.At("docs", expectedFileName), viewModel.CurrentDocumentPath);
 
             window.Close();
         });
@@ -122,17 +122,17 @@ public sealed class WorkspaceSidebarViewTests
     {
         var fileSystem = new FakeWorkspaceFileSystem();
         fileSystem.AddDirectory(
-            @"C:\docs",
-            WorkspaceEntry.ForDirectory(@"C:\docs\adr", "adr"),
-            WorkspaceEntry.ForFile(@"C:\docs\README.md", "README.md"),
-            WorkspaceEntry.ForFile(@"C:\docs\notes.md", "notes.md"),
-            WorkspaceEntry.ForFile(@"C:\docs\pack.bat", "pack.bat"));
+            TestPaths.At("docs"),
+            WorkspaceEntry.ForDirectory(TestPaths.At("docs", "adr"), "adr"),
+            WorkspaceEntry.ForFile(TestPaths.At("docs", "README.md"), "README.md"),
+            WorkspaceEntry.ForFile(TestPaths.At("docs", "notes.md"), "notes.md"),
+            WorkspaceEntry.ForFile(TestPaths.At("docs", "pack.bat"), "pack.bat"));
 
         var loader = new StubDocumentLoader();
-        loader.Sources[@"C:\docs\README.md"] =
-            new MarkdownSource(@"C:\docs\README.md", "README.md", "# readme");
-        loader.Sources[@"C:\docs\notes.md"] =
-            new MarkdownSource(@"C:\docs\notes.md", "notes.md", "# notes");
+        loader.Sources[TestPaths.At("docs", "README.md")] =
+            new MarkdownSource(TestPaths.At("docs", "README.md"), "README.md", "# readme");
+        loader.Sources[TestPaths.At("docs", "notes.md")] =
+            new MarkdownSource(TestPaths.At("docs", "notes.md"), "notes.md", "# notes");
 
         return new ShellViewModel(
             new OpenDocumentUseCase(loader),

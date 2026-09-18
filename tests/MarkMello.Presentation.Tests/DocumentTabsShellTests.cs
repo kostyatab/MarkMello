@@ -12,18 +12,18 @@ namespace MarkMello.Presentation.Tests;
 /// </summary>
 public sealed class DocumentTabsShellTests
 {
-    private const string Root = @"C:\docs";
+    private static readonly string Root = TestPaths.At("docs");
 
     [Fact]
     public async Task OpeningTwoDocumentsKeepsBothAsTabs()
     {
         var harness = CreateHarness();
 
-        await harness.ViewModel.OpenPathAsync(@"C:\docs\first.md");
-        await harness.ViewModel.OpenPathAsync(@"C:\docs\second.md");
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "second.md"));
 
         Assert.Equal(["first.md", "second.md"], harness.ViewModel.OpenDocuments.Tabs.Select(tab => tab.Title));
-        Assert.Equal(@"C:\docs\second.md", harness.ViewModel.OpenDocuments.ActiveTab!.Path);
+        Assert.Equal(TestPaths.At("docs", "second.md"), harness.ViewModel.OpenDocuments.ActiveTab!.Path);
         Assert.True(harness.ViewModel.ShowsTabStrip);
     }
 
@@ -37,8 +37,8 @@ public sealed class DocumentTabsShellTests
         var harness = CreateHarness();
         harness.ViewModel.OpenDocuments.AvailableWidth = 1000;
 
-        await harness.ViewModel.OpenPathAsync(@"C:\docs\first.md");
-        await harness.ViewModel.OpenPathAsync(@"C:\docs\second.md");
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "second.md"));
 
         var notified = 0;
         harness.ViewModel.PropertyChanged += (_, e) =>
@@ -63,20 +63,20 @@ public sealed class DocumentTabsShellTests
     {
         var harness = CreateHarness();
 
-        await harness.ViewModel.OpenPathAsync(@"C:\docs\first.md");
-        await harness.ViewModel.OpenPathAsync(@"C:\docs\second.md");
-        await harness.ViewModel.OpenPathAsync(@"C:\docs\first.md");
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "second.md"));
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
 
         Assert.Equal(2, harness.ViewModel.OpenDocuments.Tabs.Count);
-        Assert.Equal(@"C:\docs\first.md", harness.ViewModel.OpenDocuments.ActiveTab!.Path);
+        Assert.Equal(TestPaths.At("docs", "first.md"), harness.ViewModel.OpenDocuments.ActiveTab!.Path);
     }
 
     [Fact]
     public async Task SwitchingTabsRestoresContentWithoutReadingTheFileAgain()
     {
         var harness = CreateHarness();
-        await harness.ViewModel.OpenPathAsync(@"C:\docs\first.md");
-        await harness.ViewModel.OpenPathAsync(@"C:\docs\second.md");
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "second.md"));
 
         var readsBefore = harness.Loader.LoadCount;
         var first = harness.ViewModel.OpenDocuments.Tabs[0];
@@ -84,7 +84,7 @@ public sealed class DocumentTabsShellTests
         await harness.ViewModel.OpenDocuments.ActivateCommand.ExecuteAsync(first);
 
         Assert.Equal(readsBefore, harness.Loader.LoadCount);
-        Assert.Equal(@"C:\docs\first.md", harness.ViewModel.CurrentDocumentPath);
+        Assert.Equal(TestPaths.At("docs", "first.md"), harness.ViewModel.CurrentDocumentPath);
         Assert.Equal("first.md — MarkMello", harness.ViewModel.WindowTitle);
     }
 
@@ -92,10 +92,10 @@ public sealed class DocumentTabsShellTests
     public async Task ScrollOffsetIsRememberedPerTab()
     {
         var harness = CreateHarness();
-        await harness.ViewModel.OpenPathAsync(@"C:\docs\first.md");
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
         harness.ViewModel.ReportScrollOffset(420);
 
-        await harness.ViewModel.OpenPathAsync(@"C:\docs\second.md");
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "second.md"));
         harness.ViewModel.ReportScrollOffset(80);
 
         var first = harness.ViewModel.OpenDocuments.Tabs[0];
@@ -109,13 +109,13 @@ public sealed class DocumentTabsShellTests
     public async Task ClosingTabActivatesNeighbourAndRestoresIt()
     {
         var harness = CreateHarness();
-        await harness.ViewModel.OpenPathAsync(@"C:\docs\first.md");
-        await harness.ViewModel.OpenPathAsync(@"C:\docs\second.md");
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "second.md"));
 
         await harness.ViewModel.CloseActiveTabCommand.ExecuteAsync(null);
 
         Assert.Single(harness.ViewModel.OpenDocuments.Tabs);
-        Assert.Equal(@"C:\docs\first.md", harness.ViewModel.CurrentDocumentPath);
+        Assert.Equal(TestPaths.At("docs", "first.md"), harness.ViewModel.CurrentDocumentPath);
         Assert.Equal(ViewState.Viewing, harness.ViewModel.State);
     }
 
@@ -123,7 +123,7 @@ public sealed class DocumentTabsShellTests
     public async Task ClosingTheLastTabWithoutFolderReturnsToWelcome()
     {
         var harness = CreateHarness();
-        await harness.ViewModel.OpenPathAsync(@"C:\docs\first.md");
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
 
         await harness.ViewModel.CloseActiveTabCommand.ExecuteAsync(null);
 
@@ -153,7 +153,7 @@ public sealed class DocumentTabsShellTests
     {
         var harness = CreateHarness();
         await harness.ViewModel.OpenFolderPathAsync(Root);
-        await harness.ViewModel.OpenPathAsync(@"C:\outside\notes.md");
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("outside", "notes.md"));
 
         var readme = harness.ViewModel.OpenDocuments.Tabs.Single(tab => tab.Title == "README.md");
         var outside = harness.ViewModel.OpenDocuments.Tabs.Single(tab => tab.Title == "notes.md");
@@ -161,21 +161,21 @@ public sealed class DocumentTabsShellTests
         Assert.True(readme.BelongsToWorkspace);
         Assert.False(outside.BelongsToWorkspace);
         Assert.Equal("README.md", readme.Tooltip);
-        Assert.Equal(@"C:\outside\notes.md", outside.Tooltip);
+        Assert.Equal(TestPaths.At("outside", "notes.md"), outside.Tooltip);
     }
 
     [Fact]
     public async Task CtrlTabWalksTabsInStripOrder()
     {
         var harness = CreateHarness();
-        await harness.ViewModel.OpenPathAsync(@"C:\docs\first.md");
-        await harness.ViewModel.OpenPathAsync(@"C:\docs\second.md");
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "second.md"));
 
         await harness.ViewModel.ActivateNextTabCommand.ExecuteAsync(null);
-        Assert.Equal(@"C:\docs\first.md", harness.ViewModel.CurrentDocumentPath);
+        Assert.Equal(TestPaths.At("docs", "first.md"), harness.ViewModel.CurrentDocumentPath);
 
         await harness.ViewModel.ActivatePreviousTabCommand.ExecuteAsync(null);
-        Assert.Equal(@"C:\docs\second.md", harness.ViewModel.CurrentDocumentPath);
+        Assert.Equal(TestPaths.At("docs", "second.md"), harness.ViewModel.CurrentDocumentPath);
     }
 
     [Fact]
@@ -183,12 +183,12 @@ public sealed class DocumentTabsShellTests
     {
         var harness = CreateHarness();
         await harness.ViewModel.OpenFolderPathAsync(Root);
-        await harness.ViewModel.OpenPathAsync(@"C:\outside\notes.md");
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("outside", "notes.md"));
 
         await harness.ViewModel.CloseFolderCommand.ExecuteAsync(null);
 
         Assert.Null(harness.ViewModel.Workspace);
-        Assert.Equal(@"C:\outside\notes.md", harness.ViewModel.CurrentDocumentPath);
+        Assert.Equal(TestPaths.At("outside", "notes.md"), harness.ViewModel.CurrentDocumentPath);
         Assert.Equal(["notes.md"], harness.ViewModel.OpenDocuments.Tabs.Select(tab => tab.Title));
     }
 
@@ -197,14 +197,14 @@ public sealed class DocumentTabsShellTests
         var fileSystem = new FakeWorkspaceFileSystem();
         fileSystem.AddDirectory(
             Root,
-            WorkspaceEntry.ForFile(@"C:\docs\README.md", "README.md"),
-            WorkspaceEntry.ForFile(@"C:\docs\first.md", "first.md"));
+            WorkspaceEntry.ForFile(TestPaths.At("docs", "README.md"), "README.md"),
+            WorkspaceEntry.ForFile(TestPaths.At("docs", "first.md"), "first.md"));
 
         var loader = new CountingDocumentLoader();
-        loader.Sources[@"C:\docs\README.md"] = new MarkdownSource(@"C:\docs\README.md", "README.md", "# readme");
-        loader.Sources[@"C:\docs\first.md"] = new MarkdownSource(@"C:\docs\first.md", "first.md", "# first");
-        loader.Sources[@"C:\docs\second.md"] = new MarkdownSource(@"C:\docs\second.md", "second.md", "# second");
-        loader.Sources[@"C:\outside\notes.md"] = new MarkdownSource(@"C:\outside\notes.md", "notes.md", "# notes");
+        loader.Sources[TestPaths.At("docs", "README.md")] = new MarkdownSource(TestPaths.At("docs", "README.md"), "README.md", "# readme");
+        loader.Sources[TestPaths.At("docs", "first.md")] = new MarkdownSource(TestPaths.At("docs", "first.md"), "first.md", "# first");
+        loader.Sources[TestPaths.At("docs", "second.md")] = new MarkdownSource(TestPaths.At("docs", "second.md"), "second.md", "# second");
+        loader.Sources[TestPaths.At("outside", "notes.md")] = new MarkdownSource(TestPaths.At("outside", "notes.md"), "notes.md", "# notes");
 
         var viewModel = new ShellViewModel(
             new OpenDocumentUseCase(loader),

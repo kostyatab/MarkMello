@@ -13,7 +13,7 @@ namespace MarkMello.Presentation.Tests;
 /// </summary>
 public sealed class WorkspaceFileOperationsTests
 {
-    private const string Root = @"C:\docs";
+    private static readonly string Root = TestPaths.At("docs");
 
     [Fact]
     public async Task CreatingAFileOpensItAsATab()
@@ -25,7 +25,7 @@ public sealed class WorkspaceFileOperationsTests
         await harness.Workspace.CommitEditCommand.ExecuteAsync(null);
 
         Assert.Contains(harness.Workspace.Roots, node => node.Name == "meeting.md");
-        Assert.Equal(@"C:\docs\meeting.md", harness.ViewModel.CurrentDocumentPath);
+        Assert.Equal(TestPaths.At("docs", "meeting.md"), harness.ViewModel.CurrentDocumentPath);
         Assert.False(harness.Workspace.IsEditingName);
     }
 
@@ -155,7 +155,7 @@ public sealed class WorkspaceFileOperationsTests
     public async Task RenamingFollowsTheOpenTab()
     {
         var harness = await CreateAsync();
-        await harness.ViewModel.OpenPathAsync(@"C:\docs\first.md");
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
 
         var node = harness.Workspace.Roots.Single(candidate => candidate.Name == "first.md");
         harness.Workspace.StartRenameCommand.Execute(node);
@@ -164,8 +164,8 @@ public sealed class WorkspaceFileOperationsTests
 
         var tab = Assert.Single(harness.ViewModel.OpenDocuments.Tabs);
         Assert.Equal("renamed.md", tab.Title);
-        Assert.Equal(@"C:\docs\renamed.md", tab.Path);
-        Assert.Equal(@"C:\docs\renamed.md", harness.ViewModel.CurrentDocumentPath);
+        Assert.Equal(TestPaths.At("docs", "renamed.md"), tab.Path);
+        Assert.Equal(TestPaths.At("docs", "renamed.md"), harness.ViewModel.CurrentDocumentPath);
     }
 
     [Fact]
@@ -184,7 +184,7 @@ public sealed class WorkspaceFileOperationsTests
     public async Task DeletingAsksFirstAndThenClosesTheTab()
     {
         var harness = await CreateAsync();
-        await harness.ViewModel.OpenPathAsync(@"C:\docs\first.md");
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
         var node = harness.Workspace.Roots.Single(candidate => candidate.Name == "first.md");
 
         await harness.Workspace.RequestDeleteCommand.ExecuteAsync(node);
@@ -196,7 +196,7 @@ public sealed class WorkspaceFileOperationsTests
         await harness.ViewModel.ConfirmDeleteCommand.ExecuteAsync(null);
 
         Assert.False(harness.ViewModel.IsDeletePromptOpen);
-        Assert.Equal([@"C:\docs\first.md"], harness.Platform.TrashedPaths);
+        Assert.Equal([TestPaths.At("docs", "first.md")], harness.Platform.TrashedPaths);
         Assert.Empty(harness.ViewModel.OpenDocuments.Tabs);
         Assert.DoesNotContain(harness.Workspace.Roots, candidate => candidate.Name == "first.md");
     }
@@ -245,7 +245,7 @@ public sealed class WorkspaceFileOperationsTests
 
         await harness.ViewModel.ConfirmDeleteCommand.ExecuteAsync(null);
 
-        Assert.Equal([@"C:\docs\first.md"], harness.FileSystem.DeletedPaths);
+        Assert.Equal([TestPaths.At("docs", "first.md")], harness.FileSystem.DeletedPaths);
         Assert.DoesNotContain(harness.Workspace.Roots, candidate => candidate.Name == "first.md");
     }
 
@@ -257,7 +257,7 @@ public sealed class WorkspaceFileOperationsTests
 
         await harness.Workspace.RevealCommand.ExecuteAsync(node);
 
-        Assert.Equal([@"C:\docs\first.md"], harness.Platform.RevealedPaths);
+        Assert.Equal([TestPaths.At("docs", "first.md")], harness.Platform.RevealedPaths);
     }
 
     private static async Task<OperationsHarness> CreateAsync()
@@ -265,18 +265,18 @@ public sealed class WorkspaceFileOperationsTests
         var fileSystem = new FakeWorkspaceFileSystem();
         fileSystem.AddDirectory(
             Root,
-            WorkspaceEntry.ForDirectory(@"C:\docs\adr", "adr"),
-            WorkspaceEntry.ForFile(@"C:\docs\first.md", "first.md"));
+            WorkspaceEntry.ForDirectory(TestPaths.At("docs", "adr"), "adr"),
+            WorkspaceEntry.ForFile(TestPaths.At("docs", "first.md"), "first.md"));
         fileSystem.AddDirectory(
-            @"C:\docs\adr",
-            WorkspaceEntry.ForFile(@"C:\docs\adr\adr_0001.md", "adr_0001.md"));
+            TestPaths.At("docs", "adr"),
+            WorkspaceEntry.ForFile(TestPaths.At("docs", "adr", "adr_0001.md"), "adr_0001.md"));
 
         var platform = new FakePlatformServices(fileSystem);
 
         var loader = new StubDocumentLoader();
-        loader.Sources[@"C:\docs\first.md"] = new MarkdownSource(@"C:\docs\first.md", "first.md", "# first");
-        loader.Sources[@"C:\docs\meeting.md"] = new MarkdownSource(@"C:\docs\meeting.md", "meeting.md", string.Empty);
-        loader.Sources[@"C:\docs\renamed.md"] = new MarkdownSource(@"C:\docs\renamed.md", "renamed.md", "# first");
+        loader.Sources[TestPaths.At("docs", "first.md")] = new MarkdownSource(TestPaths.At("docs", "first.md"), "first.md", "# first");
+        loader.Sources[TestPaths.At("docs", "meeting.md")] = new MarkdownSource(TestPaths.At("docs", "meeting.md"), "meeting.md", string.Empty);
+        loader.Sources[TestPaths.At("docs", "renamed.md")] = new MarkdownSource(TestPaths.At("docs", "renamed.md"), "renamed.md", "# first");
 
         var viewModel = new ShellViewModel(
             new OpenDocumentUseCase(loader),

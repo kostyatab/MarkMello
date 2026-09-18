@@ -13,9 +13,9 @@ namespace MarkMello.Presentation.Tests;
 /// </summary>
 public sealed class ExternalChangesTests
 {
-    private const string Root = @"C:\docs";
-    private const string FirstPath = @"C:\docs\first.md";
-    private const string SecondPath = @"C:\docs\second.md";
+    private static readonly string Root = TestPaths.At("docs");
+    private static readonly string FirstPath = TestPaths.At("docs", "first.md");
+    private static readonly string SecondPath = TestPaths.At("docs", "second.md");
 
     [Fact]
     public async Task CleanActiveTabIsReloadedSilently()
@@ -145,10 +145,10 @@ public sealed class ExternalChangesTests
         await harness.ViewModel.OpenPathAsync(FirstPath);
 
         await harness.ViewModel.ApplyWorkspaceChangesAsync(
-            [new WorkspaceChange(WorkspaceChangeKind.Renamed, @"C:\docs\moved.md", FirstPath)]);
+            [new WorkspaceChange(WorkspaceChangeKind.Renamed, TestPaths.At("docs", "moved.md"), FirstPath)]);
 
         var tab = Assert.Single(harness.ViewModel.OpenDocuments.Tabs);
-        Assert.Equal(@"C:\docs\moved.md", tab.Path);
+        Assert.Equal(TestPaths.At("docs", "moved.md"), tab.Path);
         Assert.Equal("moved.md", tab.Title);
     }
 
@@ -172,9 +172,9 @@ public sealed class ExternalChangesTests
 
         await harness.ViewModel.ApplyWorkspaceChangesAsync(
         [
-            new WorkspaceChange(WorkspaceChangeKind.Created, @"C:\docs\a.md"),
-            new WorkspaceChange(WorkspaceChangeKind.Created, @"C:\docs\b.md"),
-            new WorkspaceChange(WorkspaceChangeKind.Changed, @"C:\docs\c.md")
+            new WorkspaceChange(WorkspaceChangeKind.Created, TestPaths.At("docs", "a.md")),
+            new WorkspaceChange(WorkspaceChangeKind.Created, TestPaths.At("docs", "b.md")),
+            new WorkspaceChange(WorkspaceChangeKind.Changed, TestPaths.At("docs", "c.md"))
         ]);
 
         Assert.Equal([Root], harness.FileSystem.EnumeratedPaths);
@@ -195,7 +195,7 @@ public sealed class ExternalChangesTests
         Assert.True(adr.IsExpanded);
 
         await harness.ViewModel.ApplyWorkspaceChangesAsync(
-            [new WorkspaceChange(WorkspaceChangeKind.Created, @"C:\docs\third.md")]);
+            [new WorkspaceChange(WorkspaceChangeKind.Created, TestPaths.At("docs", "third.md"))]);
 
         var refreshed = workspace.Roots.Single(node => node.Name == "adr");
 
@@ -208,10 +208,10 @@ public sealed class ExternalChangesTests
         var fileSystem = new FakeWorkspaceFileSystem();
         fileSystem.AddDirectory(
             Root,
-            WorkspaceEntry.ForDirectory(@"C:\docs\adr", "adr"),
+            WorkspaceEntry.ForDirectory(TestPaths.At("docs", "adr"), "adr"),
             WorkspaceEntry.ForFile(FirstPath, "first.md"),
             WorkspaceEntry.ForFile(SecondPath, "second.md"));
-        fileSystem.AddDirectory(@"C:\docs\adr", WorkspaceEntry.ForFile(@"C:\docs\adr\adr_0001.md", "adr_0001.md"));
+        fileSystem.AddDirectory(TestPaths.At("docs", "adr"), WorkspaceEntry.ForFile(TestPaths.At("docs", "adr", "adr_0001.md"), "adr_0001.md"));
 
         var loader = new CountingDocumentLoader();
         loader.Sources[FirstPath] = new MarkdownSource(FirstPath, "first.md", "# first");

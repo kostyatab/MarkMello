@@ -4,15 +4,19 @@ namespace MarkMello.Domain.Tests;
 
 public sealed class WorkspaceModelTests
 {
+    // Путь строится Path-API текущей ОС: литерал «C:\docs» на macOS и Linux —
+    // одно имя файла с обратными слешами, а не папка «docs».
+    private static readonly string Docs = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "docs");
+
     [Fact]
     public void OrderingPutsDirectoriesBeforeFiles()
     {
         var entries = new List<WorkspaceEntry>
         {
-            WorkspaceEntry.ForFile(@"C:\docs\architecture.md", "architecture.md"),
-            WorkspaceEntry.ForDirectory(@"C:\docs\src", "src"),
-            WorkspaceEntry.ForFile(@"C:\docs\README.md", "README.md"),
-            WorkspaceEntry.ForDirectory(@"C:\docs\adr", "adr")
+            WorkspaceEntry.ForFile(Path.Combine(Docs, "architecture.md"), "architecture.md"),
+            WorkspaceEntry.ForDirectory(Path.Combine(Docs, "src"), "src"),
+            WorkspaceEntry.ForFile(Path.Combine(Docs, "README.md"), "README.md"),
+            WorkspaceEntry.ForDirectory(Path.Combine(Docs, "adr"), "adr")
         };
 
         entries.Sort(WorkspaceEntryOrdering.Instance);
@@ -27,8 +31,8 @@ public sealed class WorkspaceModelTests
     {
         var entries = new List<WorkspaceEntry>
         {
-            WorkspaceEntry.ForFile(@"C:\docs\b.md", "b.md"),
-            WorkspaceEntry.ForFile(@"C:\docs\A.md", "A.md")
+            WorkspaceEntry.ForFile(Path.Combine(Docs, "b.md"), "b.md"),
+            WorkspaceEntry.ForFile(Path.Combine(Docs, "A.md"), "A.md")
         };
 
         entries.Sort(WorkspaceEntryOrdering.Instance);
@@ -60,7 +64,7 @@ public sealed class WorkspaceModelTests
     [InlineData("LICENSE", false)]
     public void FileEntriesKnowWhetherTheyOpenInTheViewer(string name, bool expected)
     {
-        var entry = WorkspaceEntry.ForFile(Path.Combine("C:", "docs", name), name);
+        var entry = WorkspaceEntry.ForFile(Path.Combine(Docs, name), name);
 
         Assert.Equal(expected, entry.IsSupportedDocument);
     }
@@ -68,10 +72,12 @@ public sealed class WorkspaceModelTests
     [Fact]
     public void FolderDisplayNameIsTheLastSegment()
     {
-        var folder = WorkspaceFolder.Create(@"C:\projects\MarkMello\docs\");
+        var root = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "projects", "MarkMello", "docs");
+
+        var folder = WorkspaceFolder.Create(root + Path.DirectorySeparatorChar);
 
         Assert.Equal("docs", folder.DisplayName);
-        Assert.Equal(@"C:\projects\MarkMello\docs", folder.RootPath);
+        Assert.Equal(root, folder.RootPath);
     }
 
     [Theory]

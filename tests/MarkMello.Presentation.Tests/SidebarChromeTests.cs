@@ -12,7 +12,7 @@ namespace MarkMello.Presentation.Tests;
 /// </summary>
 public sealed class SidebarChromeTests
 {
-    private const string Root = @"C:\docs";
+    private static readonly string Root = TestPaths.At("docs");
 
     [Fact]
     public async Task CollapsingKeepsTheFolderOpenAndBringsBackTheFloatingButton()
@@ -113,7 +113,7 @@ public sealed class SidebarChromeTests
     public async Task FooterMentionsUnsavedDocumentsOfThisFolder()
     {
         var harness = await CreateAsync();
-        await harness.ViewModel.OpenPathAsync(@"C:\docs\first.md");
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
         harness.ViewModel.ToggleEditModeCommand.Execute(null);
         harness.ViewModel.EditorSession!.SourceText = "# edited";
 
@@ -127,7 +127,7 @@ public sealed class SidebarChromeTests
 
         // Регресс: вкладка регистрируется до перехода состояния в Viewing, и без
         // повторного уведомления заглушка «Документ не выбран» оставалась поверх документа.
-        await harness.ViewModel.OpenPathAsync(@"C:\docs\first.md");
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
 
         Assert.False(harness.ViewModel.IsEmptyDocumentSurface);
         Assert.False(harness.ViewModel.IsWelcome);
@@ -138,7 +138,7 @@ public sealed class SidebarChromeTests
     public async Task TreeRowShowsTheSameDirtyMarkAsTheTab()
     {
         var harness = await CreateAsync();
-        await harness.ViewModel.OpenPathAsync(@"C:\docs\first.md");
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
         var node = harness.ViewModel.Workspace!.Roots.Single(candidate => candidate.Name == "first.md");
 
         Assert.False(node.IsDirty);
@@ -165,16 +165,16 @@ public sealed class SidebarChromeTests
         var fileSystem = new FakeWorkspaceFileSystem();
         fileSystem.AddDirectory(
             Root,
-            WorkspaceEntry.ForDirectory(@"C:\docs\adr", "adr"),
-            WorkspaceEntry.ForFile(@"C:\docs\README.md", "README.md"),
-            WorkspaceEntry.ForFile(@"C:\docs\first.md", "first.md"));
+            WorkspaceEntry.ForDirectory(TestPaths.At("docs", "adr"), "adr"),
+            WorkspaceEntry.ForFile(TestPaths.At("docs", "README.md"), "README.md"),
+            WorkspaceEntry.ForFile(TestPaths.At("docs", "first.md"), "first.md"));
         fileSystem.AddDirectory(
-            @"C:\docs\adr",
-            WorkspaceEntry.ForFile(@"C:\docs\adr\adr_0001.md", "adr_0001.md"));
+            TestPaths.At("docs", "adr"),
+            WorkspaceEntry.ForFile(TestPaths.At("docs", "adr", "adr_0001.md"), "adr_0001.md"));
 
         var loader = new StubDocumentLoader();
-        loader.Sources[@"C:\docs\README.md"] = new MarkdownSource(@"C:\docs\README.md", "README.md", "# readme");
-        loader.Sources[@"C:\docs\first.md"] = new MarkdownSource(@"C:\docs\first.md", "first.md", "# first");
+        loader.Sources[TestPaths.At("docs", "README.md")] = new MarkdownSource(TestPaths.At("docs", "README.md"), "README.md", "# readme");
+        loader.Sources[TestPaths.At("docs", "first.md")] = new MarkdownSource(TestPaths.At("docs", "first.md"), "first.md", "# first");
 
         var platform = new FakePlatformServices(fileSystem);
 

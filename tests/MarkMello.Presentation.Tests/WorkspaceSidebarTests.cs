@@ -12,15 +12,15 @@ namespace MarkMello.Presentation.Tests;
 /// </summary>
 public sealed class WorkspaceSidebarTests
 {
-    private const string Root = @"C:\docs";
+    private static readonly string Root = TestPaths.At("docs");
 
     [Fact]
     public async Task StartingWithASingleFileDoesNotCreateWorkspace()
     {
         var fileSystem = new FakeWorkspaceFileSystem();
         var harness = CreateHarness(fileSystem);
-        harness.CommandLine.ActivationPath = @"C:\docs\notes.md";
-        harness.Loader.Sources[@"C:\docs\notes.md"] = new MarkdownSource(@"C:\docs\notes.md", "notes.md", "# notes");
+        harness.CommandLine.ActivationPath = TestPaths.At("docs", "notes.md");
+        harness.Loader.Sources[TestPaths.At("docs", "notes.md")] = new MarkdownSource(TestPaths.At("docs", "notes.md"), "notes.md", "# notes");
 
         await harness.ViewModel.InitializeAsync();
 
@@ -53,7 +53,7 @@ public sealed class WorkspaceSidebarTests
 
         await harness.ViewModel.OpenFolderPathAsync(Root);
 
-        Assert.Equal(@"C:\docs\README.md", harness.ViewModel.CurrentDocumentPath);
+        Assert.Equal(TestPaths.At("docs", "README.md"), harness.ViewModel.CurrentDocumentPath);
         Assert.Equal("README.md — docs — MarkMello", harness.ViewModel.WindowTitle);
 
         var readmeNode = harness.ViewModel.Workspace!.Roots.Single(node => node.Name == "README.md");
@@ -64,7 +64,7 @@ public sealed class WorkspaceSidebarTests
     public async Task OpeningFolderWithoutReadmeLeavesDocumentSurfaceAlone()
     {
         var fileSystem = new FakeWorkspaceFileSystem();
-        fileSystem.AddDirectory(Root, WorkspaceEntry.ForFile(@"C:\docs\notes.md", "notes.md"));
+        fileSystem.AddDirectory(Root, WorkspaceEntry.ForFile(TestPaths.At("docs", "notes.md"), "notes.md"));
         var harness = CreateHarness(fileSystem);
 
         await harness.ViewModel.OpenFolderPathAsync(Root);
@@ -89,19 +89,19 @@ public sealed class WorkspaceSidebarTests
         await WaitForChildrenAsync(adr);
 
         Assert.Equal(["adr_0001.md"], adr.Children.Select(node => node.Name));
-        Assert.Equal([Root, @"C:\docs\adr"], fileSystem.EnumeratedPaths);
+        Assert.Equal([Root, TestPaths.At("docs", "adr")], fileSystem.EnumeratedPaths);
 
         adr.IsExpanded = false;
         adr.IsExpanded = true;
 
-        Assert.Equal([Root, @"C:\docs\adr"], fileSystem.EnumeratedPaths);
+        Assert.Equal([Root, TestPaths.At("docs", "adr")], fileSystem.EnumeratedPaths);
     }
 
     [Fact]
     public async Task DirectoryFailureStaysInsideItsNode()
     {
         var fileSystem = CreateFileSystem();
-        fileSystem.FailWith(@"C:\docs\adr", new UnauthorizedAccessException());
+        fileSystem.FailWith(TestPaths.At("docs", "adr"), new UnauthorizedAccessException());
         var harness = CreateHarness(fileSystem);
         await harness.ViewModel.OpenFolderPathAsync(Root);
 
@@ -119,14 +119,14 @@ public sealed class WorkspaceSidebarTests
     public async Task ActivatingSupportedDocumentOpensIt()
     {
         var harness = CreateHarness(CreateFileSystemWithTwoDocuments());
-        harness.Loader.Sources[@"C:\docs\notes.md"] = new MarkdownSource(@"C:\docs\notes.md", "notes.md", "# notes");
+        harness.Loader.Sources[TestPaths.At("docs", "notes.md")] = new MarkdownSource(TestPaths.At("docs", "notes.md"), "notes.md", "# notes");
         await harness.ViewModel.OpenFolderPathAsync(Root);
 
         var workspace = harness.ViewModel.Workspace!;
         await workspace.OpenNodeCommand.ExecuteAsync(
             workspace.Roots.Single(node => node.Name == "notes.md"));
 
-        Assert.Equal(@"C:\docs\notes.md", harness.ViewModel.CurrentDocumentPath);
+        Assert.Equal(TestPaths.At("docs", "notes.md"), harness.ViewModel.CurrentDocumentPath);
     }
 
     /// <summary>
@@ -142,7 +142,7 @@ public sealed class WorkspaceSidebarTests
         var workspace = harness.ViewModel.Workspace!;
         workspace.SelectedNode = workspace.Roots.Single(node => node.Name == "notes.md");
 
-        Assert.Equal(@"C:\docs\README.md", harness.ViewModel.CurrentDocumentPath);
+        Assert.Equal(TestPaths.At("docs", "README.md"), harness.ViewModel.CurrentDocumentPath);
     }
 
     [Fact]
@@ -158,7 +158,7 @@ public sealed class WorkspaceSidebarTests
 
         await workspace.OpenNodeCommand.ExecuteAsync(packBat);
 
-        Assert.Equal(@"C:\docs\README.md", harness.ViewModel.CurrentDocumentPath);
+        Assert.Equal(TestPaths.At("docs", "README.md"), harness.ViewModel.CurrentDocumentPath);
         Assert.Equal(ViewState.Viewing, harness.ViewModel.State);
     }
 
@@ -166,14 +166,14 @@ public sealed class WorkspaceSidebarTests
     public async Task MissingFolderFailsWithoutBreakingTheOpenDocument()
     {
         var harness = CreateHarness(new FakeWorkspaceFileSystem());
-        harness.Loader.Sources[@"C:\notes.md"] = new MarkdownSource(@"C:\notes.md", "notes.md", "# notes");
-        await harness.ViewModel.OpenPathAsync(@"C:\notes.md");
+        harness.Loader.Sources[TestPaths.At("notes.md")] = new MarkdownSource(TestPaths.At("notes.md"), "notes.md", "# notes");
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("notes.md"));
 
-        await harness.ViewModel.OpenFolderPathAsync(@"C:\missing");
+        await harness.ViewModel.OpenFolderPathAsync(TestPaths.At("missing"));
 
         Assert.Null(harness.ViewModel.Workspace);
         Assert.Equal(ViewState.LoadError, harness.ViewModel.State);
-        Assert.Equal(@"C:\notes.md", harness.ViewModel.CurrentDocumentPath);
+        Assert.Equal(TestPaths.At("notes.md"), harness.ViewModel.CurrentDocumentPath);
     }
 
     [Fact]
@@ -195,14 +195,14 @@ public sealed class WorkspaceSidebarTests
     {
         var harness = CreateHarness(CreateFileSystem());
         await harness.ViewModel.OpenFolderPathAsync(Root);
-        harness.Loader.Sources[@"C:\outside\notes.md"] =
-            new MarkdownSource(@"C:\outside\notes.md", "notes.md", "# notes");
-        await harness.ViewModel.OpenPathAsync(@"C:\outside\notes.md");
+        harness.Loader.Sources[TestPaths.At("outside", "notes.md")] =
+            new MarkdownSource(TestPaths.At("outside", "notes.md"), "notes.md", "# notes");
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("outside", "notes.md"));
 
         await harness.ViewModel.CloseFolderCommand.ExecuteAsync(null);
 
         Assert.Null(harness.ViewModel.Workspace);
-        Assert.Equal(@"C:\outside\notes.md", harness.ViewModel.CurrentDocumentPath);
+        Assert.Equal(TestPaths.At("outside", "notes.md"), harness.ViewModel.CurrentDocumentPath);
         Assert.Equal(ViewState.Viewing, harness.ViewModel.State);
     }
 
@@ -227,12 +227,12 @@ public sealed class WorkspaceSidebarTests
         var fileSystem = new FakeWorkspaceFileSystem();
         fileSystem.AddDirectory(
             Root,
-            WorkspaceEntry.ForDirectory(@"C:\docs\adr", "adr"),
-            WorkspaceEntry.ForFile(@"C:\docs\README.md", "README.md"),
-            WorkspaceEntry.ForFile(@"C:\docs\pack.bat", "pack.bat"));
+            WorkspaceEntry.ForDirectory(TestPaths.At("docs", "adr"), "adr"),
+            WorkspaceEntry.ForFile(TestPaths.At("docs", "README.md"), "README.md"),
+            WorkspaceEntry.ForFile(TestPaths.At("docs", "pack.bat"), "pack.bat"));
         fileSystem.AddDirectory(
-            @"C:\docs\adr",
-            WorkspaceEntry.ForFile(@"C:\docs\adr\adr_0001.md", "adr_0001.md"));
+            TestPaths.At("docs", "adr"),
+            WorkspaceEntry.ForFile(TestPaths.At("docs", "adr", "adr_0001.md"), "adr_0001.md"));
         return fileSystem;
     }
 
@@ -241,8 +241,8 @@ public sealed class WorkspaceSidebarTests
         var fileSystem = new FakeWorkspaceFileSystem();
         fileSystem.AddDirectory(
             Root,
-            WorkspaceEntry.ForFile(@"C:\docs\README.md", "README.md"),
-            WorkspaceEntry.ForFile(@"C:\docs\notes.md", "notes.md"));
+            WorkspaceEntry.ForFile(TestPaths.At("docs", "README.md"), "README.md"),
+            WorkspaceEntry.ForFile(TestPaths.At("docs", "notes.md"), "notes.md"));
         return fileSystem;
     }
 
@@ -265,8 +265,8 @@ public sealed class WorkspaceSidebarTests
     private static WorkspaceTestHarness CreateHarness(FakeWorkspaceFileSystem fileSystem)
     {
         var loader = new StubDocumentLoader();
-        loader.Sources[@"C:\docs\README.md"] =
-            new MarkdownSource(@"C:\docs\README.md", "README.md", "# readme");
+        loader.Sources[TestPaths.At("docs", "README.md")] =
+            new MarkdownSource(TestPaths.At("docs", "README.md"), "README.md", "# readme");
         var settings = new InMemorySettingsStore();
         var commandLine = new StubCommandLineActivation();
         var viewModel = new ShellViewModel(
