@@ -83,6 +83,25 @@ public sealed class TelegramHtmlClipboardWriterTests
     }
 
     [Fact]
+    public void FormatSelectionHtmlKeepsTheStartNumberOfOrderedList()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownListBlock(true,
+            [
+                new MarkdownListItem([new MarkdownParagraphBlock([new MarkdownTextInline("seven")])]),
+                new MarkdownListItem([new MarkdownParagraphBlock([new MarkdownTextInline("eight")])])
+            ],
+            StartNumber: 7)
+        ]);
+
+        var textMap = MarkdownDocumentTextMap.Create(document);
+        var result = TelegramMarkdownFormatter.FormatSelectionHtml(document, new DocumentTextRange(0, textMap.Text.Length));
+
+        Assert.Equal("7. seven<br>8. eight", result);
+    }
+
+    [Fact]
     public void FormatSelectionHtmlWritesFootnoteLabelsInBracketsAndFootnotesAsANumberedList()
     {
         var document = new RenderedMarkdownDocument(

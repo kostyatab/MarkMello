@@ -113,6 +113,27 @@ public sealed class MarkdownDocumentTextMapTests
             fragment => AssertFragment(textMap.Text, fragment, "b0.i1.b0", MarkdownDocumentTextFragmentKind.Paragraph, "Second"));
     }
 
+    [Theory]
+    [InlineData(7, "7. One\n8. Two\n\n")]
+    [InlineData(0, "0. One\n1. Two\n\n")]
+    [InlineData(99, "99. One\n100. Two\n\n")]
+    public void CreateNumbersOrderedListFromItsStartNumber(int startNumber, string expectedText)
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownListBlock(true,
+            [
+                new MarkdownListItem([new MarkdownParagraphBlock([new MarkdownTextInline("One")])]),
+                new MarkdownListItem([new MarkdownParagraphBlock([new MarkdownTextInline("Two")])])
+            ],
+            startNumber)
+        ]);
+
+        var textMap = MarkdownDocumentTextMap.Create(document);
+
+        Assert.Equal(expectedText, textMap.Text);
+    }
+
     [Fact]
     public void CreatePutsTaskCheckboxInPlaceOfTheBulletAndKeepsBulletOfRegularItems()
     {

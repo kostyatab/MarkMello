@@ -87,7 +87,17 @@ public enum MarkdownAlertKind
     Caution
 }
 
-public sealed record MarkdownListBlock(bool IsOrdered, IReadOnlyList<MarkdownListItem> Items) : MarkdownBlock;
+/// <param name="IsOrdered">Нумерованный список (<c>1.</c>) или маркированный (<c>-</c>).</param>
+/// <param name="Items">Пункты списка.</param>
+/// <param name="StartNumber">
+/// Номер первого пункта нумерованного списка: <c>7.</c> в начале списка даёт
+/// 7, 8, 9… По CommonMark это число из маркера первого пункта, номера
+/// остальных пунктов в исходнике не важны. У маркированного списка не используется.
+/// </param>
+public sealed record MarkdownListBlock(
+    bool IsOrdered,
+    IReadOnlyList<MarkdownListItem> Items,
+    int StartNumber = 1) : MarkdownBlock;
 
 /// <param name="Blocks">Содержимое пункта.</param>
 /// <param name="IsChecked">

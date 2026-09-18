@@ -114,6 +114,24 @@ public sealed class TelegramMarkdownV2WriterTests
     }
 
     [Fact]
+    public void FormatOrderedListKeepsItsStartNumber()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownListBlock(true,
+            [
+                new MarkdownListItem([new MarkdownParagraphBlock([new MarkdownTextInline("seven")])]),
+                new MarkdownListItem([new MarkdownParagraphBlock([new MarkdownTextInline("eight")])])
+            ],
+            StartNumber: 7)
+        ]);
+
+        var result = TelegramMarkdownFormatter.Format(document);
+
+        Assert.Equal("7\\. seven\n8\\. eight", result);
+    }
+
+    [Fact]
     public void FormatTaskListPutsCheckboxesInPlaceOfBullets()
     {
         var result = TelegramMarkdownFormatter.Format(TaskListDocument(isOrdered: false));

@@ -68,7 +68,8 @@ public sealed class MarkdownDocumentTextMap
     }
 
     /// <summary>
-    /// Маркер пункта списка в text flow: «• » или «N. ». В маркированном списке
+    /// Маркер пункта списка в text flow: «• » или «N. », где нумерация идёт от
+    /// <see cref="MarkdownListBlock.StartNumber"/>. В маркированном списке
     /// чекбокс task list встаёт на место «•», поэтому у такого пункта маркера нет;
     /// в нумерованном номер остаётся и идёт перед чекбоксом.
     /// </summary>
@@ -78,7 +79,7 @@ public sealed class MarkdownDocumentTextMap
 
         if (list.IsOrdered)
         {
-            return string.Create(CultureInfo.InvariantCulture, $"{itemIndex + 1}. ");
+            return string.Create(CultureInfo.InvariantCulture, $"{list.StartNumber + itemIndex}. ");
         }
 
         return list.Items[itemIndex].IsChecked is null ? "• " : string.Empty;

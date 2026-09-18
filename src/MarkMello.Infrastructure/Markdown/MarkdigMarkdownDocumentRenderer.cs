@@ -237,8 +237,20 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
             items.Add(new MarkdownListItem(blocks, isChecked));
         }
 
-        return new MarkdownListBlock(list.IsOrdered, items);
+        return new MarkdownListBlock(list.IsOrdered, items, GetOrderedStartNumber(list));
     }
+
+    /// <summary>
+    /// Номер первого пункта из маркера: <c>7.</c> → 7, <c>007.</c> → 7, <c>0.</c> → 0.
+    /// Буквенные и римские маркеры (<c>c.</c>, <c>iv.</c>) Markdig тоже переводит в
+    /// число, но такой нумерации viewer не поддерживает — эти списки нумеруются
+    /// с 1, как раньше.
+    /// </summary>
+    private static int GetOrderedStartNumber(ListBlock list)
+        => list is { IsOrdered: true, BulletType: '1' }
+            && int.TryParse(list.OrderedStart, NumberStyles.None, CultureInfo.InvariantCulture, out var start)
+                ? start
+                : 1;
 
     /// <summary>
     /// Markdig создаёт <see cref="TaskList"/> для <c>[ ]</c> / <c>[x]</c> в любом
