@@ -46,7 +46,10 @@ public sealed class DirectoryWorkspaceFileSystemTests : IDisposable
         Assert.Equal(["docs", "notes.md"], entries.Select(entry => entry.Name));
     }
 
-    [Fact]
+    [FactSkippedOnLinux(
+        "На Linux нет атрибута Hidden отдельно от имени: скрыты только имена с точкой "
+        + "(их проверяет ServiceDirectoriesAndDotEntriesAreSkipped), "
+        + "а File.SetAttributes флаг Hidden молча игнорирует.")]
     public async Task HiddenFilesAreSkipped()
     {
         var hidden = CreateFile("hidden.md");
