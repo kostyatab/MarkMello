@@ -127,6 +127,44 @@ public sealed class TelegramMarkdownV2WriterTests
     }
 
     [Fact]
+    public void FormatWrapsStrikethroughInSingleTildes()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownParagraphBlock(
+            [
+                new MarkdownTextInline("was "),
+                new MarkdownStrikethroughInline([new MarkdownStrongInline([new MarkdownTextInline("10")])]),
+                new MarkdownTextInline(" now 8")
+            ])
+        ]);
+
+        var result = TelegramMarkdownFormatter.Format(document);
+
+        Assert.Equal("was ~*10*~ now 8", result);
+    }
+
+    [Fact]
+    public void FormatSelectionSlicesInsideStrikethrough()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownParagraphBlock(
+            [
+                new MarkdownTextInline("a "),
+                new MarkdownStrikethroughInline([new MarkdownTextInline("bcd")]),
+                new MarkdownTextInline(" e")
+            ])
+        ]);
+        var textMap = MarkdownDocumentTextMap.Create(document);
+        var start = textMap.Text.IndexOf("cd", StringComparison.Ordinal);
+
+        var result = TelegramMarkdownFormatter.FormatSelection(document, new DocumentTextRange(start, start + "cd e".Length));
+
+        Assert.Equal("~cd~ e", result);
+    }
+
+    [Fact]
     public void FormatSelectionPreservesSelectedLink()
     {
         var document = new RenderedMarkdownDocument(

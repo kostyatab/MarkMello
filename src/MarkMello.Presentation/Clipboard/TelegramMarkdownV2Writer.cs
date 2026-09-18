@@ -383,6 +383,10 @@ internal static class TelegramMarkdownV2Writer
                 AppendWrappedInlines(builder, emphasis.Inlines, selectedRange, '_', '_');
                 return;
 
+            case MarkdownStrikethroughInline strikethrough:
+                AppendWrappedInlines(builder, strikethrough.Inlines, selectedRange, '~', '~');
+                return;
+
             case MarkdownCodeInline code:
                 AppendInlineCode(builder, code.Code, selectedRange);
                 return;

@@ -70,6 +70,10 @@ internal sealed record MarkdownStyledText(
                 AppendInlines(emphasis.Inlines, builder, spans, links, images, style with { IsItalic = true });
                 return;
 
+            case MarkdownStrikethroughInline strikethrough:
+                AppendInlines(strikethrough.Inlines, builder, spans, links, images, style with { IsStrikethrough = true });
+                return;
+
             case MarkdownCodeInline code:
                 AppendStyledText(code.Code, builder, spans, style with { IsCode = true });
                 return;
@@ -224,7 +228,7 @@ internal readonly record struct MarkdownInlineImageSpan(
     string PlaceholderText,
     MarkdownInlineStyleState Style);
 
-internal readonly record struct MarkdownInlineStyleState(bool IsBold, bool IsItalic, bool IsCode, bool IsLink)
+internal readonly record struct MarkdownInlineStyleState(bool IsBold, bool IsItalic, bool IsCode, bool IsLink, bool IsStrikethrough)
 {
-    public static MarkdownInlineStyleState Default { get; } = new(false, false, false, false);
+    public static MarkdownInlineStyleState Default { get; } = new(false, false, false, false, false);
 }

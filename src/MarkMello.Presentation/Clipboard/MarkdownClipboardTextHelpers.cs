@@ -57,6 +57,7 @@ internal static class MarkdownClipboardTextHelpers
             MarkdownTextInline text => text.Text.Length,
             MarkdownStrongInline strong => GetPlainTextLength(strong.Inlines),
             MarkdownEmphasisInline emphasis => GetPlainTextLength(emphasis.Inlines),
+            MarkdownStrikethroughInline strikethrough => GetPlainTextLength(strikethrough.Inlines),
             MarkdownCodeInline code => code.Code.Length,
             MarkdownImageInline image => GetImageInlinePlainText(image).Length,
             MarkdownLinkInline link => link.Inlines.Count > 0
@@ -142,6 +143,10 @@ internal static class MarkdownClipboardTextHelpers
 
             case MarkdownEmphasisInline emphasis:
                 builder.Append(ExtractPlainText(emphasis.Inlines));
+                break;
+
+            case MarkdownStrikethroughInline strikethrough:
+                builder.Append(ExtractPlainText(strikethrough.Inlines));
                 break;
 
             case MarkdownCodeInline code:

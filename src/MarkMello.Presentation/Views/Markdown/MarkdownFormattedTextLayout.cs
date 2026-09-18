@@ -415,13 +415,36 @@ internal sealed class MarkdownTextRunPropertiesFactory
         properties = new GenericTextRunProperties(
             new Typeface(family, fontStyle, weight),
             fontSize,
-            style.IsLink ? _linkDecorations : null,
+            ResolveDecorations(style),
             _foreground,
             backgroundBrush: null,
             BaselineAlignment.Baseline,
             CultureInfo.CurrentUICulture);
         _cache.Add(style, properties);
         return properties;
+    }
+
+    /// <summary>
+    /// The strikethrough line has no explicit stroke, so it is drawn in the
+    /// run foreground and follows the theme text colour.
+    /// </summary>
+    private TextDecorationCollection? ResolveDecorations(MarkdownInlineStyleState style)
+    {
+        var linkDecorations = style.IsLink ? _linkDecorations : null;
+        if (!style.IsStrikethrough)
+        {
+            return linkDecorations;
+        }
+
+        if (linkDecorations is null)
+        {
+            return TextDecorations.Strikethrough;
+        }
+
+        var combined = new TextDecorationCollection();
+        combined.AddRange(linkDecorations);
+        combined.AddRange(TextDecorations.Strikethrough);
+        return combined;
     }
 }
 

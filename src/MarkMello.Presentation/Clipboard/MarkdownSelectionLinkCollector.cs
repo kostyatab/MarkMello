@@ -131,6 +131,10 @@ internal static class MarkdownSelectionLinkCollector
             case MarkdownEmphasisInline emphasis:
                 CollectInlineLinkUrls(emphasis.Inlines, selectedRange, urls);
                 break;
+
+            case MarkdownStrikethroughInline strikethrough:
+                CollectInlineLinkUrls(strikethrough.Inlines, selectedRange, urls);
+                break;
         }
     }
 }

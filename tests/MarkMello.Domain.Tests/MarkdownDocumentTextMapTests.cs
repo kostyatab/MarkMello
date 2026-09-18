@@ -130,6 +130,21 @@ public sealed class MarkdownDocumentTextMapTests
     }
 
     [Fact]
+    public void ExtractPlainTextKeepsStrikethroughContentWithoutMarkers()
+    {
+        var inlines = new MarkdownInline[]
+        {
+            new MarkdownTextInline("Price "),
+            new MarkdownStrikethroughInline([new MarkdownTextInline("10")]),
+            new MarkdownTextInline(" 8")
+        };
+
+        var text = MarkdownDocumentTextMap.ExtractPlainText(inlines);
+
+        Assert.Equal("Price 10 8", text);
+    }
+
+    [Fact]
     public void ExtractPlainTextUsesShortPlaceholderForDataImageWithoutAltText()
     {
         var inlines = new MarkdownInline[]

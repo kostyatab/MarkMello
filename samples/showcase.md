@@ -29,6 +29,10 @@ Plain text, *italic with asterisks*, _italic with underscores_, **bold with aste
 
 Combined: ~~**bold inside strikethrough**~~, **~~strikethrough inside bold~~**, *italic with **bold** inside*, and **bold with `code` inside**.
 
+Strikethrough with other inlines: ~~*italic inside strikethrough*~~, ~~`code inside strikethrough`~~, ~~[a struck link](https://example.com)~~, and a price change: ~~1000 ₽~~ **800 ₽**.
+
+#### ~~Old~~ new heading with strikethrough
+
 ### Inline code and links
 
 Run `dotnet build MarkMello.sln`, then open a file with `Ctrl+O`. A code span with backticks inside: `` `code` ``.
@@ -141,7 +145,7 @@ An ordered list that starts at seven:
 
 ### Quotes
 
-> A single quote paragraph.
+> A single quote paragraph with ~~struck~~ text.
 
 > Level one quote.
 >
