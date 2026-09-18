@@ -114,6 +114,82 @@ public sealed class MarkdownDocumentTextMapTests
     }
 
     [Fact]
+    public void CreatePutsTaskCheckboxInPlaceOfTheBulletAndKeepsBulletOfRegularItems()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownListBlock(false,
+            [
+                new MarkdownListItem([new MarkdownParagraphBlock([new MarkdownTextInline("Done")])], IsChecked: true),
+                new MarkdownListItem([new MarkdownParagraphBlock([new MarkdownTextInline("Open")])], IsChecked: false),
+                new MarkdownListItem([new MarkdownParagraphBlock([new MarkdownTextInline("Plain")])])
+            ])
+        ]);
+
+        var textMap = MarkdownDocumentTextMap.Create(document);
+
+        Assert.Equal("☑ Done\n☐ Open\n• Plain\n\n", textMap.Text);
+        Assert.Collection(
+            textMap.Fragments,
+            fragment => AssertFragment(textMap.Text, fragment, "b0.i0.t", MarkdownDocumentTextFragmentKind.TaskCheckbox, "☑ "),
+            fragment => AssertFragment(textMap.Text, fragment, "b0.i0.b0", MarkdownDocumentTextFragmentKind.Paragraph, "Done"),
+            fragment => AssertFragment(textMap.Text, fragment, "b0.i1.t", MarkdownDocumentTextFragmentKind.TaskCheckbox, "☐ "),
+            fragment => AssertFragment(textMap.Text, fragment, "b0.i1.b0", MarkdownDocumentTextFragmentKind.Paragraph, "Open"),
+            fragment => AssertFragment(textMap.Text, fragment, "b0.i2.m", MarkdownDocumentTextFragmentKind.ListMarker, "• "),
+            fragment => AssertFragment(textMap.Text, fragment, "b0.i2.b0", MarkdownDocumentTextFragmentKind.Paragraph, "Plain"));
+    }
+
+    [Fact]
+    public void CreateKeepsTheNumberBeforeTheTaskCheckboxInOrderedList()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownListBlock(true,
+            [
+                new MarkdownListItem([new MarkdownParagraphBlock([new MarkdownTextInline("Done")])], IsChecked: true),
+                new MarkdownListItem([new MarkdownParagraphBlock([new MarkdownTextInline("Plain")])])
+            ])
+        ]);
+
+        var textMap = MarkdownDocumentTextMap.Create(document);
+
+        Assert.Equal("1. ☑ Done\n2. Plain\n\n", textMap.Text);
+        Assert.Collection(
+            textMap.Fragments,
+            fragment => AssertFragment(textMap.Text, fragment, "b0.i0.m", MarkdownDocumentTextFragmentKind.ListMarker, "1. "),
+            fragment => AssertFragment(textMap.Text, fragment, "b0.i0.t", MarkdownDocumentTextFragmentKind.TaskCheckbox, "☑ "),
+            fragment => AssertFragment(textMap.Text, fragment, "b0.i0.b0", MarkdownDocumentTextFragmentKind.Paragraph, "Done"),
+            fragment => AssertFragment(textMap.Text, fragment, "b0.i1.m", MarkdownDocumentTextFragmentKind.ListMarker, "2. "),
+            fragment => AssertFragment(textMap.Text, fragment, "b0.i1.b0", MarkdownDocumentTextFragmentKind.Paragraph, "Plain"));
+    }
+
+    [Fact]
+    public void CreateGivesNestedTaskItemsTheirOwnCheckboxes()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownListBlock(false,
+            [
+                new MarkdownListItem(
+                [
+                    new MarkdownParagraphBlock([new MarkdownTextInline("Parent")]),
+                    new MarkdownListBlock(false,
+                    [
+                        new MarkdownListItem([new MarkdownParagraphBlock([new MarkdownTextInline("Child")])], IsChecked: true)
+                    ])
+                ],
+                IsChecked: false)
+            ])
+        ]);
+
+        var textMap = MarkdownDocumentTextMap.Create(document);
+
+        Assert.Equal("☐ Parent\n☑ Child\n\n", textMap.Text);
+        Assert.True(textMap.TryGetFragment("b0.i0.b1.i0.t", out var nested));
+        Assert.Equal("☑ ", nested.Text);
+    }
+
+    [Fact]
     public void ExtractPlainTextUsesLinkTextAndFallsBackToUrlWhenLabelIsMissing()
     {
         var inlines = new MarkdownInline[]

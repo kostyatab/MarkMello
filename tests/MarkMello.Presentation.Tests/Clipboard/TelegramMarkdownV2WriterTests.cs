@@ -114,6 +114,34 @@ public sealed class TelegramMarkdownV2WriterTests
     }
 
     [Fact]
+    public void FormatTaskListPutsCheckboxesInPlaceOfBullets()
+    {
+        var result = TelegramMarkdownFormatter.Format(TaskListDocument(isOrdered: false));
+
+        Assert.Equal("☑ done\n☐ open\n• plain", result);
+    }
+
+    [Fact]
+    public void FormatOrderedTaskListKeepsNumbersBeforeCheckboxes()
+    {
+        var result = TelegramMarkdownFormatter.Format(TaskListDocument(isOrdered: true));
+
+        Assert.Equal("1\\. ☑ done\n2\\. ☐ open\n3\\. plain", result);
+    }
+
+    [Fact]
+    public void FormatSelectionKeepsCheckboxOfPartlySelectedTaskList()
+    {
+        var document = TaskListDocument(isOrdered: false);
+        var textMap = MarkdownDocumentTextMap.Create(document);
+        var start = textMap.Text.IndexOf('☐', StringComparison.Ordinal);
+
+        var result = TelegramMarkdownFormatter.FormatSelection(document, new DocumentTextRange(start, start + "☐ open".Length));
+
+        Assert.Equal("☐ open", result);
+    }
+
+    [Fact]
     public void FormatDiagramUsesMermaidFencedBlock()
     {
         var document = new RenderedMarkdownDocument(
@@ -220,4 +248,15 @@ public sealed class TelegramMarkdownV2WriterTests
 
         Assert.Equal("```csharp\nConsole.WriteLine(x)\n```", result);
     }
+
+    private static RenderedMarkdownDocument TaskListDocument(bool isOrdered)
+        => new(
+        [
+            new MarkdownListBlock(isOrdered,
+            [
+                new MarkdownListItem([new MarkdownParagraphBlock([new MarkdownTextInline("done")])], IsChecked: true),
+                new MarkdownListItem([new MarkdownParagraphBlock([new MarkdownTextInline("open")])], IsChecked: false),
+                new MarkdownListItem([new MarkdownParagraphBlock([new MarkdownTextInline("plain")])])
+            ])
+        ]);
 }

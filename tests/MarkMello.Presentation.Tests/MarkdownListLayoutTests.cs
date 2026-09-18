@@ -33,9 +33,8 @@ public sealed class MarkdownListLayoutTests
 
         var viewport = Assert.IsType<Border>(view.Content);
         var root = Assert.IsType<StackPanel>(viewport.Child);
-        var listPanel = Assert.IsType<StackPanel>(Assert.Single(root.Children));
-        var row = Assert.IsType<Grid>(Assert.Single(listPanel.Children));
-        var marker = Assert.IsType<MarkdownSelectionTextFragment>(row.Children[0]);
+        var list = Assert.IsType<Grid>(Assert.Single(root.Children));
+        var marker = Assert.IsType<MarkdownSelectionTextFragment>(list.Children[0]);
 
         Assert.Equal(0, marker.Margin.Top);
     }

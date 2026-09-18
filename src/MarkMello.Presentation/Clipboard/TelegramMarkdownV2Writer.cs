@@ -152,12 +152,18 @@ internal static class TelegramMarkdownV2Writer
         var appended = false;
         for (var itemIndex = 0; itemIndex < list.Items.Count; itemIndex++)
         {
+            var item = list.Items[itemIndex];
             var itemBuilder = new StringBuilder();
-            var marker = MarkdownClipboardTextHelpers.GetListMarkerText(list, itemIndex);
+            var marker = MarkdownDocumentTextMap.GetListMarkerText(list, itemIndex);
             AppendTextFragment(itemBuilder, $"{path}.i{itemIndex}.m", marker, context, MarkdownV2Escaper.EscapeText);
+            if (item.IsChecked is { } isChecked)
+            {
+                var checkbox = MarkdownDocumentTextMap.GetTaskCheckboxText(isChecked);
+                AppendTextFragment(itemBuilder, $"{path}.i{itemIndex}.t", checkbox, context, MarkdownV2Escaper.EscapeText);
+            }
 
             var content = new StringBuilder();
-            AppendNestedBlocks(content, list.Items[itemIndex].Blocks, $"{path}.i{itemIndex}", context);
+            AppendNestedBlocks(content, item.Blocks, $"{path}.i{itemIndex}", context);
             MarkdownClipboardTextHelpers.TrimTrailingLineBreaks(content, maxAllowed: 0);
 
             if (content.Length > 0)

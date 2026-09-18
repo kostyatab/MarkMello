@@ -60,21 +60,42 @@ public sealed class LucideIcon : Control
     {
         var data = Data;
         var foreground = Foreground;
-        var side = Math.Min(Bounds.Width, Bounds.Height);
-        if (data is null || foreground is null || side <= 0)
+        if (data is null || foreground is null)
+        {
+            return;
+        }
+
+        _pen ??= CreatePen(foreground);
+        Draw(context, data, _pen, Bounds.Size);
+    }
+
+    /// <summary>
+    /// Перо иконки Lucide: каноничная обводка сетки 24 со скруглёнными концами и стыками.
+    /// </summary>
+    internal static Pen CreatePen(IBrush foreground)
+        => new(foreground, StrokeThickness, lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
+
+    /// <summary>
+    /// Рисует геометрию Lucide в области <paramref name="size"/> так же, как сама
+    /// иконка. Нужен тем, кто рисует иконку внутри своего <c>Render</c>, а не
+    /// дочерним контролом, — например, чекбоксу task list в документе.
+    /// </summary>
+    internal static void Draw(DrawingContext context, Geometry data, Pen pen, Size size)
+    {
+        var side = Math.Min(size.Width, size.Height);
+        if (side <= 0)
         {
             return;
         }
 
         // Сетка масштабируется целиком, вместе с обводкой, и встаёт по центру,
-        // если контрол не квадратный.
+        // если область не квадратная.
         var scale = side / GridSize;
-        var offset = new Vector((Bounds.Width - side) / 2, (Bounds.Height - side) / 2);
-        _pen ??= new Pen(foreground, StrokeThickness, lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
+        var offset = new Vector((size.Width - side) / 2, (size.Height - side) / 2);
 
         using (context.PushTransform(Matrix.CreateScale(scale, scale) * Matrix.CreateTranslation(offset)))
         {
-            context.DrawGeometry(null, _pen, data);
+            context.DrawGeometry(null, pen, data);
         }
     }
 

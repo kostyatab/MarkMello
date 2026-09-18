@@ -114,4 +114,12 @@
   <!-- check -->
   <StreamGeometry x:Key="LucideCheckGeometry">M20 6 9 17l-5-5</StreamGeometry>
 
+  <!-- ======================= Task list в документе ======================= -->
+
+  <!-- square -->
+  <StreamGeometry x:Key="LucideSquareGeometry">M5 3H19A2 2 0 0 1 21 5V19A2 2 0 0 1 19 21H5A2 2 0 0 1 3 19V5A2 2 0 0 1 5 3Z</StreamGeometry>
+
+  <!-- square-check -->
+  <StreamGeometry x:Key="LucideSquareCheckGeometry">M5 3H19A2 2 0 0 1 21 5V19A2 2 0 0 1 19 21H5A2 2 0 0 1 3 19V5A2 2 0 0 1 5 3Z M16 9l-5.5 5.5L8 12</StreamGeometry>
+
 </ResourceDictionary>

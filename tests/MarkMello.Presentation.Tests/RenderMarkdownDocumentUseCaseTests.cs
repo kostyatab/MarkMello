@@ -118,6 +118,32 @@ public sealed class RenderMarkdownDocumentUseCaseTests
     }
 
     [Fact]
+    public void ExecuteKeepsTaskListStateWhenMaterializingDiagramsInsideAList()
+    {
+        const string markdown = """
+            - [x] done
+
+              ```mermaid
+              flowchart LR
+                  A --> B
+              ```
+            - [ ] open
+            - regular
+            """;
+
+        var useCase = new RenderMarkdownDocumentUseCase(
+            new MarkdigMarkdownDocumentRenderer(),
+            new FakeDiagramRenderService());
+
+        var document = useCase.Execute(markdown);
+
+        var list = Assert.IsType<MarkdownListBlock>(Assert.Single(document.Blocks));
+        Assert.Equal([true, false, null], list.Items.Select(item => item.IsChecked));
+        var diagram = Assert.IsType<MarkdownDiagramBlock>(list.Items[0].Blocks[1]);
+        Assert.IsType<DiagramRenderResult.Success>(diagram.RenderResult);
+    }
+
+    [Fact]
     public void ExecuteRoutesEachDiagramToServiceWithCorrectSource()
     {
         const string markdown = """

@@ -58,6 +58,22 @@ public sealed class MarkdownDocumentView : UserControl
     private const double CodeCopyButtonSize = 24;
     private const double CodeCopyIconSize = 13;
     private const double CodeCopyIconInkInset = (CodeCopyButtonSize - CodeCopyIconSize) / 2 + CodeCopyIconSize * 2 / 24;
+
+    // Сторона иконки чекбокса task list относительно размера шрифта: рамка Lucide
+    // занимает 20/24 сетки, то есть почти 1 em — выше заглавных букв, и галочка
+    // внутри контура читается с первого взгляда.
+    private const double TaskCheckboxSizeToFontSize = 1.15;
+
+    // Отступ текста пункта списка от маркера.
+    private const double ListItemTextIndent = 12;
+
+    // В списке с чекбоксами зазоры меньше: чекбокс шире «•», и с обычным
+    // отступом пункт распадается на номер, иконку и текст. От чекбокса до текста —
+    // вдвое меньше обычного, от номера до чекбокса — ещё меньше: номер «1. » уже
+    // заканчивается пробелом.
+    private const double TaskListItemTextIndent = ListItemTextIndent / 2;
+    private const double TaskCheckboxIndentAfterNumber = 3;
+
     private static readonly DataFormat<byte[]> WindowsHtmlClipboardFormat = DataFormat.CreateBytesPlatformFormat("HTML Format");
     private static readonly DataFormat<byte[]> HtmlClipboardFormat = DataFormat.CreateBytesPlatformFormat("text/html");
 
@@ -1376,28 +1392,118 @@ public sealed class MarkdownDocumentView : UserControl
         };
     }
 
-    private StackPanel BuildList(MarkdownListBlock block, string path, bool insideQuote = false)
+    /// <summary>
+    /// Список — одна сетка на все пункты: строка на пункт, общие колонки маркеров
+    /// и колонка текста. Поэтому текст всех пунктов начинается с одной вертикали,
+    /// даже если у одних «•», а у других чекбокс, или номера разной ширины
+    /// («9.» и «10.»).
+    /// </summary>
+    /// <remarks>
+    /// В маркированном списке колонка маркеров одна: «•» или чекбокс на его месте.
+    /// В нумерованном номер остаётся и у пункта с чекбоксом, чтобы нумерация не
+    /// прерывалась: номера выровнены вправо, а чекбокс стоит в начале строки
+    /// пункта, в своей колонке — она появляется, только если в списке есть пункты
+    /// task list. Текст обычного пункта начинается там же, где чекбоксы.
+    /// </remarks>
+    private Grid BuildList(MarkdownListBlock block, string path, bool insideQuote = false)
     {
-        var panel = new StackPanel
+        var grid = new Grid
         {
-            Orientation = Orientation.Vertical,
-            Spacing = 8,
+            RowSpacing = 8,
             Margin = new Thickness(0, 0, 0, 18)
         };
 
-        for (var index = 0; index < block.Items.Count; index++)
+        var hasTasks = block.Items.Any(static item => item.IsChecked is not null);
+        var hasCheckboxColumn = block.IsOrdered && hasTasks;
+        var textIndent = hasTasks ? TaskListItemTextIndent : ListItemTextIndent;
+        grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+        if (hasCheckboxColumn)
         {
-            panel.Children.Add(BuildListItem(block, block.Items[index], index, $"{path}.i{index}", insideQuote));
+            grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
         }
 
-        return panel;
+        grid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
+        var contentColumn = grid.ColumnDefinitions.Count - 1;
+
+        for (var index = 0; index < block.Items.Count; index++)
+        {
+            grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+
+            var item = block.Items[index];
+            var itemPath = $"{path}.i{index}";
+            AddListItemMarkers(grid, block, item, index, itemPath);
+
+            if (hasCheckboxColumn && item.IsChecked is null)
+            {
+                // Текст обычного пункта встаёт туда же, где у соседей чекбокс.
+                var content = BuildListItemContent(item, itemPath, insideQuote, TaskCheckboxIndentAfterNumber);
+                AddToGrid(grid, content, index, column: 1);
+                Grid.SetColumnSpan(content, 2);
+            }
+            else
+            {
+                AddToGrid(grid, BuildListItemContent(item, itemPath, insideQuote, textIndent), index, contentColumn);
+            }
+        }
+
+        return grid;
     }
 
-    private Grid BuildListItem(MarkdownListBlock list, MarkdownListItem item, int index, string path, bool insideQuote = false)
+    private static void AddToGrid(Grid grid, Control control, int row, int column)
+    {
+        Grid.SetRow(control, row);
+        Grid.SetColumn(control, column);
+        grid.Children.Add(control);
+    }
+
+    private void AddListItemMarkers(Grid grid, MarkdownListBlock list, MarkdownListItem item, int index, string path)
+    {
+        if (!list.IsOrdered)
+        {
+            // «•» прижат вправо: пробел после него в тексте маркера как раз
+            // ставит точку по центру колонки, то есть под центр чекбоксов.
+            var marker = item.IsChecked is { } isChecked
+                ? BuildTaskCheckbox(isChecked, $"{path}.t")
+                : BuildListMarkerText(list, index, path);
+            marker.HorizontalAlignment = HorizontalAlignment.Right;
+            AddToGrid(grid, marker, index, column: 0);
+            return;
+        }
+
+        var number = BuildListMarkerText(list, index, path);
+        number.HorizontalAlignment = HorizontalAlignment.Right;
+        AddToGrid(grid, number, index, column: 0);
+
+        if (item.IsChecked is { } isOrderedChecked)
+        {
+            var checkbox = BuildTaskCheckbox(isOrderedChecked, $"{path}.t");
+            checkbox.Margin = new Thickness(TaskCheckboxIndentAfterNumber, 0, 0, 0);
+            AddToGrid(grid, checkbox, index, column: 1);
+        }
+    }
+
+    private StackPanel BuildListItemContent(MarkdownListItem item, string path, bool insideQuote, double indent)
+    {
+        var content = new StackPanel
+        {
+            Orientation = Orientation.Vertical,
+            Spacing = 0,
+            Margin = new Thickness(indent, 0, 0, 0)
+        };
+
+        for (var blockIndex = 0; blockIndex < item.Blocks.Count; blockIndex++)
+        {
+            content.Children.Add(BuildBlock(item.Blocks[blockIndex], $"{path}.b{blockIndex}", nested: true, insideQuote: insideQuote));
+        }
+
+        return content;
+    }
+
+    private Control BuildListMarkerText(MarkdownListBlock list, int index, string path)
     {
         var bullet = BuildSelectionFragment(
             $"{path}.m",
-            [new MarkdownTextInline(list.IsOrdered ? $"{index + 1}. " : "• ")],
+            [new MarkdownTextInline(MarkdownDocumentTextMap.GetListMarkerText(list, index))],
             margin: default,
             ReadingPreferences.FontSize,
             GetBodyLineHeight(),
@@ -1407,33 +1513,26 @@ public sealed class MarkdownDocumentView : UserControl
             textWrapping: TextWrapping.NoWrap);
 
         bullet.VerticalAlignment = VerticalAlignment.Top;
+        return bullet;
+    }
 
-        var content = new StackPanel
+    private MarkdownTaskCheckboxFragment BuildTaskCheckbox(bool isChecked, string path)
+    {
+        var checkbox = new MarkdownTaskCheckboxFragment(isChecked)
         {
-            Orientation = Orientation.Vertical,
-            Spacing = 0
+            IconSize = Math.Round(ReadingPreferences.FontSize * TaskCheckboxSizeToFontSize),
+            LineHeight = GetBodyLineHeight(),
+            VerticalAlignment = VerticalAlignment.Top
         };
 
-        for (var blockIndex = 0; blockIndex < item.Blocks.Count; blockIndex++)
+        if (_textMap.TryGetFragment(path, out var fragment))
         {
-            content.Children.Add(BuildBlock(item.Blocks[blockIndex], $"{path}.b{blockIndex}", nested: true, insideQuote: insideQuote));
+            checkbox.DocumentRange = fragment.Range;
+            RegisterSelectionFragment(checkbox, path);
+            checkbox.SelectionRange = new DocumentTextRange(SelectionStart, SelectionEnd);
         }
 
-        var row = new Grid
-        {
-            ColumnDefinitions = new ColumnDefinitions
-            {
-                new(GridLength.Auto),
-                new(new GridLength(1, GridUnitType.Star))
-            },
-            ColumnSpacing = 12
-        };
-
-        Grid.SetColumn(bullet, 0);
-        Grid.SetColumn(content, 1);
-        row.Children.Add(bullet);
-        row.Children.Add(content);
-        return row;
+        return checkbox;
     }
 
     private static Grid BuildHorizontalRule()

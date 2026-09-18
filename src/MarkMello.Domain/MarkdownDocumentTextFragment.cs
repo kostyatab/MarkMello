@@ -47,5 +47,6 @@ public enum MarkdownDocumentTextFragmentKind
     CodeBlock = 2,
     TableCell = 3,
     Fallback = 4,
-    ListMarker = 5
+    ListMarker = 5,
+    TaskCheckbox = 6
 }

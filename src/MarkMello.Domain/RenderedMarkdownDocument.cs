@@ -68,7 +68,13 @@ public sealed record MarkdownQuoteBlock(IReadOnlyList<MarkdownBlock> Blocks) : M
 
 public sealed record MarkdownListBlock(bool IsOrdered, IReadOnlyList<MarkdownListItem> Items) : MarkdownBlock;
 
-public sealed record MarkdownListItem(IReadOnlyList<MarkdownBlock> Blocks);
+/// <param name="Blocks">Содержимое пункта.</param>
+/// <param name="IsChecked">
+/// Состояние пункта task list (<c>- [ ]</c> / <c>- [x]</c>): <c>false</c> — пустой
+/// чекбокс, <c>true</c> — отмеченный, <c>null</c> — обычный пункт без чекбокса.
+/// Сам маркер <c>[ ]</c> в <paramref name="Blocks"/> не попадает.
+/// </param>
+public sealed record MarkdownListItem(IReadOnlyList<MarkdownBlock> Blocks, bool? IsChecked = null);
 
 public sealed record MarkdownHorizontalRuleBlock() : MarkdownBlock;
 

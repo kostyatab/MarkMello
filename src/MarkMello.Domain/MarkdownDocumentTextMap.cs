@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 
 namespace MarkMello.Domain;
@@ -56,6 +57,30 @@ public sealed class MarkdownDocumentTextMap
 
         return builder.Build();
     }
+
+    /// <summary>
+    /// Маркер пункта списка в text flow: «• » или «N. ». В маркированном списке
+    /// чекбокс task list встаёт на место «•», поэтому у такого пункта маркера нет;
+    /// в нумерованном номер остаётся и идёт перед чекбоксом.
+    /// </summary>
+    public static string GetListMarkerText(MarkdownListBlock list, int itemIndex)
+    {
+        ArgumentNullException.ThrowIfNull(list);
+
+        if (list.IsOrdered)
+        {
+            return string.Create(CultureInfo.InvariantCulture, $"{itemIndex + 1}. ");
+        }
+
+        return list.Items[itemIndex].IsChecked is null ? "• " : string.Empty;
+    }
+
+    /// <summary>
+    /// Чекбокс task list в text flow. На экране это иконка, а в выделение,
+    /// поиск и буфер обмена идёт этот текст — так в скопированном списке видно,
+    /// какие пункты отмечены.
+    /// </summary>
+    public static string GetTaskCheckboxText(bool isChecked) => isChecked ? "☑ " : "☐ ";
 
     public static string ExtractPlainText(IReadOnlyList<MarkdownInline> inlines)
     {
@@ -226,6 +251,14 @@ public sealed class MarkdownDocumentTextMap
                             MarkdownDocumentTextFragmentKind.ListMarker,
                             GetListMarkerText(list, itemIndex));
 
+                        if (item.IsChecked is { } isChecked)
+                        {
+                            AppendTextFragment(
+                                $"{path}.i{itemIndex}.t",
+                                MarkdownDocumentTextFragmentKind.TaskCheckbox,
+                                GetTaskCheckboxText(isChecked));
+                        }
+
                         for (var blockIndex = 0; blockIndex < item.Blocks.Count; blockIndex++)
                         {
                             AppendBlock(item.Blocks[blockIndex], $"{path}.i{itemIndex}.b{blockIndex}", isTopLevel: false);
@@ -310,11 +343,6 @@ public sealed class MarkdownDocumentTextMap
 
         private void AppendInlineFragment(string key, MarkdownDocumentTextFragmentKind kind, IReadOnlyList<MarkdownInline> inlines)
             => AppendTextFragment(key, kind, ExtractPlainText(inlines));
-
-        private static string GetListMarkerText(MarkdownListBlock list, int itemIndex)
-            => list.IsOrdered
-                ? $"{itemIndex + 1}. "
-                : "• ";
 
         private void AppendTextFragment(string key, MarkdownDocumentTextFragmentKind kind, string text)
         {

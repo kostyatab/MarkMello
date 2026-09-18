@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using Markdig;
 using MarkdigMarkdown = Markdig.Markdown;
 using Markdig.Extensions.Tables;
+using Markdig.Extensions.TaskLists;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 using MarkMello.Application.Abstractions;
@@ -32,6 +33,7 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
         }
 
         var document = MarkdigMarkdown.Parse(markdown, Pipeline);
+        KeepMisplacedTaskListMarkersAsText(document, markdown);
         var blocks = ConvertBlocks(document, markdown);
         return new RenderedMarkdownDocument(blocks);
     }
@@ -151,10 +153,93 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
                 continue;
             }
 
-            items.Add(new MarkdownListItem(ConvertBlocks(item, source)));
+            var isChecked = DetachTaskListMarker(item);
+            var blocks = ConvertBlocks(item, source);
+            if (isChecked is not null)
+            {
+                TrimTaskListParagraphStart(blocks);
+            }
+
+            items.Add(new MarkdownListItem(blocks, isChecked));
         }
 
         return new MarkdownListBlock(list.IsOrdered, items);
+    }
+
+    /// <summary>
+    /// Markdig создаёт <see cref="TaskList"/> для <c>[ ]</c> / <c>[x]</c> в любом
+    /// месте абзаца внутри пункта списка. Чекбоксом становится только маркер в
+    /// начале пункта (<see cref="DetachTaskListMarker"/>), а остальные — например,
+    /// в середине текста или в начале второго абзаца — заменяются исходным текстом,
+    /// чтобы <c>[X]</c> и осталось <c>[X]</c>.
+    /// </summary>
+    private static void KeepMisplacedTaskListMarkersAsText(MarkdownDocument document, string source)
+    {
+        foreach (var taskList in document.Descendants<TaskList>().ToList())
+        {
+            if (!IsListItemMarker(taskList))
+            {
+                // Документ разбирается заново на каждый рендер, поэтому AST можно менять.
+                taskList.ReplaceBy(new LiteralInline(source.Substring(taskList.Span.Start, taskList.Span.Length)));
+            }
+        }
+    }
+
+    private static bool IsListItemMarker(TaskList taskList)
+        => taskList.Parent is { ParentBlock: ParagraphBlock { Parent: ListItemBlock item } paragraph }
+            && ReferenceEquals(item[0], paragraph)
+            && ReferenceEquals(paragraph.Inline?.FirstChild, taskList);
+
+    /// <summary>
+    /// Забирает маркер task list (<c>[ ]</c> / <c>[x]</c>) из начала первого абзаца
+    /// пункта: отметка становится состоянием пункта, а не текстом.
+    /// </summary>
+    /// <returns>Состояние чекбокса или <c>null</c>, если пункт обычный.</returns>
+    private static bool? DetachTaskListMarker(ListItemBlock item)
+    {
+        if (item.Count == 0
+            || item[0] is not ParagraphBlock { Inline.FirstChild: TaskList taskList })
+        {
+            return null;
+        }
+
+        // Документ разбирается заново на каждый рендер, поэтому AST можно менять.
+        taskList.Remove();
+        return taskList.Checked;
+    }
+
+    /// <summary>
+    /// Убирает пробел, который в исходнике отделял маркер task list от текста,
+    /// а абзац, в котором кроме маркера ничего не было, — целиком.
+    /// </summary>
+    private static void TrimTaskListParagraphStart(List<MarkdownBlock> blocks)
+    {
+        if (blocks.Count == 0 || blocks[0] is not MarkdownParagraphBlock paragraph)
+        {
+            return;
+        }
+
+        var inlines = paragraph.Inlines.ToList();
+        while (inlines.Count > 0 && inlines[0] is MarkdownTextInline text)
+        {
+            var trimmed = text.Text.TrimStart();
+            if (trimmed.Length > 0)
+            {
+                inlines[0] = new MarkdownTextInline(trimmed);
+                break;
+            }
+
+            inlines.RemoveAt(0);
+        }
+
+        if (inlines.Count == 0)
+        {
+            blocks.RemoveAt(0);
+        }
+        else
+        {
+            blocks[0] = paragraph with { Inlines = inlines };
+        }
     }
 
     private static MarkdownTableBlock ConvertTable(Table table, string source)

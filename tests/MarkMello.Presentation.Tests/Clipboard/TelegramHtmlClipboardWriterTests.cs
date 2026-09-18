@@ -64,6 +64,25 @@ public sealed class TelegramHtmlClipboardWriterTests
     }
 
     [Fact]
+    public void FormatSelectionHtmlPutsCheckboxesInPlaceOfBullets()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownListBlock(false,
+            [
+                new MarkdownListItem([new MarkdownParagraphBlock([new MarkdownTextInline("done")])], IsChecked: true),
+                new MarkdownListItem([new MarkdownParagraphBlock([new MarkdownTextInline("open")])], IsChecked: false),
+                new MarkdownListItem([new MarkdownParagraphBlock([new MarkdownTextInline("plain")])])
+            ])
+        ]);
+
+        var textMap = MarkdownDocumentTextMap.Create(document);
+        var result = TelegramMarkdownFormatter.FormatSelectionHtml(document, new DocumentTextRange(0, textMap.Text.Length));
+
+        Assert.Equal("☑ done<br>☐ open<br>• plain", result);
+    }
+
+    [Fact]
     public void FormatSelectionHtmlWrapsStrikethroughInSTag()
     {
         var document = new RenderedMarkdownDocument(

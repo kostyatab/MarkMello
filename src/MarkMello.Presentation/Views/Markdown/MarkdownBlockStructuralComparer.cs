@@ -97,6 +97,7 @@ internal sealed class MarkdownBlockStructuralComparer : IEqualityComparer<Markdo
                 hash.Add(list.Items.Count);
                 foreach (var item in list.Items)
                 {
+                    hash.Add(item.IsChecked);
                     AddBlocks(ref hash, item.Blocks);
                 }
 
@@ -161,7 +162,8 @@ internal sealed class MarkdownBlockStructuralComparer : IEqualityComparer<Markdo
 
         for (var index = 0; index < left.Count; index++)
         {
-            if (!BlocksEqual(left[index].Blocks, right[index].Blocks))
+            if (left[index].IsChecked != right[index].IsChecked
+                || !BlocksEqual(left[index].Blocks, right[index].Blocks))
             {
                 return false;
             }

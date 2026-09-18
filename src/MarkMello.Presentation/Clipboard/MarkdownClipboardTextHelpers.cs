@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text;
 using MarkMello.Domain;
 
@@ -17,11 +16,6 @@ internal static class MarkdownClipboardTextHelpers
         var end = Math.Clamp(range.End, start, text.Length);
         return end <= start ? string.Empty : text[start..end];
     }
-
-    public static string GetListMarkerText(MarkdownListBlock list, int itemIndex)
-        => list.IsOrdered
-            ? string.Create(CultureInfo.InvariantCulture, $"{itemIndex + 1}. ")
-            : "• ";
 
     public static string GetCodeLanguage(string? info)
     {

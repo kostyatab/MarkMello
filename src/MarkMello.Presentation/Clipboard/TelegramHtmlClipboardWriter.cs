@@ -128,9 +128,15 @@ internal static class TelegramHtmlClipboardWriter
         var appended = false;
         for (var itemIndex = 0; itemIndex < list.Items.Count; itemIndex++)
         {
+            var item = list.Items[itemIndex];
             var itemBuilder = new StringBuilder();
-            AppendTextFragment(itemBuilder, $"{path}.i{itemIndex}.m", MarkdownClipboardTextHelpers.GetListMarkerText(list, itemIndex), context);
-            AppendNestedBlocks(itemBuilder, list.Items[itemIndex].Blocks, $"{path}.i{itemIndex}", context);
+            AppendTextFragment(itemBuilder, $"{path}.i{itemIndex}.m", MarkdownDocumentTextMap.GetListMarkerText(list, itemIndex), context);
+            if (item.IsChecked is { } isChecked)
+            {
+                AppendTextFragment(itemBuilder, $"{path}.i{itemIndex}.t", MarkdownDocumentTextMap.GetTaskCheckboxText(isChecked), context);
+            }
+
+            AppendNestedBlocks(itemBuilder, item.Blocks, $"{path}.i{itemIndex}", context);
             if (itemBuilder.Length == 0)
             {
                 continue;

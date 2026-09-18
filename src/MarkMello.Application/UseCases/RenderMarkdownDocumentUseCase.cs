@@ -84,7 +84,7 @@ public sealed class RenderMarkdownDocumentUseCase
         var result = new List<MarkdownListItem>(items.Count);
         foreach (var item in items)
         {
-            result.Add(new MarkdownListItem(MaterializeBlocks(item.Blocks)));
+            result.Add(item with { Blocks = MaterializeBlocks(item.Blocks) });
         }
         return result;
     }
