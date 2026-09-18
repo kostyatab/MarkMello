@@ -13,9 +13,9 @@ public sealed class OpenDocumentsViewModelTests
     public void ClosingActiveTabActivatesTheNeighbourOnTheRight()
     {
         var documents = CreateDocuments();
-        var first = Open(documents, @"C:\docs\a.md");
-        var second = Open(documents, @"C:\docs\b.md");
-        var third = Open(documents, @"C:\docs\c.md");
+        var first = Open(documents, TestPaths.At("docs", "a.md"));
+        var second = Open(documents, TestPaths.At("docs", "b.md"));
+        var third = Open(documents, TestPaths.At("docs", "c.md"));
         documents.Activate(second);
 
         documents.Remove(second);
@@ -28,7 +28,7 @@ public sealed class OpenDocumentsViewModelTests
     public void ClosingTheLastTabLeavesNoActiveTab()
     {
         var documents = CreateDocuments();
-        var only = Open(documents, @"C:\docs\a.md");
+        var only = Open(documents, TestPaths.At("docs", "a.md"));
         documents.Activate(only);
 
         documents.Remove(only);
@@ -42,8 +42,8 @@ public sealed class OpenDocumentsViewModelTests
     public void ActiveFlagFollowsTheActiveTab()
     {
         var documents = CreateDocuments();
-        var first = Open(documents, @"C:\docs\a.md");
-        var second = Open(documents, @"C:\docs\b.md");
+        var first = Open(documents, TestPaths.At("docs", "a.md"));
+        var second = Open(documents, TestPaths.At("docs", "b.md"));
 
         documents.Activate(first);
         Assert.True(first.IsActive);
@@ -58,9 +58,9 @@ public sealed class OpenDocumentsViewModelTests
     public void NeighbourWrapsAroundInBothDirections()
     {
         var documents = CreateDocuments();
-        var first = Open(documents, @"C:\docs\a.md");
-        var second = Open(documents, @"C:\docs\b.md");
-        var third = Open(documents, @"C:\docs\c.md");
+        var first = Open(documents, TestPaths.At("docs", "a.md"));
+        var second = Open(documents, TestPaths.At("docs", "b.md"));
+        var third = Open(documents, TestPaths.At("docs", "c.md"));
 
         documents.Activate(third);
         Assert.Same(first, documents.GetNeighbour(1));
@@ -74,9 +74,9 @@ public sealed class OpenDocumentsViewModelTests
     public void SameFileNamesGetTheirParentFolderAsDisambiguator()
     {
         var documents = CreateDocuments();
-        var docsReadme = Open(documents, @"C:\project\docs\README.md");
-        var srcReadme = Open(documents, @"C:\project\src\README.md");
-        var vision = Open(documents, @"C:\project\docs\vision.md");
+        var docsReadme = Open(documents, TestPaths.At("project", "docs", "README.md"));
+        var srcReadme = Open(documents, TestPaths.At("project", "src", "README.md"));
+        var vision = Open(documents, TestPaths.At("project", "docs", "vision.md"));
 
         Assert.Equal("docs", docsReadme.Disambiguator);
         Assert.Equal("src", srcReadme.Disambiguator);
@@ -92,8 +92,8 @@ public sealed class OpenDocumentsViewModelTests
     {
         var documents = CreateDocuments();
         documents.AvailableWidth = 1000;
-        Open(documents, @"C:\docs\a.md");
-        Open(documents, @"C:\docs\b.md");
+        Open(documents, TestPaths.At("docs", "a.md"));
+        Open(documents, TestPaths.At("docs", "b.md"));
 
         Assert.Equal(2, documents.VisibleTabs.Count);
         Assert.Empty(documents.OverflowTabs);
@@ -105,9 +105,9 @@ public sealed class OpenDocumentsViewModelTests
     {
         var documents = CreateDocuments();
         documents.AvailableWidth = 400;
-        var first = Open(documents, @"C:\docs\first-document.md");
-        var second = Open(documents, @"C:\docs\second-document.md");
-        var third = Open(documents, @"C:\docs\third-document.md");
+        var first = Open(documents, TestPaths.At("docs", "first-document.md"));
+        var second = Open(documents, TestPaths.At("docs", "second-document.md"));
+        var third = Open(documents, TestPaths.At("docs", "third-document.md"));
         documents.Activate(first);
 
         Assert.Contains(first, documents.VisibleTabs);
@@ -121,9 +121,9 @@ public sealed class OpenDocumentsViewModelTests
     {
         var documents = CreateDocuments();
         documents.AvailableWidth = 400;
-        Open(documents, @"C:\docs\first-document.md");
-        Open(documents, @"C:\docs\second-document.md");
-        var third = Open(documents, @"C:\docs\third-document.md");
+        Open(documents, TestPaths.At("docs", "first-document.md"));
+        Open(documents, TestPaths.At("docs", "second-document.md"));
+        var third = Open(documents, TestPaths.At("docs", "third-document.md"));
 
         documents.Activate(third);
 
@@ -136,7 +136,7 @@ public sealed class OpenDocumentsViewModelTests
     {
         var documents = CreateDocuments();
         documents.AvailableWidth = 80;
-        var only = Open(documents, @"C:\docs\a-very-long-document-name.md");
+        var only = Open(documents, TestPaths.At("docs", "a-very-long-document-name.md"));
 
         Assert.Equal([only], documents.VisibleTabs);
     }
@@ -153,9 +153,9 @@ public sealed class OpenDocumentsViewModelTests
                 return Task.CompletedTask;
             });
 
-        var first = Open(documents, @"C:\docs\a.md");
-        var second = Open(documents, @"C:\docs\b.md");
-        var third = Open(documents, @"C:\docs\c.md");
+        var first = Open(documents, TestPaths.At("docs", "a.md"));
+        var second = Open(documents, TestPaths.At("docs", "b.md"));
+        var third = Open(documents, TestPaths.At("docs", "c.md"));
 
         await documents.CloseOthersCommand.ExecuteAsync(second);
 
@@ -165,9 +165,9 @@ public sealed class OpenDocumentsViewModelTests
     [Fact]
     public void TabWidthIsClampedToTheDesignRange()
     {
-        var shortTab = new DocumentTabViewModel(@"C:\a.md", "a.md");
+        var shortTab = new DocumentTabViewModel(TestPaths.At("a.md"), "a.md");
         var longTab = new DocumentTabViewModel(
-            @"C:\implementation-plan-folders-and-tabs-revision.md",
+            TestPaths.At("implementation-plan-folders-and-tabs-revision.md"),
             "implementation-plan-folders-and-tabs-revision.md");
 
         Assert.Equal(DocumentTabViewModel.MinimumWidth, shortTab.EstimateWidth());
