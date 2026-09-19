@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using MarkMello.Application.Abstractions;
+using MarkMello.Application.UseCases;
 using MarkMello.Domain.Diagnostics;
 using MarkMello.Presentation.Localization;
 using MarkMello.Presentation.Views;
@@ -52,6 +53,10 @@ public partial class App : global::Avalonia.Application
             window.Opened += (_, _) => metrics.Mark(StartupStage.FirstWindow);
 
             desktop.MainWindow = window;
+
+            // «Недавние» пишутся с паузой; на выходе запись идёт сразу и выход её дожидается.
+            var services = Services;
+            desktop.Exit += (_, _) => services.GetService<RecentItemsUseCase>()?.FlushBeforeExit(TimeSpan.FromSeconds(1));
         }
 
         WireFileActivationFromAvalonia();

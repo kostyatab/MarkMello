@@ -297,7 +297,7 @@ public partial class ViewerView : UserControl, IFindHost
             return;
         }
 
-        await vm.OpenPathAsync(e.TargetPath).ConfigureAwait(true);
+        await vm.OpenLinkedDocumentAsync(e.TargetPath).ConfigureAwait(true);
     }
 
     private void OnScrollChanged(object? sender, ScrollChangedEventArgs e)

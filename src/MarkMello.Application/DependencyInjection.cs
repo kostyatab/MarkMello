@@ -18,6 +18,7 @@ public static class DependencyInjection
         services.AddSingleton<ExpandFolderNodeUseCase>();
         services.AddSingleton<SearchWorkspaceFilesUseCase>();
         services.AddSingleton<WorkspaceFileOperationsUseCase>();
+        services.AddSingleton<RecentItemsUseCase>();
         services.AddSingleton<IDiagramRenderService, DiagramRenderService>();
 
         return services;

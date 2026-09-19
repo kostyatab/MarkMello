@@ -1,6 +1,7 @@
 using System.Text.Json;
 using MarkMello.Application.Abstractions;
 using MarkMello.Domain;
+using MarkMello.Domain.Recent;
 using MarkMello.Domain.Workspace;
 using MarkMello.Infrastructure.Serialization;
 
@@ -24,6 +25,7 @@ public sealed class JsonSettingsStore : ISettingsStore
     private WindowPlacement? _windowPlacement;
     private double _sidebarWidth = WorkspaceSidebarWidth.Default;
     private WorkspaceSessionState _session = WorkspaceSessionState.Empty;
+    private IReadOnlyList<RecentEntry> _recent = [];
 
     public JsonSettingsStore(string? settingsRootDirectory = null)
     {
@@ -209,6 +211,32 @@ public sealed class JsonSettingsStore : ISettingsStore
         return ValueTask.CompletedTask;
     }
 
+    public ValueTask<IReadOnlyList<RecentEntry>> LoadRecentAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        lock (_gate)
+        {
+            EnsureLoadedCore();
+            return ValueTask.FromResult(_recent);
+        }
+    }
+
+    public ValueTask SaveRecentAsync(IReadOnlyList<RecentEntry> entries, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentNullException.ThrowIfNull(entries);
+
+        lock (_gate)
+        {
+            EnsureLoadedCore();
+            _recent = RecentEntryList.Normalize(entries, OperatingSystem.IsWindows());
+            PersistCore();
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
     private void EnsureLoadedCore()
     {
         if (_isLoaded)
@@ -235,6 +263,7 @@ public sealed class JsonSettingsStore : ISettingsStore
                         _windowPlacement = WindowPlacement.Normalize(fileModel.WindowPlacement);
                         _sidebarWidth = WorkspaceSidebarWidth.Normalize(fileModel.SidebarWidth);
                         _session = fileModel.Session ?? WorkspaceSessionState.Empty;
+                        _recent = ParseRecent(fileModel.Recent);
                     }
                 }
             }
@@ -248,6 +277,7 @@ public sealed class JsonSettingsStore : ISettingsStore
             _windowPlacement = null;
             _sidebarWidth = WorkspaceSidebarWidth.Default;
             _session = WorkspaceSessionState.Empty;
+            _recent = [];
         }
         finally
         {
@@ -275,7 +305,10 @@ public sealed class JsonSettingsStore : ISettingsStore
                 _windowPlacement,
                 _windowBorder,
                 _sidebarWidth,
-                _session);
+                _session,
+                JsonSerializer.SerializeToElement(
+                    _recent,
+                    MarkMelloJsonSerializerContext.Default.IReadOnlyListRecentEntry));
             var json = JsonSerializer.Serialize(
                 fileModel,
                 MarkMelloJsonSerializerContext.Default.SettingsFileModel);
@@ -288,6 +321,33 @@ public sealed class JsonSettingsStore : ISettingsStore
             // Persistence is best-effort: reading must keep working even if the
             // config directory is unavailable or unwritable on this machine.
         }
+    }
+
+    /// <summary>
+    /// Записи разбираются по одной: неизвестный тип или битая дата в одной записи
+    /// выбрасывают только её. Поле не массив — список пуст.
+    /// </summary>
+    private static IReadOnlyList<RecentEntry> ParseRecent(JsonElement? recent)
+    {
+        if (recent is not { ValueKind: JsonValueKind.Array } array)
+        {
+            return [];
+        }
+
+        var entries = new List<RecentEntry?>();
+        foreach (var item in array.EnumerateArray())
+        {
+            try
+            {
+                entries.Add(item.Deserialize(MarkMelloJsonSerializerContext.Default.RecentEntry));
+            }
+            catch (JsonException)
+            {
+                // Битая запись пропускается, остальные остаются.
+            }
+        }
+
+        return RecentEntryList.Normalize(entries, OperatingSystem.IsWindows());
     }
 
     private static ThemeMode NormalizeTheme(ThemeMode theme)

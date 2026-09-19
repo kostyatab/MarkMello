@@ -36,6 +36,7 @@ public partial class ShellViewModel : ObservableObject
     private readonly IPlatformServices _platform;
     private readonly Func<IWorkspaceWatcher> _watcherFactory;
     private readonly IWindowLauncher _windowLauncher;
+    private readonly RecentItemsUseCase? _recentItems;
 
     /// <summary>
     /// Проверка существования пути при восстановлении сессии. Отдельно от файловой системы
@@ -95,7 +96,8 @@ public partial class ShellViewModel : ObservableObject
         IWindowLauncher windowLauncher,
         Func<string, bool>? fileExists = null,
         IImageSourceResolver? imageSourceResolver = null,
-        Func<IEditorPreviewScheduler>? previewSchedulerFactory = null)
+        Func<IEditorPreviewScheduler>? previewSchedulerFactory = null,
+        RecentItemsUseCase? recentItems = null)
     {
         _openDocument = openDocument;
         _saveDocument = saveDocument;
@@ -117,6 +119,7 @@ public partial class ShellViewModel : ObservableObject
         _fileExists = fileExists ?? (static path => File.Exists(path) || Directory.Exists(path));
         _imageSourceResolver = imageSourceResolver;
         _previewSchedulerFactory = previewSchedulerFactory;
+        _recentItems = recentItems;
         _aboutVersion = GetProductVersion();
         InitializeOpenDocuments();
         _localization.PropertyChanged += OnLocalizationChanged;
@@ -452,7 +455,7 @@ public partial class ShellViewModel : ObservableObject
     /// сочетания окна: пока вопрос не отвечен, вкладки не открываются, не закрываются и не
     /// переключаются, а второй диалог не встаёт поверх первого (ADR-0009 Rule 10).
     /// </summary>
-    public bool IsModalDialogOpen => IsDirtyPromptOpen || IsDeletePromptOpen;
+    public bool IsModalDialogOpen => IsDirtyPromptOpen || IsDeletePromptOpen || IsRecentRemovePromptOpen;
 
     public bool CanCheckForUpdates => !IsCheckingForUpdates && !IsDownloadingUpdate;
 
@@ -876,6 +879,20 @@ public partial class ShellViewModel : ObservableObject
 
     public async Task InitializeAsync()
     {
+        // Стартовый экран появляется только по завершении стартовой активации. Если она
+        // упала, окно всё равно должно его получить, а не остаться пустым навсегда.
+        try
+        {
+            await InitializeCoreAsync().ConfigureAwait(true);
+        }
+        finally
+        {
+            CompleteStartupActivation();
+        }
+    }
+
+    private async Task InitializeCoreAsync()
+    {
         ReadingPreferences = await _settings.LoadPreferencesAsync().ConfigureAwait(true);
 
         var savedLanguage = await _settings.LoadLanguageAsync().ConfigureAwait(true);
@@ -929,7 +946,7 @@ public partial class ShellViewModel : ObservableObject
             return;
         }
 
-        await OpenDocumentInTabAsync(path).ConfigureAwait(true);
+        await OpenAndRememberFileAsync(path).ConfigureAwait(true);
     }
 
     /// <summary>
@@ -1337,6 +1354,12 @@ public partial class ShellViewModel : ObservableObject
             return;
         }
 
+        if (IsRecentRemovePromptOpen)
+        {
+            CloseRecentRemovePrompt();
+            return;
+        }
+
         if (IsFindBarOpen)
         {
             IsFindBarOpen = false;
@@ -1389,9 +1412,17 @@ public partial class ShellViewModel : ObservableObject
     }
 
     public async Task OpenDroppedFileAsync(string path)
-        => await OpenDocumentInTabAsync(path).ConfigureAwait(true);
+        => await OpenAndRememberFileAsync(path).ConfigureAwait(true);
 
+    /// <summary>Файл от ОС или из командной строки — явное открытие, попадает в «Недавние».</summary>
     public async Task OpenPathAsync(string path)
+        => await OpenAndRememberFileAsync(path).ConfigureAwait(true);
+
+    /// <summary>
+    /// Переход по ссылке из документа — как клик в дереве: навигация внутри уже открытого,
+    /// а не выбор файла, поэтому в «Недавние» не пишется.
+    /// </summary>
+    public async Task OpenLinkedDocumentAsync(string path)
         => await OpenDocumentInTabAsync(path).ConfigureAwait(true);
 
     /// <summary>
@@ -1400,21 +1431,22 @@ public partial class ShellViewModel : ObservableObject
     /// (ADR-0009 Rule 3). Файл, который уже открыт с несохранёнными правками, просто
     /// показывается: перечитать его с диска значило бы молча выбросить эти правки.
     /// Под диалогом ничего не открывается — смена активной вкладки увела бы ответ на неё.
+    /// Возвращает, показан ли документ.
     /// </summary>
-    private async Task OpenDocumentInTabAsync(string path)
+    private async Task<bool> OpenDocumentInTabAsync(string path)
     {
         if (IsModalDialogOpen)
         {
-            return;
+            return false;
         }
 
         if (OpenDocuments.FindByPath(path) is { EditorSession.IsDirty: true } dirtyTab)
         {
             await ShowTabAsync(dirtyTab).ConfigureAwait(true);
-            return;
+            return true;
         }
 
-        await LoadDocumentAsync(path, preserveEditModeAfterLoad: false).ConfigureAwait(true);
+        return await LoadDocumentAsync(path, preserveEditModeAfterLoad: false).ConfigureAwait(true);
     }
 
     public bool TryQueueCloseRequest()
@@ -1665,10 +1697,11 @@ public partial class ShellViewModel : ObservableObject
         return Task.CompletedTask;
     }
 
-    private async Task LoadDocumentAsync(string path, bool preserveEditModeAfterLoad)
+    private async Task<bool> LoadDocumentAsync(string path, bool preserveEditModeAfterLoad)
     {
         var result = await _openDocument.ExecuteAsync(path).ConfigureAwait(true);
         await ApplyOpenResultAsync(result, preserveEditModeAfterLoad).ConfigureAwait(true);
+        return result is OpenDocumentResult.Success;
     }
 
     private async Task ApplyOpenResultAsync(OpenDocumentResult result, bool preserveEditModeAfterLoad)
@@ -1765,6 +1798,13 @@ public partial class ShellViewModel : ObservableObject
 
     private void ApplySavedDocument(MarkdownSource source)
     {
+        // Сохранение в новый путь — «Сохранить как» или первое сохранение черновика —
+        // явный выбор файла, как в диалоге «Открыть».
+        if (!PathsMatch(_currentPath, source.Path))
+        {
+            RememberRecentFile(source.Path);
+        }
+
         Document = source;
         RenderedDocument = _renderMarkdown.Execute(
             source.Content,

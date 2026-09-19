@@ -219,6 +219,48 @@
     <Setter Property="BorderBrush" Value="{DynamicResource MmTextSoftBrush}" />
   </Style>
 
+  <!-- «Недавние» стартового экрана (A-Welcome): ссылка «Очистить» и строки записей -->
+  <Style Selector="Button.recent-clear">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="4,2" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <!-- Нажатие держится, даже когда курсор ушёл с кнопки: без своего цвета Fluent
+       закрашивал её серым -->
+  <Style Selector="Button.recent-clear:pointerover /template/ ContentPresenter, Button.recent-clear:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+  </Style>
+
+  <!-- Строка «Недавних»: 46 px, наведение и фокус с клавиатуры — MmTabHoverBrush -->
+  <Style Selector="Button.recent-row">
+    <Setter Property="Height" Value="46" />
+    <Setter Property="Padding" Value="12,0" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Button.recent-row:pointerover /template/ ContentPresenter, Button.recent-row:focus-visible /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+  </Style>
+  <Style Selector="Button.recent-row:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTabActiveBrush}" />
+  </Style>
+  <!-- Пропавшая с диска запись приглушена; клик по ней спрашивает, убрать ли её -->
+  <Style Selector="Button.recent-row.missing Grid.recent-row-content">
+    <Setter Property="Opacity" Value="0.5" />
+  </Style>
+
   <!-- Keyboard hint pill -->
   <Style Selector="Border.kbd">
     <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
@@ -1185,6 +1227,17 @@
   </Style>
   <Style Selector="Border.mm-app-settings-update Button:disabled">
     <Setter Property="Opacity" Value="0.6" />
+  </Style>
+
+  <!-- Кнопки стартового экрана (A-Welcome) — те же кнопки диалогов, на 2 px выше.
+       Цвета, наведение, нажатие и кольцо фокуса берутся у mm-dialog-primary/secondary,
+       здесь только размер. У кнопки с иконкой слева отступ меньше, как в макете. -->
+  <Style Selector="Button.welcome-action.mm-dialog-primary, Button.welcome-action.mm-dialog-secondary">
+    <Setter Property="Height" Value="34" />
+    <Setter Property="Padding" Value="15,0" />
+  </Style>
+  <Style Selector="Button.welcome-action.with-icon">
+    <Setter Property="Padding" Value="12,0,14,0" />
   </Style>
 
   <Style Selector="TextBlock.mm-md-heading">

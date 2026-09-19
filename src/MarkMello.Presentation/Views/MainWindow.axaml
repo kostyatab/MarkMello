@@ -391,7 +391,15 @@
       <Panel Grid.Row="2"
              Name="BodyPanel">
 
-        <views:WelcomeView IsVisible="{Binding IsWelcome}" />
+        <!-- Стартовый экран строится, только когда окно на нём осталось: запуск с файлом
+             его не создаёт вовсе (быстрый путь, ADR-0009 Rule 12) -->
+        <ContentControl Content="{Binding WelcomeContent}">
+          <ContentControl.ContentTemplate>
+            <DataTemplate x:DataType="vm:ShellViewModel">
+              <views:WelcomeView />
+            </DataTemplate>
+          </ContentControl.ContentTemplate>
+        </ContentControl>
         <views:EmptyDocumentSurfaceView IsVisible="{Binding IsEmptyDocumentSurface}" />
         <ContentControl IsVisible="{Binding IsViewer}"
                         Content="{Binding ActiveDocumentContent}" />
@@ -575,6 +583,42 @@
                           IsVisible="{Binding !IsDeleteErrorPrompt}"
                           Content="{Binding DeleteConfirmLabel}"
                           Command="{Binding ConfirmDeleteCommand}" />
+                </Grid>
+              </StackPanel>
+            </views:ModalDialogFrame>
+          </DataTemplate>
+        </ContentControl.ContentTemplate>
+      </ContentControl>
+
+      <!-- Пропавшая запись «Недавних»: убрать её из списка — не потеря данных,
+           поэтому Enter сразу попадает в «Убрать» -->
+      <ContentControl Grid.Column="0"
+                      Grid.ColumnSpan="3"
+                      Content="{Binding RecentRemovePromptContent}">
+        <ContentControl.ContentTemplate>
+          <DataTemplate x:DataType="vm:ShellViewModel">
+            <views:ModalDialogFrame>
+              <StackPanel>
+                <TextBlock Classes="mm-dialog-title"
+                           Text="{Binding RecentRemovePromptTitle}" />
+                <TextBlock Classes="mm-dialog-body"
+                           Text="{Binding RecentRemovePromptMessage}" />
+                <Grid Classes="mm-dialog-buttons"
+                      ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+                  <Button Classes="mm-dialog-secondary"
+                          Grid.Column="{Binding RecentRemoveCancelColumn}"
+                          KeyboardNavigation.TabIndex="{Binding RecentRemoveCancelColumn}"
+                          Content="{Binding RecentRemoveCancel}"
+                          Command="{Binding CancelRecentRemoveCommand}"
+                          ToolTip.Tip="{Binding DialogCancelShortcut}" />
+                  <Button Classes="mm-dialog-primary"
+                          Grid.Column="{Binding RecentRemoveConfirmColumn}"
+                          KeyboardNavigation.TabIndex="{Binding RecentRemoveConfirmColumn}"
+                          IsDefault="True"
+                          views:ModalDialogFrame.IsInitialFocus="True"
+                          Content="{Binding RecentRemoveConfirm}"
+                          Command="{Binding ConfirmRecentRemoveCommand}"
+                          ToolTip.Tip="{Binding DialogConfirmShortcut}" />
                 </Grid>
               </StackPanel>
             </views:ModalDialogFrame>

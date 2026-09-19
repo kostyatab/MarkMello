@@ -1,4 +1,5 @@
 using MarkMello.Domain;
+using MarkMello.Domain.Recent;
 using MarkMello.Domain.Workspace;
 
 namespace MarkMello.Application.Abstractions;
@@ -33,4 +34,11 @@ public interface ISettingsStore
 
     ValueTask<WindowPlacement?> LoadWindowPlacementAsync(CancellationToken cancellationToken = default);
     ValueTask SaveWindowPlacementAsync(WindowPlacement? placement, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// «Недавние» стартового экрана, общие для всех окон (ADR-0009 Rule 8). Битое или
+    /// отсутствующее поле читается как пустой список и не сбрасывает остальные настройки.
+    /// </summary>
+    ValueTask<IReadOnlyList<RecentEntry>> LoadRecentAsync(CancellationToken cancellationToken = default);
+    ValueTask SaveRecentAsync(IReadOnlyList<RecentEntry> entries, CancellationToken cancellationToken = default);
 }

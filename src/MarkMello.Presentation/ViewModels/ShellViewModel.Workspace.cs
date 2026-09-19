@@ -120,6 +120,7 @@ public partial class ShellViewModel
         {
             if (_windowLauncher.TryFocusWindowWithFolder(path))
             {
+                RememberRecentFolder(path);
                 return;
             }
 
@@ -278,6 +279,7 @@ public partial class ShellViewModel
         Workspace = workspace;
         IsSidebarCollapsed = false;
         DismissOverlayError();
+        RememberRecentFolder(success.Folder.RootPath);
         UpdateWorkspaceCommandStates();
         AdoptOpenTabsIntoWorkspace();
 

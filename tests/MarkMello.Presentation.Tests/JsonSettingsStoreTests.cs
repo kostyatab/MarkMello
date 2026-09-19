@@ -1,4 +1,5 @@
 using MarkMello.Domain;
+using MarkMello.Domain.Recent;
 using MarkMello.Infrastructure.Settings;
 
 namespace MarkMello.Presentation.Tests;
@@ -181,6 +182,131 @@ public sealed class JsonSettingsStoreTests
         }
     }
 
+    [Fact]
+    public async Task RecentEntriesRoundTripAndKeepOtherSettings()
+    {
+        var rootDirectory = CreateTempDirectory();
+        try
+        {
+            var openedAt = new DateTimeOffset(2026, 9, 19, 10, 30, 0, TimeSpan.FromHours(3));
+            IReadOnlyList<RecentEntry> expected =
+            [
+                new(Path.Combine(rootDirectory, "notes.md"), RecentEntryKind.File, openedAt),
+                new(Path.Combine(rootDirectory, "docs"), RecentEntryKind.Folder, openedAt.AddDays(-1))
+            ];
+
+            var store = new JsonSettingsStore(rootDirectory);
+            await store.SaveThemeAsync(ThemeMode.Dark);
+            await store.SaveRecentAsync(expected);
+
+            var reloaded = new JsonSettingsStore(rootDirectory);
+
+            Assert.Equal(expected, await reloaded.LoadRecentAsync());
+            Assert.Equal(ThemeMode.Dark, await reloaded.LoadThemeAsync());
+        }
+        finally
+        {
+            DeleteDirectory(rootDirectory);
+        }
+    }
+
+    [Fact]
+    public async Task OldSettingsFileWithoutRecentLoadsEmptyList()
+    {
+        var rootDirectory = CreateTempDirectory();
+        const string json = """
+        {
+          "theme": "Dark",
+          "preferences": { "fontFamily": "Serif", "fontSize": 18, "lineHeight": 1.7, "contentWidth": 720 },
+          "language": "English"
+        }
+        """;
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(rootDirectory, "settings.json"), json);
+
+            var store = new JsonSettingsStore(rootDirectory);
+
+            Assert.Empty(await store.LoadRecentAsync());
+            Assert.Equal(ThemeMode.Dark, await store.LoadThemeAsync());
+        }
+        finally
+        {
+            DeleteDirectory(rootDirectory);
+        }
+    }
+
+    [Theory]
+    [InlineData("42")]
+    [InlineData("\"broken\"")]
+    [InlineData("{ \"path\": 1 }")]
+    public async Task BrokenRecentFieldLoadsEmptyListWithoutResettingOtherSettings(string recentJson)
+    {
+        var rootDirectory = CreateTempDirectory();
+        var json = $$"""
+        {
+          "theme": "Dark",
+          "preferences": { "fontFamily": "Serif", "fontSize": 18, "lineHeight": 1.7, "contentWidth": 720 },
+          "language": "Russian",
+          "recent": {{recentJson}}
+        }
+        """;
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(rootDirectory, "settings.json"), json);
+
+            var store = new JsonSettingsStore(rootDirectory);
+
+            Assert.Empty(await store.LoadRecentAsync());
+            Assert.Equal(ThemeMode.Dark, await store.LoadThemeAsync());
+            Assert.Equal(AppLanguage.Russian, await store.LoadLanguageAsync());
+        }
+        finally
+        {
+            DeleteDirectory(rootDirectory);
+        }
+    }
+
+    [Fact]
+    public async Task BrokenRecentEntryIsDroppedAndTheRestIsKept()
+    {
+        var rootDirectory = CreateTempDirectory();
+        var notes = Path.Combine(rootDirectory, "notes.md");
+        var json = $$"""
+        {
+          "theme": "Light",
+          "preferences": { "fontFamily": "Serif", "fontSize": 18, "lineHeight": 1.7, "contentWidth": 720 },
+          "language": "English",
+          "recent": [
+            { "path": {{JsonEncode(notes)}}, "kind": "File", "openedAt": "2026-09-19T10:00:00+00:00" },
+            { "path": "/tmp/x.md", "kind": "Spaceship", "openedAt": "2026-09-19T11:00:00+00:00" },
+            { "path": "relative.md", "kind": "File", "openedAt": "2026-09-19T12:00:00+00:00" }
+          ]
+        }
+        """;
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(rootDirectory, "settings.json"), json);
+
+            var store = new JsonSettingsStore(rootDirectory);
+            var recent = await store.LoadRecentAsync();
+
+            var entry = Assert.Single(recent);
+            Assert.Equal(notes, entry.Path);
+            Assert.Equal(RecentEntryKind.File, entry.Kind);
+        }
+        finally
+        {
+            DeleteDirectory(rootDirectory);
+        }
+    }
+
+    private static string JsonEncode(string value)
+        => System.Text.Json.JsonSerializer.Serialize(value, TestJsonContext.Default.String);
+
     private static string CreateTempDirectory()
     {
         var path = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", Guid.NewGuid().ToString("N"));
@@ -196,3 +322,6 @@ public sealed class JsonSettingsStoreTests
         }
     }
 }
+
+[System.Text.Json.Serialization.JsonSerializable(typeof(string))]
+internal sealed partial class TestJsonContext : System.Text.Json.Serialization.JsonSerializerContext;

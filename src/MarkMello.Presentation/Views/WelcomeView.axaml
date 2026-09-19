@@ -7,21 +7,27 @@
              xmlns:sys="using:System"
              mc:Ignorable="d"
              x:Class="MarkMello.Presentation.Views.WelcomeView"
-             x:DataType="vm:ShellViewModel">
+             x:DataType="vm:ShellViewModel"
+             FontFamily="{DynamicResource MmDocumentSansFontFamily}">
 
-  <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6"
-                MaxWidth="380">
+  <!-- Стартовый экран по A-Welcome (ADR-0009 Rule 8): три действия и «Недавние» под ними.
+       В низком окне содержимое прокручивается, а не обрезается сверху и снизу. -->
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto">
+    <StackPanel HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Width="480"
+                Margin="0,24">
 
-      <!-- App mark -->
       <Image Source="avares://MarkMello.Presentation/Assets/Images/logo.png"
-             Width="160" Height="160"
+             Width="104"
+             Height="104"
              HorizontalAlignment="Center"
-             Margin="0,0,0,-15" />
+             Margin="0,0,0,-4" />
 
-      <!-- Logo: "Mark" + accent "Mello", bold, no italic -->
+      <!-- «Mark» + акцентное «Mello», жирный, без курсива -->
       <TextBlock FontFamily="{DynamicResource MmDocumentSerifFontFamily}"
-                 FontSize="44"
+                 FontSize="40"
                  FontWeight="Bold"
                  HorizontalAlignment="Center"
                  Foreground="{DynamicResource MmTextBrush}">
@@ -34,39 +40,122 @@
                  FontFamily="{DynamicResource MmDocumentSansFontFamily}"
                  FontSize="13"
                  HorizontalAlignment="Center"
-                 Foreground="{DynamicResource MmTextFaintBrush}"
-                 Margin="0,0,0,28" />
+                 Foreground="{DynamicResource MmTextSoftBrush}"
+                 Margin="0,6,0,24" />
 
-      <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
-        <Button Classes="welcome-secondary"
-                Command="{Binding CreateNewDocumentCommand}">
+      <StackPanel Orientation="Horizontal"
+                  Spacing="8"
+                  HorizontalAlignment="Center">
+        <Button Classes="mm-dialog-primary welcome-action"
+                Content="{Binding WelcomeOpenFile}"
+                Command="{Binding OpenFileCommand}"
+                ToolTip.Tip="{Binding OpenFileShortcut}" />
+        <Button Classes="mm-dialog-secondary welcome-action with-icon"
+                Command="{Binding OpenFolderCommand}"
+                ToolTip.Tip="{Binding OpenFolderShortcut}">
           <StackPanel Orientation="Horizontal"
-                      Spacing="8">
-            <views:LucideIcon Data="{DynamicResource LucideFilePlusGeometry}"
-                              Width="14"
-                              Height="14" />
-            <TextBlock Text="{Binding WelcomeCreateMd}" />
-          </StackPanel>
-        </Button>
-        <Button Classes="welcome-secondary"
-                Command="{Binding OpenFolderCommand}">
-          <StackPanel Orientation="Horizontal"
-                      Spacing="8">
+                      Spacing="7">
             <views:LucideIcon Data="{DynamicResource LucideFolderOpenGeometry}"
                               Width="14"
                               Height="14" />
-            <TextBlock Text="{Binding WelcomeOpenFolder}" />
+            <TextBlock Text="{Binding WelcomeOpenFolder}"
+                       VerticalAlignment="Center" />
           </StackPanel>
         </Button>
-        <Button Classes="welcome-primary"
-                Content="{Binding WelcomeOpenFile}"
-                Command="{Binding OpenFileCommand}" />
+        <Button Classes="mm-dialog-secondary welcome-action with-icon"
+                Command="{Binding CreateNewDocumentCommand}"
+                ToolTip.Tip="{Binding NewDocumentTooltip}">
+          <StackPanel Orientation="Horizontal"
+                      Spacing="7">
+            <views:LucideIcon Data="{DynamicResource LucideFilePlusGeometry}"
+                              Width="14"
+                              Height="14" />
+            <TextBlock Text="{Binding WelcomeNewDocument}"
+                       VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
       </StackPanel>
 
-      <!-- Hotkey hint -->
-      <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center"
-                  Margin="0,28,0,0">
-        <!-- ⌘ O на macOS, Ctrl O на Windows и Linux: каждая клавиша — своя плашка -->
+      <!-- «Недавние»: пока список пуст, блока нет -->
+      <Border Name="RecentBlock"
+              IsVisible="{Binding HasRecentItems}"
+              Margin="0,36,0,0"
+              Padding="6"
+              CornerRadius="12"
+              Background="{DynamicResource MmTabBrush}">
+        <StackPanel>
+          <Grid ColumnDefinitions="*,Auto"
+                Margin="12,6">
+            <TextBlock Text="{Binding RecentTitle}"
+                       FontSize="11"
+                       FontWeight="SemiBold"
+                       LetterSpacing="0.55"
+                       VerticalAlignment="Center"
+                       Foreground="{DynamicResource MmTextSoftBrush}" />
+            <Button Grid.Column="1"
+                    Name="RecentClearButton"
+                    Classes="recent-clear"
+                    Content="{Binding RecentClear}"
+                    Command="{Binding ClearRecentItemsCommand}" />
+          </Grid>
+
+          <ItemsControl Name="RecentList"
+                        ItemsSource="{Binding RecentItems}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:RecentItemViewModel">
+                <Button Classes="recent-row"
+                        Classes.missing="{Binding IsMissing}"
+                        Command="{Binding OpenCommand}"
+                        ToolTip.Tip="{Binding Path}">
+                  <Grid Classes="recent-row-content"
+                        ColumnDefinitions="Auto,*,Auto"
+                        ColumnSpacing="12">
+                    <Panel>
+                      <views:LucideIcon Data="{DynamicResource LucideFileTextGeometry}"
+                                        IsVisible="{Binding IsFile}"
+                                        Foreground="{DynamicResource MmTextSoftBrush}"
+                                        Width="16"
+                                        Height="16" />
+                      <views:LucideIcon Data="{DynamicResource LucideFolderGeometry}"
+                                        IsVisible="{Binding IsFolder}"
+                                        Foreground="{DynamicResource MmTextSoftBrush}"
+                                        Width="16"
+                                        Height="16" />
+                    </Panel>
+                    <StackPanel Grid.Column="1"
+                                Spacing="1"
+                                VerticalAlignment="Center">
+                      <!-- Высоты строк — как у Inter в макете (line-height: normal), иначе
+                           имя и папка слипаются -->
+                      <TextBlock Text="{Binding Name}"
+                                 FontSize="13.5"
+                                 LineHeight="16"
+                                 FontWeight="Medium"
+                                 TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding Location}"
+                                 FontSize="12"
+                                 LineHeight="15"
+                                 Foreground="{DynamicResource MmTextSoftBrush}"
+                                 TextTrimming="PrefixCharacterEllipsis" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="2"
+                               Text="{Binding OpenedLabel}"
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource MmTextSoftBrush}" />
+                  </Grid>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+
+      <!-- ⌘ O на macOS, Ctrl O на Windows и Linux: каждая клавиша — своя плашка -->
+      <StackPanel Orientation="Horizontal"
+                  Spacing="6"
+                  HorizontalAlignment="Center"
+                  Margin="0,24,0,0">
         <ItemsControl ItemsSource="{Binding OpenFileShortcutKeys}">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
@@ -82,12 +171,12 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
         <TextBlock Text="{Binding WelcomeDropHint}"
-                   FontSize="11"
-                   Foreground="{DynamicResource MmTextFaintBrush}"
+                   FontSize="12"
+                   Foreground="{DynamicResource MmTextSoftBrush}"
                    VerticalAlignment="Center" />
       </StackPanel>
 
     </StackPanel>
-  </Grid>
+  </ScrollViewer>
 
 </UserControl>

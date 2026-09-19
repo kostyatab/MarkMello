@@ -182,6 +182,20 @@ internal sealed class InMemorySettingsStore : ISettingsStore
         WindowPlacement = MarkMello.Domain.WindowPlacement.Normalize(placement);
         return ValueTask.CompletedTask;
     }
+
+    public IReadOnlyList<MarkMello.Domain.Recent.RecentEntry> Recent { get; set; } = [];
+
+    public ValueTask<IReadOnlyList<MarkMello.Domain.Recent.RecentEntry>> LoadRecentAsync(
+        CancellationToken cancellationToken = default)
+        => ValueTask.FromResult(Recent);
+
+    public ValueTask SaveRecentAsync(
+        IReadOnlyList<MarkMello.Domain.Recent.RecentEntry> entries,
+        CancellationToken cancellationToken = default)
+    {
+        Recent = entries;
+        return ValueTask.CompletedTask;
+    }
 }
 
 internal sealed class RecordingThemeService : IThemeService

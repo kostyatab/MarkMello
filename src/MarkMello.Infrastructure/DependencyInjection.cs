@@ -41,6 +41,7 @@ public static class DependencyInjection
         services.AddSingleton<Func<IWorkspaceWatcher>>(static _ => static () => new FileSystemWorkspaceWatcher());
         services.AddSingleton<ISettingsStore, JsonSettingsStore>();
         services.AddSingleton<IPlatformServices, DefaultPlatformServices>();
+        services.AddSingleton<IPathExistenceProbe, FileSystemPathExistenceProbe>();
         services.AddSingleton(_ => new CommandLineActivation(commandLineArgs));
         services.AddSingleton<ICommandLineActivation>(sp => sp.GetRequiredService<CommandLineActivation>());
         services.AddSingleton<IFileActivationPublisher>(sp => sp.GetRequiredService<CommandLineActivation>());

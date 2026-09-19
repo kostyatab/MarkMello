@@ -476,12 +476,11 @@ public partial class ShellViewModel
     /// не отвечает на вопрос «какая это папка».
     /// </summary>
     private string BuildTabTooltip(string? path)
-    {
-        if (string.IsNullOrEmpty(path))
-        {
-            return string.Empty;
-        }
+        => string.IsNullOrEmpty(path) ? string.Empty : AbbreviateHomePath(path);
 
+    /// <summary>Домашняя папка в начале пути сокращается до <c>~</c> — в тултипах и «Недавних».</summary>
+    private string AbbreviateHomePath(string path)
+    {
         var home = Path.TrimEndingDirectorySeparator(_platform.HomeDirectory);
         if (home.Length == 0)
         {

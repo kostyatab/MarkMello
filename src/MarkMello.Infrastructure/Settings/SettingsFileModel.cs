@@ -1,3 +1,4 @@
+using System.Text.Json;
 using MarkMello.Domain;
 using MarkMello.Domain.Workspace;
 
@@ -10,4 +11,7 @@ internal sealed record SettingsFileModel(
     WindowPlacement? WindowPlacement,
     WindowBorderMode WindowBorder = WindowBorderMode.Auto,
     double? SidebarWidth = null,
-    WorkspaceSessionState? Session = null);
+    WorkspaceSessionState? Session = null,
+    // Сырой JSON, а не список записей: битая запись «Недавних» не должна ронять чтение
+    // всего файла вместе с темой и параметрами чтения. Разбирает JsonSettingsStore.
+    JsonElement? Recent = null);

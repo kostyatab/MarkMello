@@ -115,7 +115,11 @@ public partial class ShellViewModel
         nameof(TitleBarMinimize),
         nameof(TitleBarRestore),
         nameof(UpdatesSectionTitle),
-        nameof(WelcomeCreateMd),
+        nameof(WelcomeNewDocument),
+        nameof(RecentTitle),
+        nameof(RecentClear),
+        nameof(RecentRemoveConfirm),
+        nameof(RecentRemoveCancel),
         nameof(EmptySurfaceHint),
         nameof(EmptySurfaceTitle),
         nameof(ExternalChangeKeep),
@@ -307,7 +311,11 @@ public partial class ShellViewModel
 
     /// <summary>Подзаголовок блока обновлений в окне «Настройки» — капителью, как на холсте.</summary>
     public string UpdatesSectionTitle => _localization["UpdatesLabel"].ToUpper(_localization.Culture);
-    public string WelcomeCreateMd => _localization["WelcomeCreateMd"];
+    public string WelcomeNewDocument => _localization["WelcomeNewDocument"];
+    public string RecentTitle => _localization["RecentTitle"];
+    public string RecentClear => _localization["RecentClear"];
+    public string RecentRemoveConfirm => _localization["RecentRemoveConfirm"];
+    public string RecentRemoveCancel => _localization["RecentRemoveCancel"];
     public string WelcomeDropHint => _localization["WelcomeDropHint"];
     public string WelcomeOpenFile => _localization["WelcomeOpenFile"];
     public string WelcomeOpenFolder => _localization["WelcomeOpenFolder"];
@@ -379,6 +387,12 @@ public partial class ShellViewModel
         }
 
         RefreshLocalizedProperties();
+
+        // Даты строк «Недавних» («сегодня», «15 сент.») зависят от языка.
+        if (_isRecentListShown)
+        {
+            _ = RebuildRecentRowsAsync();
+        }
     }
 
     partial void OnLanguageChanged(AppLanguage value)
