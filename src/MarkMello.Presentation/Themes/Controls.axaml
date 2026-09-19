@@ -293,6 +293,7 @@
     <Setter Property="CornerRadius" Value="4" />
     <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
     <!-- Кольцо фокуса с клавиатуры — акцентом через 1 px, как у кнопок диалогов,
          а не чёрная рамка Fluent -->
     <Setter Property="FocusAdorner">
