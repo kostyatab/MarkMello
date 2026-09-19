@@ -9,7 +9,8 @@
              x:DataType="vm:ShellViewModel">
   <!-- Окно «Настройки» по A-AppSettings (ADR-0009 Rule 7): одна страница на общей рамке
        диалогов. Тема, шрифт и размер живут в карточке Aa, здесь — редкие настройки. -->
-  <views:ModalDialogFrame Classes="mm-app-settings">
+  <views:ModalDialogFrame Classes="mm-app-settings"
+                          ShowsInitialFocusRing="False">
     <StackPanel>
       <Grid Classes="mm-app-settings-head"
             ColumnDefinitions="*,Auto">

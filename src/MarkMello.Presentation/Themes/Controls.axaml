@@ -293,6 +293,17 @@
     <Setter Property="CornerRadius" Value="4" />
     <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
+    <!-- Кольцо фокуса с клавиатуры — акцентом через 1 px, как у кнопок диалогов,
+         а не чёрная рамка Fluent -->
+    <Setter Property="FocusAdorner">
+      <FocusAdornerTemplate>
+        <Border Margin="-3"
+                BorderThickness="2"
+                CornerRadius="7"
+                BorderBrush="{DynamicResource MmAccentBrush}"
+                AdornerLayer.IsClipEnabled="False" />
+      </FocusAdornerTemplate>
+    </Setter>
   </Style>
   <Style Selector="Button.mm-settings-close:pressed /template/ ContentPresenter, Button.mm-settings-close:disabled /template/ ContentPresenter">
     <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />

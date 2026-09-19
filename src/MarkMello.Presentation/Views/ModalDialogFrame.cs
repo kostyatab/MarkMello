@@ -30,7 +30,21 @@ public sealed class ModalDialogFrame : ContentControl
     public static readonly StyledProperty<object?> FocusResetKeyProperty =
         AvaloniaProperty.Register<ModalDialogFrame, object?>(nameof(FocusResetKey));
 
+    /// <summary>
+    /// Показывать ли кольцо на начальной кнопке. У вопроса оно говорит, что сработает по
+    /// Enter; окну «Настройки» подтверждать нечего — фокус встаёт внутрь карточки без кольца,
+    /// а кольцо появится, когда пользователь сам пойдёт по кнопкам Tab'ом.
+    /// </summary>
+    public static readonly StyledProperty<bool> ShowsInitialFocusRingProperty =
+        AvaloniaProperty.Register<ModalDialogFrame, bool>(nameof(ShowsInitialFocusRing), defaultValue: true);
+
     private IInputElement? _focusBeforeDialog;
+
+    public bool ShowsInitialFocusRing
+    {
+        get => GetValue(ShowsInitialFocusRingProperty);
+        set => SetValue(ShowsInitialFocusRingProperty, value);
+    }
 
     public object? FocusResetKey
     {
@@ -80,11 +94,12 @@ public sealed class ModalDialogFrame : ContentControl
     }
 
     /// <summary>
-    /// Фокус как с клавиатуры: кольцо сразу показывает, что сработает по Enter.
+    /// Фокус как с клавиатуры: кольцо сразу показывает, что сработает по Enter. Без кольца —
+    /// обычный фокус: Tab всё равно ходит внутри карточки.
     /// </summary>
     private void FocusInitialElement()
         => this.GetVisualDescendants()
             .OfType<InputElement>()
             .FirstOrDefault(static element => GetIsInitialFocus(element) && element.IsEffectivelyVisible)
-            ?.Focus(NavigationMethod.Tab);
+            ?.Focus(ShowsInitialFocusRing ? NavigationMethod.Tab : NavigationMethod.Unspecified);
 }
