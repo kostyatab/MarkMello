@@ -480,7 +480,8 @@ public partial class MainWindow : Window
 
     private void OnWindowPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (_viewModel.IsDirtyPromptOpen)
+        // Клик по скриму модального диалога не закрывает карточки под ним.
+        if (_viewModel.IsModalDialogOpen)
         {
             return;
         }

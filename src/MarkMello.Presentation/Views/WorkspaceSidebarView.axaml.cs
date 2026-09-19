@@ -31,6 +31,14 @@ public partial class WorkspaceSidebarView : UserControl
 
     public static void SetIsActiveRow(TreeViewItem item, bool value) => item.SetValue(IsActiveRowProperty, value);
 
+    /// <summary>Строка ждёт ответа в диалоге удаления — так же переносится на контейнер.</summary>
+    public static readonly AttachedProperty<bool> IsPendingDeleteRowProperty =
+        AvaloniaProperty.RegisterAttached<WorkspaceSidebarView, TreeViewItem, bool>("IsPendingDeleteRow");
+
+    public static bool GetIsPendingDeleteRow(TreeViewItem item) => item.GetValue(IsPendingDeleteRowProperty);
+
+    public static void SetIsPendingDeleteRow(TreeViewItem item, bool value) => item.SetValue(IsPendingDeleteRowProperty, value);
+
     public WorkspaceSidebarView()
     {
         InitializeComponent();

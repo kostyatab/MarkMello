@@ -60,7 +60,7 @@ public sealed partial class WorkspaceViewModel : ObservableObject
     /// <summary>
     /// Всё, что нужно открытой папке: use cases и обратные вызовы shell.
     /// Свёрнуто в один тип, чтобы конструктор не превращался в список из восьми аргументов.
-    /// <see cref="AreFileOperationsBlocked"/> — shell ждёт ответа о несохранённых правках:
+    /// <see cref="AreFileOperationsBlocked"/> — shell ждёт ответа в модальном диалоге:
     /// создание, переименование и дублирование в это время не начинаются.
     /// </summary>
     public sealed record WorkspaceDependencies(

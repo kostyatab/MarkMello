@@ -105,6 +105,11 @@
   <!-- arrow-left -->
   <StreamGeometry x:Key="LucideArrowLeftGeometry">M12 19l-7-7 7-7 M19 12H5</StreamGeometry>
 
+  <!-- ======================= Модальные диалоги ======================= -->
+
+  <!-- circle-alert — ошибка сохранения в диалоге несохранённых правок -->
+  <StreamGeometry x:Key="LucideCircleAlertGeometry">M2 12A10 10 0 1 0 22 12A10 10 0 1 0 2 12Z M12 8v4 M12 16h.01</StreamGeometry>
+
   <!-- ======================= Тулбар редактора ======================= -->
 
   <!-- bold -->

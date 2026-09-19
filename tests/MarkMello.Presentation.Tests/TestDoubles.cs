@@ -61,8 +61,13 @@ internal sealed class StubFilePicker : IFilePicker
 
     public int PickFolderCallCount { get; private set; }
 
+    public int PickMarkdownFileCallCount { get; private set; }
+
     public Task<string?> PickMarkdownFileAsync(CancellationToken cancellationToken = default)
-        => Task.FromResult(OpenPath);
+    {
+        PickMarkdownFileCallCount++;
+        return Task.FromResult(OpenPath);
+    }
 
     public Task<string?> PickFolderAsync(CancellationToken cancellationToken = default)
     {

@@ -76,6 +76,8 @@
            данных не дотягивается: признак переносится на контейнер свойством. -->
       <Setter Property="views:WorkspaceSidebarView.IsActiveRow"
               Value="{CompiledBinding IsActiveDocument, DataType=vm:FileTreeNodeViewModel}" />
+      <Setter Property="views:WorkspaceSidebarView.IsPendingDeleteRow"
+              Value="{CompiledBinding IsPendingDelete, DataType=vm:FileTreeNodeViewModel}" />
       <Setter Property="MinHeight" Value="28" />
       <Setter Property="Padding" Value="0" />
       <Setter Property="CornerRadius" Value="7" />
@@ -127,6 +129,10 @@
     <Style Selector="TreeView.mm-tree TreeViewItem /template/ Border#PART_LayoutRoot">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="CornerRadius" Value="7" />
+      <!-- Рамка есть у каждой строки, прозрачная: подсветка удаляемой меняет только её
+           цвет, и имя в строке не сдвигается на пиксель, пока открыт диалог. -->
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="Transparent" />
     </Style>
     <Style Selector="TreeView.mm-tree TreeViewItem:pointerover /template/ Border#PART_LayoutRoot">
       <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
@@ -141,6 +147,13 @@
          и выделения, чтобы держаться и под курсором. -->
     <Style Selector="TreeView.mm-tree TreeViewItem[(views|WorkspaceSidebarView.IsActiveRow)=True] /template/ Border#PART_LayoutRoot">
       <Setter Property="Background" Value="{DynamicResource MmTabActiveBrush}" />
+    </Style>
+    <!-- Удаляемая строка (A-Delete): пока открыт диалог, она подсвечена заливкой наведения
+         и рамкой — меню уже закрылось, а видеть, о чём вопрос, надо. Стоит после стиля
+         текущего файла и перекрывает его: удалить можно и открытый. -->
+    <Style Selector="TreeView.mm-tree TreeViewItem[(views|WorkspaceSidebarView.IsPendingDeleteRow)=True] /template/ Border#PART_LayoutRoot">
+      <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
     </Style>
     <Style Selector="TreeView.mm-tree TreeViewItem:selected /template/ ContentPresenter#PART_HeaderPresenter">
       <Setter Property="Background" Value="Transparent" />

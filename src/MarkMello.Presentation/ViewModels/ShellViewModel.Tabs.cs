@@ -101,7 +101,7 @@ public partial class ShellViewModel
     /// </summary>
     private async Task ActivateTabAsync(DocumentTabViewModel tab)
     {
-        if (IsDirtyPromptOpen || ReferenceEquals(OpenDocuments.ActiveTab, tab))
+        if (IsModalDialogOpen || ReferenceEquals(OpenDocuments.ActiveTab, tab))
         {
             return;
         }
@@ -155,6 +155,26 @@ public partial class ShellViewModel
     }
 
     /// <summary>
+    /// Показывает уже открытую вкладку, ничего в ней не перечитывая. Активная остаётся как
+    /// есть — только уходит экран ошибки, если его поверх неё оставило неудачное открытие.
+    /// </summary>
+    private async Task ShowTabAsync(DocumentTabViewModel tab)
+    {
+        if (!ReferenceEquals(OpenDocuments.ActiveTab, tab))
+        {
+            await RestoreTabAsync(tab).ConfigureAwait(true);
+            return;
+        }
+
+        if (State == ViewState.LoadError)
+        {
+            State = ViewState.Viewing;
+            ClearLoadError();
+            RefreshWindowTitle();
+        }
+    }
+
+    /// <summary>
     /// Закрытие вкладки. Грязная вкладка проходит через существующий диалог
     /// «Сохранить / Не сохранять / Отмена», причём «Отмена» оставляет вкладку на месте.
     /// Под уже открытым диалогом не закрывается ни одна вкладка (×, Ctrl+W): грязную
@@ -162,7 +182,7 @@ public partial class ShellViewModel
     /// </summary>
     private async Task CloseTabAsync(DocumentTabViewModel tab)
     {
-        if (IsDirtyPromptOpen)
+        if (IsModalDialogOpen)
         {
             return;
         }
@@ -375,7 +395,7 @@ public partial class ShellViewModel
         Func<DocumentTabViewModel, bool> scope,
         Func<Task> action)
     {
-        if (IsDirtyPromptOpen)
+        if (IsModalDialogOpen)
         {
             return;
         }

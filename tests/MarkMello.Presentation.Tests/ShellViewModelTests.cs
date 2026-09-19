@@ -2,6 +2,7 @@ using MarkMello.Application.UseCases;
 using MarkMello.Application.Updates;
 using MarkMello.Domain;
 using MarkMello.Domain.Diagnostics;
+using MarkMello.Domain.Workspace;
 using MarkMello.Presentation.Localization;
 using MarkMello.Presentation.ViewModels;
 using System.Globalization;
@@ -51,7 +52,8 @@ public sealed class ShellViewModelTests
 
         Assert.True(harness.ViewModel.IsDirtyPromptOpen);
         Assert.True(harness.ViewModel.IsEditMode);
-        Assert.Contains("reading mode", harness.ViewModel.DirtyPromptMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("Save changes to \"one.md\"?", harness.ViewModel.DirtyPromptTitle);
+        Assert.Equal("Otherwise your changes will be lost when you leave editing.", harness.ViewModel.DirtyPromptMessage);
 
         await harness.ViewModel.ConfirmDirtyDiscardCommand.ExecuteAsync(null);
 
@@ -61,8 +63,13 @@ public sealed class ShellViewModelTests
         Assert.Equal("alpha beta", harness.ViewModel.Document!.Content);
     }
 
+    /// <summary>
+    /// Перетащенный файл встаёт в свою вкладку, а правки активной остаются в её сессии —
+    /// спрашивать о них нечего (ADR-0009 Rule 3). Раньше тут поднимался диалог, и
+    /// «Не сохранять» стирало правки зря.
+    /// </summary>
     [Fact]
-    public async Task OpenDroppedFileAsyncWhenEditorIsDirtyDefersNavigationUntilDiscard()
+    public async Task OpenDroppedFileAsyncWhenEditorIsDirtyOpensItInANewTabWithoutAsking()
     {
         var harness = CreateHarness();
         var firstPath = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "one.md");
@@ -73,19 +80,18 @@ public sealed class ShellViewModelTests
         await harness.ViewModel.OpenPathAsync(firstPath);
         await harness.ViewModel.ToggleEditModeCommand.ExecuteAsync(null);
         harness.ViewModel.EditorSession!.SourceText = "first changed";
+        var first = harness.ViewModel.OpenDocuments.ActiveTab!;
 
         await harness.ViewModel.OpenDroppedFileAsync(secondPath);
-
-        Assert.True(harness.ViewModel.IsDirtyPromptOpen);
-        Assert.Equal("one.md", harness.ViewModel.FileName);
-        Assert.Equal("first", harness.ViewModel.Document!.Content);
-
-        await harness.ViewModel.ConfirmDirtyDiscardCommand.ExecuteAsync(null);
 
         Assert.False(harness.ViewModel.IsDirtyPromptOpen);
         Assert.False(harness.ViewModel.IsEditMode);
         Assert.Equal("two.md", harness.ViewModel.FileName);
         Assert.Equal("second", harness.ViewModel.Document!.Content);
+        Assert.Equal(2, harness.ViewModel.OpenDocuments.Tabs.Count);
+        Assert.True(first.IsDirty);
+        Assert.True(first.IsEditMode);
+        Assert.Equal("first changed", first.EditorSession!.SourceText);
     }
 
     [Fact]
@@ -503,7 +509,8 @@ public sealed class ShellViewModelTests
         await harness.ViewModel.CloseFileCommand.ExecuteAsync(null);
 
         Assert.True(harness.ViewModel.IsDirtyPromptOpen);
-        Assert.Contains("closing the current document", harness.ViewModel.DirtyPromptMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("Save changes to \"Untitled.md\"?", harness.ViewModel.DirtyPromptTitle);
+        Assert.Equal("Otherwise your changes will be lost when the tab closes.", harness.ViewModel.DirtyPromptMessage);
         Assert.True(harness.ViewModel.IsEditMode);
 
         await harness.ViewModel.ConfirmDirtyDiscardCommand.ExecuteAsync(null);
@@ -513,6 +520,185 @@ public sealed class ShellViewModelTests
         Assert.Null(harness.ViewModel.Document);
         Assert.Null(harness.ViewModel.EditorSession);
         Assert.Equal("MarkMello", harness.ViewModel.WindowTitle);
+    }
+
+    /// <summary>
+    /// Заголовок называет файл, а текст — когда пропадут правки, если их не сохранить: у каждого
+    /// действия, которое закрывает или перечитывает вкладку, своя формулировка. Раньше заголовок
+    /// был один на всё — «Есть несохранённые изменения», — и чьи это правки, не говорилось.
+    /// </summary>
+    [Theory]
+    [InlineData("tab", "Otherwise your changes will be lost when the tab closes.")]
+    [InlineData("folder", "Otherwise your changes will be lost when the folder closes.")]
+    [InlineData("reload", "Otherwise your changes will be lost on reload.")]
+    [InlineData("edit", "Otherwise your changes will be lost when you leave editing.")]
+    [InlineData("window", "Otherwise your changes will be lost when you quit MarkMello.")]
+    public async Task DirtyPromptNamesTheFileAndSaysWhenTheChangesAreLost(string action, string expectedMessage)
+    {
+        var root = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "notes");
+        var readmePath = Path.Combine(root, "README.md");
+        var fileSystem = new FakeWorkspaceFileSystem();
+        fileSystem.AddDirectory(root, WorkspaceEntry.ForFile(readmePath, "README.md"));
+        var harness = CreateHarness(fileSystem);
+        harness.Loader.Sources[readmePath] = CreateSource(readmePath, "# readme");
+
+        await harness.ViewModel.OpenFolderPathAsync(root);
+        await harness.ViewModel.ToggleEditModeCommand.ExecuteAsync(null);
+        harness.ViewModel.EditorSession!.SourceText = "# readme edited";
+        Assert.Null(harness.ViewModel.DirtyPromptContent);
+
+        switch (action)
+        {
+            case "tab":
+                await harness.ViewModel.CloseActiveTabCommand.ExecuteAsync(null);
+                break;
+            case "folder":
+                await harness.ViewModel.CloseFolderCommand.ExecuteAsync(null);
+                break;
+            case "reload":
+                await harness.ViewModel.ReloadCommand.ExecuteAsync(null);
+                break;
+            case "edit":
+                await harness.ViewModel.ToggleEditModeCommand.ExecuteAsync(null);
+                break;
+            case "window":
+                Assert.True(harness.ViewModel.TryQueueCloseRequest());
+                break;
+        }
+
+        Assert.True(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.Same(harness.ViewModel, harness.ViewModel.DirtyPromptContent);
+        Assert.Equal("Save changes to \"README.md\"?", harness.ViewModel.DirtyPromptTitle);
+        Assert.Equal(expectedMessage, harness.ViewModel.DirtyPromptMessage);
+
+        harness.ViewModel.ClearErrorCommand.Execute(null);
+
+        Assert.False(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.Null(harness.ViewModel.DirtyPromptContent);
+        Assert.Equal("# readme edited", harness.ViewModel.EditorSession!.SourceText);
+    }
+
+    /// <summary>
+    /// Порядок кнопок — как у платформы (ADR-0009 Rule 10). Колонка 0 — у левого края,
+    /// колонка 1 — распорка, дальше кнопки у правого края по порядку.
+    /// </summary>
+    [Theory]
+    [InlineData("macOS", new[] { "Discard", "Cancel", "Save" }, "Discard")]
+    [InlineData("Windows", new[] { "Save", "Discard", "Cancel" }, null)]
+    [InlineData("Linux", new[] { "Save", "Discard", "Cancel" }, null)]
+    public void DirtyPromptButtonsFollowThePlatformOrder(string platformName, string[] expectedOrder, string? leftButton)
+    {
+        var viewModel = CreateHarness(platformName: platformName).ViewModel;
+
+        var buttons = new[]
+        {
+            (Column: viewModel.DirtyPromptSaveColumn, Label: viewModel.DirtyPromptSave),
+            (Column: viewModel.DirtyPromptDiscardColumn, Label: viewModel.DirtyPromptDiscard),
+            (Column: viewModel.DirtyPromptCancelColumn, Label: viewModel.DirtyPromptCancel)
+        };
+
+        Assert.Equal(expectedOrder, buttons.OrderBy(static button => button.Column).Select(static button => button.Label));
+
+        // У левого края (колонка 0) на macOS стоит только «Не сохранять», остальные — за распоркой.
+        Assert.Equal(leftButton, buttons.Where(static button => button.Column == 0).Select(static button => button.Label).SingleOrDefault());
+        Assert.All(
+            buttons.Where(static button => button.Column != 0),
+            static button => Assert.True(button.Column > 1));
+    }
+
+    [Theory]
+    [InlineData("macOS", new[] { "Cancel", "Delete" })]
+    [InlineData("Windows", new[] { "Delete", "Cancel" })]
+    [InlineData("Linux", new[] { "Delete", "Cancel" })]
+    public void DeletePromptButtonsFollowThePlatformOrder(string platformName, string[] expectedOrder)
+    {
+        var viewModel = CreateHarness(platformName: platformName).ViewModel;
+
+        var buttons = new[]
+        {
+            (Column: viewModel.DeleteCancelColumn, Label: viewModel.DeleteCancelLabel),
+            (Column: viewModel.DeleteConfirmColumn, Label: viewModel.DeleteConfirmLabel)
+        };
+
+        Assert.Equal(expectedOrder, buttons.OrderBy(static button => button.Column).Select(static button => button.Label));
+        Assert.All(buttons, static button => Assert.True(button.Column > 1));
+    }
+
+    /// <summary>Подсказки клавиш в тултипах кнопок: Enter, Esc и ⌘⌫ / Ctrl+Backspace.</summary>
+    [Theory]
+    [InlineData("macOS", "↵", "⎋", "⌘⌫")]
+    [InlineData("Windows", "Enter", "Esc", "Ctrl+Backspace")]
+    [InlineData("Linux", "Enter", "Esc", "Ctrl+Backspace")]
+    public void DialogButtonTooltipsNameTheirKeys(string platformName, string confirm, string cancel, string discard)
+    {
+        var viewModel = CreateHarness(platformName: platformName).ViewModel;
+
+        Assert.Equal(confirm, viewModel.DialogConfirmShortcut);
+        Assert.Equal(cancel, viewModel.DialogCancelShortcut);
+        Assert.Equal(discard, viewModel.DirtyPromptDiscardShortcut);
+    }
+
+    /// <summary>
+    /// Ошибка сохранения показывается внутри карточки, а диалог остаётся открытым: вкладку
+    /// с несохранёнными правками нельзя закрыть, пока их не удалось записать.
+    /// </summary>
+    [Fact]
+    public async Task FailedSaveFromTheDirtyPromptKeepsItOpenWithTheError()
+    {
+        var harness = CreateHarness();
+        var path = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "one.md");
+        harness.Loader.Sources[path] = CreateSource(path, "first");
+
+        await harness.ViewModel.OpenPathAsync(path);
+        await harness.ViewModel.ToggleEditModeCommand.ExecuteAsync(null);
+        harness.ViewModel.EditorSession!.SourceText = "first changed";
+        var tab = harness.ViewModel.OpenDocuments.ActiveTab!;
+        await harness.ViewModel.CloseActiveTabCommand.ExecuteAsync(null);
+        harness.DocumentSaver.NextException = new UnauthorizedAccessException("blocked");
+
+        await harness.ViewModel.ConfirmDirtySaveCommand.ExecuteAsync(null);
+
+        Assert.True(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.True(harness.ViewModel.HasDirtyPromptError);
+        Assert.Equal($"Access denied: {path}", harness.ViewModel.DirtyPromptErrorMessage);
+        Assert.Equal("Save changes to \"one.md\"?", harness.ViewModel.DirtyPromptTitle);
+        Assert.Same(tab, Assert.Single(harness.ViewModel.OpenDocuments.Tabs));
+
+        await harness.ViewModel.ConfirmDirtySaveCommand.ExecuteAsync(null);
+
+        Assert.False(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.False(harness.ViewModel.HasDirtyPromptError);
+        Assert.Empty(harness.ViewModel.OpenDocuments.Tabs);
+        Assert.Equal("first changed", Assert.Single(harness.DocumentSaver.Saves).Content);
+    }
+
+    /// <summary>
+    /// Esc отвечает диалогу, а не карточке поиска под ним: раньше первый Esc закрывал поиск,
+    /// а вопрос о правках оставался висеть.
+    /// </summary>
+    [Fact]
+    public async Task EscapeCancelsTheDirtyPromptBeforeClosingTheFindCard()
+    {
+        var harness = CreateHarness();
+        var path = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "one.md");
+        harness.Loader.Sources[path] = CreateSource(path, "first");
+
+        await harness.ViewModel.OpenPathAsync(path);
+        await harness.ViewModel.ToggleEditModeCommand.ExecuteAsync(null);
+        harness.ViewModel.EditorSession!.SourceText = "first changed";
+        harness.ViewModel.ToggleFindBarCommand.Execute(null);
+        await harness.ViewModel.CloseActiveTabCommand.ExecuteAsync(null);
+        Assert.True(harness.ViewModel.IsFindBarOpen);
+        Assert.True(harness.ViewModel.IsDirtyPromptOpen);
+
+        harness.ViewModel.ClearErrorCommand.Execute(null);
+
+        Assert.False(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.True(harness.ViewModel.IsFindBarOpen);
+
+        harness.ViewModel.ClearErrorCommand.Execute(null);
+
+        Assert.False(harness.ViewModel.IsFindBarOpen);
     }
 
     [Fact]

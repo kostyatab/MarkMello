@@ -260,6 +260,21 @@ public partial class ShellViewModel
     public string DirtyPromptCancel => _localization["DirtyPromptCancel"];
     public string DirtyPromptDiscard => _localization["DirtyPromptDiscard"];
     public string DirtyPromptSave => _localization["DirtyPromptSave"];
+
+    /// <summary>
+    /// Порядок кнопок диалога правок — как у платформы (ADR-0009 Rule 10). Кнопки встают
+    /// в колонки ряда: 0 — у левого края, 1 — распорка, 2–4 — у правого по порядку.
+    /// На macOS «Не сохранять» стоит слева особняком, справа «Отмена» и крайняя
+    /// «Сохранить»; на Windows и Linux все справа, основная первой: «Сохранить»,
+    /// «Не сохранять», «Отмена».
+    /// </summary>
+    public int DirtyPromptDiscardColumn => UsesMacOSDialogOrder ? 0 : 3;
+
+    public int DirtyPromptCancelColumn => UsesMacOSDialogOrder ? 3 : 4;
+
+    public int DirtyPromptSaveColumn => UsesMacOSDialogOrder ? 4 : 2;
+
+    private bool UsesMacOSDialogOrder => string.Equals(_platform.PlatformName, "macOS", StringComparison.Ordinal);
     public string DragDropHint => _localization["DragDropHint"];
     public string EditToggleTooltip => _localization.Format("EditToggleTooltip", CommandShortcut(Key.E));
 
@@ -343,6 +358,16 @@ public partial class ShellViewModel
 
     /// <summary>Сочетание настроек приложения — плашка в нижней строке карточки Aa.</summary>
     public string SettingsShortcut => CommandShortcut(Key.OemComma);
+
+    /// <summary>
+    /// Клавиши диалогов — в тултипах их кнопок: Enter подтверждает, Esc отменяет,
+    /// ⌘⌫ (Ctrl+Backspace) — «Не сохранять».
+    /// </summary>
+    public string DialogConfirmShortcut => KeyShortcut(Key.Enter);
+
+    public string DialogCancelShortcut => KeyShortcut(Key.Escape);
+
+    public string DirtyPromptDiscardShortcut => CommandShortcut(Key.Back);
 
     /// <summary>Клавиши «Открыть файл» по отдельности — на стартовом экране каждая в своей плашке.</summary>
     public IReadOnlyList<string> OpenFileShortcutKeys
@@ -478,16 +503,20 @@ public partial class ShellViewModel
         RefreshDirtyPromptTexts();
     }
 
+    /// <summary>
+    /// Заголовок называет файл — грязных вкладок может быть несколько, — а текст говорит,
+    /// когда пропадут правки, если их не сохранить.
+    /// </summary>
     private void RefreshDirtyPromptTexts()
     {
         DirtyPromptTitle = _dirtyPromptKind is null
             ? string.Empty
-            : _localization["DirtyPromptTitle"];
+            : Format("DirtyPromptTitle", _dirtyPromptTab?.Title ?? FileName);
 
         DirtyPromptMessage = _dirtyPromptKind switch
         {
-            PendingDirtyActionKind.OpenFile => _localization["DirtyPromptOpenFile"],
             PendingDirtyActionKind.CloseFile => _localization["DirtyPromptCloseFile"],
+            PendingDirtyActionKind.CloseFolder => _localization["DirtyPromptCloseFolder"],
             PendingDirtyActionKind.Reload => _localization["DirtyPromptReload"],
             PendingDirtyActionKind.LeaveEditMode => _localization["DirtyPromptLeaveEditMode"],
             PendingDirtyActionKind.CloseWindow => _localization["DirtyPromptCloseWindow"],

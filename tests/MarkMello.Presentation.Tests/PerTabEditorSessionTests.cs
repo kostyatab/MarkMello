@@ -13,6 +13,8 @@ namespace MarkMello.Presentation.Tests;
 public sealed class PerTabEditorSessionTests
 {
     private static readonly string NotesFolder = TestPaths.At("notes");
+    private static readonly string NotesReadme = TestPaths.At("notes", "README.md");
+    private static readonly string NotesTodo = TestPaths.At("notes", "todo.md");
 
     [Fact]
     public async Task EditingSurvivesSwitchingToAnotherTabAndBack()
@@ -616,6 +618,140 @@ public sealed class PerTabEditorSessionTests
             static tab => tab.Path == @"C:\docs\third.md");
     }
 
+    /// <summary>
+    /// ⌘O, ⌘N, перетаскивание и клик в дереве открывают документ в своей вкладке и ни о чём
+    /// не спрашивают: правки активной остаются в её сессии (ADR-0009 Rule 3). Раньше
+    /// поднимался диалог, и «Не сохранять» стирало правки, которым ничего не грозило.
+    /// </summary>
+    [Theory]
+    [InlineData("open")]
+    [InlineData("new")]
+    [InlineData("drop")]
+    [InlineData("tree")]
+    public async Task OpeningADocumentDoesNotAskAboutTheActiveTabsChanges(string entryPoint)
+    {
+        var harness = await CreateHarnessWithDirtyFolderReadmeAsync();
+        var readme = harness.ViewModel.OpenDocuments.ActiveTab!;
+
+        await OpenAsync(harness, entryPoint, NotesTodo);
+
+        Assert.False(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.Equal(2, harness.ViewModel.OpenDocuments.Tabs.Count);
+        Assert.NotSame(readme, harness.ViewModel.OpenDocuments.ActiveTab);
+        Assert.True(readme.IsDirty);
+        Assert.True(readme.IsEditMode);
+        Assert.Equal("# readme edited", readme.EditorSession!.SourceText);
+    }
+
+    /// <summary>
+    /// Файл, который уже открыт с несохранёнными правками, не перечитывается с диска, а просто
+    /// показывается: без вопроса перечитывание молча выбросило бы правки.
+    /// </summary>
+    [Theory]
+    [InlineData("open")]
+    [InlineData("drop")]
+    [InlineData("tree")]
+    [InlineData("system")]
+    public async Task OpeningAFileWithUnsavedChangesShowsItsTabWithoutRereading(string entryPoint)
+    {
+        var harness = await CreateHarnessWithDirtyFolderReadmeAsync();
+        var readme = harness.ViewModel.OpenDocuments.ActiveTab!;
+        await harness.ViewModel.OpenPathAsync(NotesTodo);
+        harness.Loader.Sources[NotesReadme] = new MarkdownSource(NotesReadme, "README.md", "# readme changed on disk");
+
+        await OpenAsync(harness, entryPoint, NotesReadme);
+
+        Assert.False(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.Equal(2, harness.ViewModel.OpenDocuments.Tabs.Count);
+        Assert.Same(readme, harness.ViewModel.OpenDocuments.ActiveTab);
+        Assert.True(harness.ViewModel.IsEditMode);
+        Assert.Equal("# readme edited", harness.ViewModel.EditorSession!.SourceText);
+        Assert.Equal("# readme", harness.ViewModel.Document!.Content);
+    }
+
+    /// <summary>Неудачное открытие оставило ошибку поверх вкладки с правками — её показ убирает ошибку.</summary>
+    [Fact]
+    public async Task OpeningTheActiveFileWithUnsavedChangesDismissesALoadError()
+    {
+        var harness = await CreateHarnessWithDirtyFolderReadmeAsync();
+        await harness.ViewModel.OpenDroppedFileAsync(TestPaths.At("notes", "missing.md"));
+        Assert.Equal(ViewState.LoadError, harness.ViewModel.State);
+
+        await harness.ViewModel.OpenDroppedFileAsync(NotesReadme);
+
+        Assert.Equal(ViewState.Viewing, harness.ViewModel.State);
+        Assert.Equal("# readme edited", harness.ViewModel.EditorSession!.SourceText);
+    }
+
+    /// <summary>
+    /// Под диалогом о правках ничего не открывается: новая вкладка стала бы активной, и
+    /// ответ достался бы ей (MM-36). Окно выбора файла при этом даже не показывается.
+    /// </summary>
+    [Theory]
+    [InlineData("open")]
+    [InlineData("drop")]
+    [InlineData("tree")]
+    public async Task OpeningADocumentDoesNothingWhileTheDirtyPromptIsOpen(string entryPoint)
+    {
+        var harness = await CreateHarnessWithDirtyFolderReadmeAsync();
+        var readme = harness.ViewModel.OpenDocuments.ActiveTab!;
+        await harness.ViewModel.CloseActiveTabCommand.ExecuteAsync(null);
+        Assert.True(harness.ViewModel.IsDirtyPromptOpen);
+
+        await OpenAsync(harness, entryPoint, NotesTodo);
+
+        Assert.True(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.Same(readme, Assert.Single(harness.ViewModel.OpenDocuments.Tabs));
+        Assert.Same(readme, harness.ViewModel.OpenDocuments.ActiveTab);
+        Assert.Equal(0, harness.Picker.PickMarkdownFileCallCount);
+        Assert.Equal("# readme edited", harness.ViewModel.EditorSession!.SourceText);
+    }
+
+    private static async Task OpenAsync(EditorTestHarness harness, string entryPoint, string path)
+    {
+        switch (entryPoint)
+        {
+            case "open":
+                harness.Picker.OpenPath = path;
+                await harness.ViewModel.OpenFileCommand.ExecuteAsync(null);
+                break;
+
+            case "new":
+                await harness.ViewModel.CreateNewDocumentCommand.ExecuteAsync(null);
+                break;
+
+            case "drop":
+                await harness.ViewModel.OpenDroppedFileAsync(path);
+                break;
+
+            case "tree":
+                var workspace = harness.ViewModel.Workspace!;
+                await workspace.OpenNodeCommand.ExecuteAsync(workspace.Roots.Single(row => row.Path == path));
+                break;
+
+            case "system":
+                harness.Activation.RaiseFileActivated(path);
+                break;
+
+            default:
+                throw new ArgumentOutOfRangeException(nameof(entryPoint), entryPoint, null);
+        }
+    }
+
+    /// <summary>Папка notes: README.md открывается сам (ADR-0007 Rule 2) и правится.</summary>
+    private static async Task<EditorTestHarness> CreateHarnessWithDirtyFolderReadmeAsync()
+    {
+        var harness = CreateHarness();
+
+        await harness.ViewModel.OpenFolderPathAsync(NotesFolder);
+        Assert.Equal(NotesReadme, harness.ViewModel.CurrentDocumentPath);
+
+        harness.ViewModel.ToggleEditModeCommand.Execute(null);
+        harness.ViewModel.EditorSession!.SourceText = "# readme edited";
+
+        return harness;
+    }
+
     private static void AssertOnlySecondTabKeepsItsChanges(EditorTestHarness harness, DocumentTabViewModel second)
     {
         Assert.False(harness.ViewModel.IsDirtyPromptOpen);
@@ -671,17 +807,21 @@ public sealed class PerTabEditorSessionTests
         loader.Sources[@"C:\docs\first.md"] = new MarkdownSource(@"C:\docs\first.md", "first.md", "# first");
         loader.Sources[@"C:\docs\second.md"] = new MarkdownSource(@"C:\docs\second.md", "second.md", "# second");
         loader.Sources[@"C:\docs\third.md"] = new MarkdownSource(@"C:\docs\third.md", "third.md", "# third");
+        loader.Sources[NotesReadme] = new MarkdownSource(NotesReadme, "README.md", "# readme");
+        loader.Sources[NotesTodo] = new MarkdownSource(NotesTodo, "todo.md", "# todo");
 
         var fileSystem = new FakeWorkspaceFileSystem();
         fileSystem.AddDirectory(
             NotesFolder,
-            WorkspaceEntry.ForFile(TestPaths.At("notes", "README.md"), "README.md"));
+            WorkspaceEntry.ForFile(NotesReadme, "README.md"),
+            WorkspaceEntry.ForFile(NotesTodo, "todo.md"));
         var activation = new StubCommandLineActivation();
+        var picker = new StubFilePicker();
 
         var viewModel = new ShellViewModel(
             new OpenDocumentUseCase(loader),
             new SaveDocumentUseCase(new RecordingDocumentSaver()),
-            new StubFilePicker(),
+            picker,
             activation,
             new LocalizationService(AppLanguage.English),
             new InMemorySettingsStore(),
@@ -705,11 +845,12 @@ public sealed class PerTabEditorSessionTests
                     return scheduler;
                 });
 
-        return new EditorTestHarness(loader, activation, viewModel);
+        return new EditorTestHarness(loader, activation, picker, viewModel);
     }
 
     private sealed record EditorTestHarness(
         StubDocumentLoader Loader,
         StubCommandLineActivation Activation,
+        StubFilePicker Picker,
         ShellViewModel ViewModel);
 }

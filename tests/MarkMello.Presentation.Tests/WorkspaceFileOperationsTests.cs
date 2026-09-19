@@ -215,6 +215,78 @@ public sealed class WorkspaceFileOperationsTests
         Assert.Contains(harness.Workspace.Roots, candidate => candidate.Name == "first.md");
     }
 
+    /// <summary>
+    /// Esc закрывает диалог удаления, как «Отмена». Раньше Esc о нём не знал: карточка
+    /// оставалась на экране, пока не нажмёшь кнопку.
+    /// </summary>
+    [Fact]
+    public async Task EscapeClosesTheDeletePrompt()
+    {
+        var harness = await CreateAsync();
+        var node = harness.Workspace.Roots.Single(candidate => candidate.Name == "first.md");
+
+        await harness.Workspace.RequestDeleteCommand.ExecuteAsync(node);
+        harness.ViewModel.ClearErrorCommand.Execute(null);
+
+        Assert.False(harness.ViewModel.IsDeletePromptOpen);
+        Assert.Null(harness.ViewModel.DeletePromptContent);
+        Assert.False(node.IsPendingDelete);
+        Assert.Empty(harness.Platform.TrashedPaths);
+        Assert.Contains(harness.Workspace.Roots, candidate => candidate.Name == "first.md");
+    }
+
+    /// <summary>
+    /// Контекстное меню к моменту вопроса уже закрылось, поэтому удаляемая строка держит
+    /// подсветку, пока диалог открыт, — и отпускает её при любом ответе.
+    /// </summary>
+    [Fact]
+    public async Task RowStaysHighlightedWhileTheDeletePromptIsOpen()
+    {
+        var harness = await CreateAsync();
+        var node = harness.Workspace.Roots.Single(candidate => candidate.Name == "first.md");
+        var folder = harness.Workspace.Roots.Single(candidate => candidate.Name == "adr");
+
+        await harness.Workspace.RequestDeleteCommand.ExecuteAsync(node);
+
+        Assert.True(node.IsPendingDelete);
+        Assert.False(folder.IsPendingDelete);
+
+        harness.ViewModel.CancelDeleteCommand.Execute(null);
+
+        Assert.False(node.IsPendingDelete);
+
+        await harness.Workspace.RequestDeleteCommand.ExecuteAsync(folder);
+        await harness.ViewModel.ConfirmDeleteCommand.ExecuteAsync(null);
+
+        Assert.False(folder.IsPendingDelete);
+        Assert.False(harness.ViewModel.IsDeletePromptOpen);
+    }
+
+    /// <summary>Сбой корзины — та же карточка с одной кнопкой «Закрыть» вместо «Отмены».</summary>
+    [Fact]
+    public async Task FailedDeleteLeavesOnlyAClosingButton()
+    {
+        var harness = await CreateAsync();
+        harness.Platform.TrashResult = TrashResult.Failed;
+        var node = harness.Workspace.Roots.Single(candidate => candidate.Name == "first.md");
+
+        await harness.Workspace.RequestDeleteCommand.ExecuteAsync(node);
+
+        Assert.Equal("Cancel", harness.ViewModel.DeleteCancelLabel);
+
+        await harness.ViewModel.ConfirmDeleteCommand.ExecuteAsync(null);
+
+        Assert.True(harness.ViewModel.IsDeleteErrorPrompt);
+        Assert.Equal("Couldn't delete \"first.md\"", harness.ViewModel.DeletePromptTitle);
+        Assert.Equal("Close", harness.ViewModel.DeleteCancelLabel);
+
+        harness.ViewModel.CancelDeleteCommand.Execute(null);
+
+        Assert.False(harness.ViewModel.IsDeletePromptOpen);
+        Assert.False(node.IsPendingDelete);
+        Assert.Equal("Cancel", harness.ViewModel.DeleteCancelLabel);
+    }
+
     [Fact]
     public async Task NonEmptyFolderMentionsHowManyItemsGo()
     {
@@ -235,12 +307,19 @@ public sealed class WorkspaceFileOperationsTests
         var node = harness.Workspace.Roots.Single(candidate => candidate.Name == "first.md");
 
         await harness.Workspace.RequestDeleteCommand.ExecuteAsync(node);
+
+        Assert.Equal("Delete", harness.ViewModel.DeleteConfirmLabel);
+
         await harness.ViewModel.ConfirmDeleteCommand.ExecuteAsync(null);
 
-        // Ничего не удалено: диалог остался и сменил текст на безвозвратное удаление.
+        // Ничего не удалено: диалог остался и сменил текст на безвозвратное удаление,
+        // а кнопка называет потерю прямо.
         Assert.True(harness.ViewModel.IsDeletePromptOpen);
         Assert.True(harness.ViewModel.IsPermanentDeletePrompt);
         Assert.Contains("permanently", harness.ViewModel.DeletePromptMessage);
+        Assert.Equal("Delete permanently", harness.ViewModel.DeleteConfirmLabel);
+        Assert.Equal("Cancel", harness.ViewModel.DeleteCancelLabel);
+        Assert.True(node.IsPendingDelete);
         Assert.Contains(harness.Workspace.Roots, candidate => candidate.Name == "first.md");
 
         await harness.ViewModel.ConfirmDeleteCommand.ExecuteAsync(null);
@@ -337,43 +416,113 @@ public sealed class WorkspaceFileOperationsTests
     }
 
     /// <summary>
-    /// Удаление, подтверждённое поверх диалога о правках, закрыло спрошенную вкладку.
-    /// Раньше ответ доставался вкладке, ставшей активной: «Сохранить» записывало её правки
-    /// в файл, «Не сохранять» их стирало. Теперь любая кнопка работает как «Отмена».
+    /// Под диалогом удаления сочетания окна не открывают, не закрывают и не переключают
+    /// вкладки, а второй диалог не встаёт поверх первого: скрим держит мышь, а клавиатура
+    /// раньше проходила — ⌘O показывал выбор файла поверх вопроса, ⌘W на грязной вкладке
+    /// поднимал второй скрим. Здесь же — MM-36: подтверждённое удаление больше не может
+    /// закрыть вкладку, о которой в этот момент спрашивает диалог правок.
+    /// </summary>
+    [Theory]
+    [InlineData("open")]
+    [InlineData("new")]
+    [InlineData("drop")]
+    [InlineData("close-tab")]
+    [InlineData("next-tab")]
+    [InlineData("close-folder")]
+    public async Task WindowShortcutsDoNothingWhileTheDeletePromptIsOpen(string shortcut)
+    {
+        var harness = await CreateAsync();
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "adr", "adr_0001.md"));
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
+        harness.ViewModel.ToggleEditModeCommand.Execute(null);
+        harness.ViewModel.EditorSession!.SourceText = "# first edited";
+        var tabs = harness.ViewModel.OpenDocuments.Tabs.ToList();
+        var first = harness.ViewModel.OpenDocuments.ActiveTab!;
+
+        var file = harness.Workspace.Roots.Single(static row => row.Name == "first.md");
+        await harness.Workspace.RequestDeleteCommand.ExecuteAsync(file);
+        Assert.True(harness.ViewModel.IsModalDialogOpen);
+
+        switch (shortcut)
+        {
+            case "open":
+                harness.Picker.OpenPath = TestPaths.At("docs", "meeting.md");
+                await harness.ViewModel.OpenFileCommand.ExecuteAsync(null);
+                break;
+            case "new":
+                await harness.ViewModel.CreateNewDocumentCommand.ExecuteAsync(null);
+                break;
+            case "drop":
+                await harness.ViewModel.OpenDroppedFileAsync(TestPaths.At("docs", "meeting.md"));
+                break;
+            case "close-tab":
+                await harness.ViewModel.CloseActiveTabCommand.ExecuteAsync(null);
+                break;
+            case "next-tab":
+                await harness.ViewModel.ActivateNextTabCommand.ExecuteAsync(null);
+                break;
+            case "close-folder":
+                await harness.ViewModel.CloseFolderCommand.ExecuteAsync(null);
+                break;
+        }
+
+        Assert.True(harness.ViewModel.IsDeletePromptOpen);
+        Assert.False(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.Equal(0, harness.Picker.PickMarkdownFileCallCount);
+        Assert.Equal(tabs, harness.ViewModel.OpenDocuments.Tabs);
+        Assert.Same(first, harness.ViewModel.OpenDocuments.ActiveTab);
+        Assert.NotNull(harness.ViewModel.Workspace);
+
+        // Сам диалог удаления по-прежнему отвечает: файл удалён, его вкладка закрылась.
+        await harness.ViewModel.ConfirmDeleteCommand.ExecuteAsync(null);
+
+        Assert.False(harness.ViewModel.IsModalDialogOpen);
+        Assert.Single(harness.ViewModel.OpenDocuments.Tabs);
+    }
+
+    /// <summary>Окно не закрывается, пока открыт диалог удаления, — как и под вопросом о правках.</summary>
+    [Fact]
+    public async Task WindowStaysOpenWhileTheDeletePromptIsOpen()
+    {
+        var harness = await CreateAsync();
+        var closeRequests = 0;
+        harness.ViewModel.CloseRequested += (_, _) => closeRequests++;
+        await harness.Workspace.RequestDeleteCommand.ExecuteAsync(harness.Workspace.Roots.Single(static row => row.Name == "first.md"));
+
+        Assert.True(harness.ViewModel.TryQueueCloseRequest());
+
+        Assert.Equal(0, closeRequests);
+        Assert.True(harness.ViewModel.IsDeletePromptOpen);
+    }
+
+    /// <summary>
+    /// Файл, который ОС прислала под диалогом удаления, ждёт ответа и открывается после него —
+    /// а не теряется и не открывается под скримом.
     /// </summary>
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task AnswerAboutAClosedTabWorksAsCancel(bool save)
+    public async Task FilesFromTheSystemOpenAfterTheDeletePromptIsAnswered(bool confirm)
     {
         var harness = await CreateAsync();
-        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "adr", "adr_0001.md"));
-        harness.ViewModel.ToggleEditModeCommand.Execute(null);
-        harness.ViewModel.EditorSession!.SourceText = "# adr edited";
-        var adr = harness.ViewModel.OpenDocuments.ActiveTab!;
-
-        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
-        harness.ViewModel.ToggleEditModeCommand.Execute(null);
-        harness.ViewModel.EditorSession!.SourceText = "# first edited";
-
         var file = harness.Workspace.Roots.Single(static row => row.Name == "first.md");
         await harness.Workspace.RequestDeleteCommand.ExecuteAsync(file);
-        await harness.ViewModel.CloseActiveTabCommand.ExecuteAsync(null);
-        Assert.True(harness.ViewModel.IsDirtyPromptOpen);
 
-        await harness.ViewModel.ConfirmDeleteCommand.ExecuteAsync(null);
-        Assert.Same(adr, Assert.Single(harness.ViewModel.OpenDocuments.Tabs));
+        harness.Activation.RaiseFileActivated(TestPaths.At("docs", "meeting.md"));
 
-        var answer = save
-            ? harness.ViewModel.ConfirmDirtySaveCommand
-            : harness.ViewModel.ConfirmDirtyDiscardCommand;
-        await answer.ExecuteAsync(null);
+        Assert.Empty(harness.ViewModel.OpenDocuments.Tabs);
 
-        Assert.False(harness.ViewModel.IsDirtyPromptOpen);
-        Assert.Empty(harness.Saver.Saves);
-        Assert.Same(adr, harness.ViewModel.OpenDocuments.ActiveTab);
-        Assert.True(adr.IsDirty);
-        Assert.Equal("# adr edited", harness.ViewModel.EditorSession!.SourceText);
+        if (confirm)
+        {
+            await harness.ViewModel.ConfirmDeleteCommand.ExecuteAsync(null);
+        }
+        else
+        {
+            harness.ViewModel.ClearErrorCommand.Execute(null);
+        }
+
+        Assert.False(harness.ViewModel.IsDeletePromptOpen);
+        Assert.Equal(TestPaths.At("docs", "meeting.md"), harness.ViewModel.CurrentDocumentPath);
     }
 
     [Fact]
@@ -408,11 +557,14 @@ public sealed class WorkspaceFileOperationsTests
 
         var saver = new RecordingDocumentSaver();
 
+        var picker = new StubFilePicker();
+        var activation = new StubCommandLineActivation();
+
         var viewModel = new ShellViewModel(
             new OpenDocumentUseCase(loader),
             new SaveDocumentUseCase(saver),
-            new StubFilePicker(),
-            new StubCommandLineActivation(),
+            picker,
+            activation,
             new LocalizationService(AppLanguage.English),
             new InMemorySettingsStore(),
             new RecordingThemeService(),
@@ -429,13 +581,15 @@ public sealed class WorkspaceFileOperationsTests
 
         await viewModel.OpenFolderPathAsync(Root);
 
-        return new OperationsHarness(fileSystem, platform, saver, viewModel, viewModel.Workspace!);
+        return new OperationsHarness(fileSystem, platform, saver, picker, activation, viewModel, viewModel.Workspace!);
     }
 
     private sealed record OperationsHarness(
         FakeWorkspaceFileSystem FileSystem,
         FakePlatformServices Platform,
         RecordingDocumentSaver Saver,
+        StubFilePicker Picker,
+        StubCommandLineActivation Activation,
         ShellViewModel ViewModel,
         WorkspaceViewModel Workspace);
 }

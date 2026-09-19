@@ -128,11 +128,11 @@ public partial class ShellViewModel : ObservableObject
     /// after startup. On macOS Finder sends an Apple Event to the already-
     /// running process; cold-start activations come back through
     /// <see cref="ICommandLineActivation.GetActivationFilePath"/> instead.
-    /// Под диалогом несохранённых правок файл ждёт его окончательного закрытия.
+    /// Под модальным диалогом файл ждёт его окончательного закрытия.
     /// </summary>
     private async void OnFileActivated(object? sender, FileActivationEventArgs e)
     {
-        if (IsDirtyPromptOpen)
+        if (IsModalDialogOpen)
         {
             (_deferredActivationPaths ??= new Queue<string>()).Enqueue(e.Path);
             return;
@@ -166,7 +166,7 @@ public partial class ShellViewModel : ObservableObject
             return;
         }
 
-        while (!IsDirtyPromptOpen && paths.TryDequeue(out var path))
+        while (!IsModalDialogOpen && paths.TryDequeue(out var path))
         {
             await OpenActivatedFileAsync(path).ConfigureAwait(true);
         }
@@ -255,6 +255,7 @@ public partial class ShellViewModel : ObservableObject
     private bool _isReaderScrolled;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DirtyPromptContent))]
     private bool _isDirtyPromptOpen;
 
     [ObservableProperty]
@@ -396,6 +397,16 @@ public partial class ShellViewModel : ObservableObject
     public string AboutLicense => _aboutLicense;
 
     public bool HasDirtyPromptError => !string.IsNullOrWhiteSpace(DirtyPromptErrorMessage);
+
+    /// <summary>Карточка несохранённых правок строится в момент вопроса, а не живёт скрытой с запуска.</summary>
+    public object? DirtyPromptContent => IsDirtyPromptOpen ? this : null;
+
+    /// <summary>
+    /// Открыт модальный диалог — о правках или об удалении. Скрим держит мышь, а эта проверка —
+    /// сочетания окна: пока вопрос не отвечен, вкладки не открываются, не закрываются и не
+    /// переключаются, а второй диалог не встаёт поверх первого (ADR-0009 Rule 10).
+    /// </summary>
+    public bool IsModalDialogOpen => IsDirtyPromptOpen || IsDeletePromptOpen;
 
     public bool CanCheckForUpdates => !IsCheckingForUpdates && !IsDownloadingUpdate;
 
@@ -833,11 +844,27 @@ public partial class ShellViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Файл открывается в своей вкладке, поэтому о правках активной не спрашивает
+    /// (ADR-0009 Rule 3). Под открытым диалогом и выбирать нечего: открыть файл всё равно нельзя.
+    /// </summary>
     [RelayCommand]
     private async Task OpenFileAsync()
     {
         CloseOverlayCore();
-        await RunWithDirtyCheckAsync(PendingDirtyActionKind.OpenFile, OpenFileCoreAsync).ConfigureAwait(true);
+
+        if (IsModalDialogOpen)
+        {
+            return;
+        }
+
+        var path = await _filePicker.PickMarkdownFileAsync().ConfigureAwait(true);
+        if (string.IsNullOrEmpty(path))
+        {
+            return;
+        }
+
+        await OpenDocumentInTabAsync(path).ConfigureAwait(true);
     }
 
     /// <summary>
@@ -850,7 +877,7 @@ public partial class ShellViewModel : ObservableObject
     {
         CloseOverlayCore();
 
-        if (!IsDirtyPromptOpen)
+        if (!IsModalDialogOpen)
         {
             CreateNewDocumentCore();
         }
@@ -1249,18 +1276,28 @@ public partial class ShellViewModel : ObservableObject
         UpdateCommandStates();
     }
 
+    /// <summary>
+    /// Esc закрывает верхний слой: сначала модальный диалог — под ним могут остаться
+    /// открытыми поиск или карточка, — потом их, потом экран ошибки.
+    /// </summary>
     [RelayCommand]
     private void ClearError()
     {
-        if (IsFindBarOpen)
-        {
-            IsFindBarOpen = false;
-            return;
-        }
-
         if (IsDirtyPromptOpen)
         {
             _ = CancelDirtyPromptAsync();
+            return;
+        }
+
+        if (IsDeletePromptOpen)
+        {
+            CancelDelete();
+            return;
+        }
+
+        if (IsFindBarOpen)
+        {
+            IsFindBarOpen = false;
             return;
         }
 
@@ -1279,17 +1316,37 @@ public partial class ShellViewModel : ObservableObject
     }
 
     public async Task OpenDroppedFileAsync(string path)
-        => await RunWithDirtyCheckAsync(
-            PendingDirtyActionKind.OpenFile,
-            () => LoadDocumentAsync(path, preserveEditModeAfterLoad: false))
-            .ConfigureAwait(true);
+        => await OpenDocumentInTabAsync(path).ConfigureAwait(true);
 
     public async Task OpenPathAsync(string path)
-        => await LoadDocumentAsync(path, preserveEditModeAfterLoad: false).ConfigureAwait(true);
+        => await OpenDocumentInTabAsync(path).ConfigureAwait(true);
+
+    /// <summary>
+    /// Открытие документа — ⌘O, перетаскивание, клик в дереве, файл от ОС — не спрашивает
+    /// о правках активной вкладки: документ встаёт в свою вкладку, правки остаются в своей
+    /// (ADR-0009 Rule 3). Файл, который уже открыт с несохранёнными правками, просто
+    /// показывается: перечитать его с диска значило бы молча выбросить эти правки.
+    /// Под диалогом ничего не открывается — смена активной вкладки увела бы ответ на неё.
+    /// </summary>
+    private async Task OpenDocumentInTabAsync(string path)
+    {
+        if (IsModalDialogOpen)
+        {
+            return;
+        }
+
+        if (OpenDocuments.FindByPath(path) is { EditorSession.IsDirty: true } dirtyTab)
+        {
+            await ShowTabAsync(dirtyTab).ConfigureAwait(true);
+            return;
+        }
+
+        await LoadDocumentAsync(path, preserveEditModeAfterLoad: false).ConfigureAwait(true);
+    }
 
     public bool TryQueueCloseRequest()
     {
-        if (IsDirtyPromptOpen)
+        if (IsModalDialogOpen)
         {
             return true;
         }
@@ -1437,17 +1494,6 @@ public partial class ShellViewModel : ObservableObject
         OnPropertyChanged(nameof(IsDocumentMinimapOnSelected));
         OnPropertyChanged(nameof(IsDocumentMinimapOffSelected));
         UpdateTextSizeCommandStates();
-    }
-
-    private async Task OpenFileCoreAsync()
-    {
-        var path = await _filePicker.PickMarkdownFileAsync().ConfigureAwait(true);
-        if (string.IsNullOrEmpty(path))
-        {
-            return;
-        }
-
-        await LoadDocumentAsync(path, preserveEditModeAfterLoad: false).ConfigureAwait(true);
     }
 
     private void CreateNewDocumentCore()
@@ -1702,7 +1748,7 @@ public partial class ShellViewModel : ObservableObject
 
     private async Task RunWithDirtyCheckAsync(PendingDirtyActionKind kind, Func<Task> action)
     {
-        if (IsDirtyPromptOpen)
+        if (IsModalDialogOpen)
         {
             return;
         }
@@ -1728,7 +1774,7 @@ public partial class ShellViewModel : ObservableObject
 
     private void QueueDirtyAction(PendingDirtyActionKind kind, Func<Task> action)
     {
-        if (IsDirtyPromptOpen)
+        if (IsModalDialogOpen)
         {
             return;
         }
@@ -2023,8 +2069,8 @@ public partial class ShellViewModel : ObservableObject
 
     private enum PendingDirtyActionKind
     {
-        OpenFile,
         CloseFile,
+        CloseFolder,
         Reload,
         LeaveEditMode,
         CloseWindow

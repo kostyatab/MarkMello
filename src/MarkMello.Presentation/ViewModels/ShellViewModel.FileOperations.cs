@@ -27,20 +27,29 @@ public partial class ShellViewModel
 
     /// <summary>
     /// Корзина недоступна: тот же диалог переспрашивает уже про безвозвратное удаление.
-    /// Пользователь должен подтвердить именно потерю, а не «удаление» вообще.
+    /// Пользователь должен подтвердить именно потерю, а не «удаление» вообще, поэтому
+    /// и кнопка говорит «Удалить навсегда».
     /// </summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DeleteConfirmLabel))]
     private bool _isPermanentDeletePrompt;
 
     /// <summary>Ошибка операции показывается той же карточкой с одной кнопкой «Закрыть».</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DeleteCancelLabel))]
     private bool _isDeleteErrorPrompt;
 
-    public string DeleteConfirmLabel => _localization["DeleteConfirm"];
+    public string DeleteConfirmLabel => _localization[IsPermanentDeletePrompt ? "DeletePermanentConfirm" : "DeleteConfirm"];
 
-    public string DeleteCancelLabel => _localization["DeleteCancel"];
+    public string DeleteCancelLabel => _localization[IsDeleteErrorPrompt ? "FileOpErrorClose" : "DeleteCancel"];
 
-    public string DeleteErrorCloseLabel => _localization["FileOpErrorClose"];
+    /// <summary>
+    /// Порядок кнопок — как у платформы (ADR-0009 Rule 10), в тех же колонках ряда, что и
+    /// у диалога правок: на macOS «Отмена», «Удалить»; на Windows и Linux — «Удалить», «Отмена».
+    /// </summary>
+    public int DeleteCancelColumn => UsesMacOSDialogOrder ? 3 : 4;
+
+    public int DeleteConfirmColumn => UsesMacOSDialogOrder ? 4 : 3;
 
     /// <summary>
     /// Готовит тексты подтверждения: у файла, пустой и непустой папки они разные.
@@ -48,7 +57,7 @@ public partial class ShellViewModel
     /// </summary>
     private async Task RequestDeleteAsync(FileTreeNodeViewModel node)
     {
-        if (IsDirtyPromptOpen)
+        if (IsModalDialogOpen)
         {
             return;
         }
@@ -80,6 +89,9 @@ public partial class ShellViewModel
         }
 
         DeletePromptMessage = WithUnsavedChangesWarning(DeletePromptMessage, node.Path);
+
+        // Контекстное меню уже закрылось — строка держит подсветку, чтобы было видно, что удаляем.
+        node.IsPendingDelete = true;
         IsDeletePromptOpen = true;
     }
 
@@ -142,10 +154,18 @@ public partial class ShellViewModel
     [RelayCommand]
     private void CancelDelete()
     {
+        if (_deleteTarget is { } node)
+        {
+            node.IsPendingDelete = false;
+        }
+
         IsDeletePromptOpen = false;
         IsPermanentDeletePrompt = false;
         IsDeleteErrorPrompt = false;
         _deleteTarget = null;
+
+        // Файлы, которые ОС прислала, пока шёл вопрос, открываются после ответа.
+        _ = OpenDeferredActivationsAsync();
     }
 
     /// <summary>Переименование: вкладки этого файла и файлов внутри папки следуют за новым путём.</summary>

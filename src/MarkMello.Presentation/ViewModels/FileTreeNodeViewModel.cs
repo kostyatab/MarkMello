@@ -98,6 +98,13 @@ public sealed partial class FileTreeNodeViewModel : ObservableObject
     private bool _isDirty;
 
     /// <summary>
+    /// Строку спросили удалить: пока открыт диалог, она подсвечена, чтобы было видно,
+    /// о чём вопрос, — контекстное меню к этому моменту уже закрылось.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isPendingDelete;
+
+    /// <summary>
     /// Строка редактируется: вместо имени в ней стоит поле ввода (макет 09).
     /// Так работают и переименование, и создание — во втором случае строка черновая.
     /// </summary>

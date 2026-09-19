@@ -883,8 +883,35 @@
     <Setter Property="Background" Value="{DynamicResource MmAccentBrush}" />
   </Style>
 
+  <!-- Общая рамка модальных диалогов (ADR-0009 Rule 10). Скрим накрывает всё окно —
+       сайдбар, вкладки и строку — и забирает клики; верхние 44 px, место строки окна,
+       тянут окно так же, как сама строка. Tab ходит по кругу внутри карточки. -->
+  <Style Selector="views|ModalDialogFrame">
+    <Setter Property="Background" Value="{DynamicResource MmScrimBrush}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel Background="{TemplateBinding Background}">
+          <Border Name="PART_WindowDragArea"
+                  Classes="mm-window-drag"
+                  Height="44"
+                  VerticalAlignment="Top"
+                  Background="Transparent" />
+          <Border Name="PART_Card"
+                  Classes="mm-dialog-card"
+                  HorizontalAlignment="Center"
+                  VerticalAlignment="Center"
+                  KeyboardNavigation.TabNavigation="Cycle">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}" />
+          </Border>
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+
   <Style Selector="Border.mm-dialog-card">
-    <Setter Property="Padding" Value="22,20" />
+    <Setter Property="Width" Value="440" />
+    <Setter Property="Padding" Value="22,22,22,18" />
     <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
@@ -897,71 +924,102 @@
     <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="FontSize" Value="15" />
+    <Setter Property="LineHeight" Value="21" />
+    <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
 
   <Style Selector="TextBlock.mm-dialog-body">
     <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="LineHeight" Value="19.5" />
     <Setter Property="TextWrapping" Value="Wrap" />
-    <Setter Property="Margin" Value="0,10,0,0" />
+    <Setter Property="Margin" Value="0,8,0,0" />
   </Style>
 
   <Style Selector="Border.mm-dialog-error-shell">
     <Setter Property="Background" Value="{DynamicResource MmAccentSoftBrush}" />
     <Setter Property="CornerRadius" Value="8" />
-    <Setter Property="Padding" Value="10,8" />
-    <Setter Property="Margin" Value="0,12,0,0" />
+    <Setter Property="Padding" Value="12,10" />
+    <Setter Property="Margin" Value="0,14,0,0" />
+  </Style>
+
+  <Style Selector="views|LucideIcon.mm-dialog-error-icon">
+    <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+    <Setter Property="Margin" Value="0,1,0,0" />
   </Style>
 
   <Style Selector="TextBlock.mm-dialog-error">
-    <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
-    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+    <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="LineHeight" Value="18" />
     <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+
+  <!-- Ряд кнопок диалога. Порядок задаёт платформа (ADR-0009 Rule 10): кнопки встают
+       в колонки, которые им назначает view model, а пустая колонка-распорка отделяет
+       «Не сохранять» на macOS от остальных. -->
+  <Style Selector="Grid.mm-dialog-buttons">
+    <Setter Property="Margin" Value="0,20,0,0" />
+    <Setter Property="ColumnSpacing" Value="8" />
+  </Style>
+
+  <!-- Кнопки диалогов: 32 px, радиус 8. Обычная — заливка вкладки, основная — цветом
+       текста, опасная — акцентом. Fluent перекрашивает кнопку в наведении и нажатии,
+       поэтому эти состояния заданы явно. Фокус с клавиатуры — кольцо акцентом через
+       2 px от кнопки, как у вкладок. -->
+  <Style Selector="Button.mm-dialog-secondary, Button.mm-dialog-primary, Button.mm-dialog-destructive">
+    <Setter Property="Height" Value="32" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="Padding" Value="14,0" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner">
+      <FocusAdornerTemplate>
+        <Border Margin="-4"
+                BorderThickness="2"
+                CornerRadius="12"
+                BorderBrush="{DynamicResource MmAccentBrush}"
+                AdornerLayer.IsClipEnabled="False" />
+      </FocusAdornerTemplate>
+    </Setter>
+  </Style>
+
+  <Style Selector="Button.mm-dialog-secondary">
+    <Setter Property="Background" Value="{DynamicResource MmTabBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+  </Style>
+  <Style Selector="Button.mm-dialog-secondary:pointerover /template/ ContentPresenter, Button.mm-dialog-secondary:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
   </Style>
 
   <Style Selector="Button.mm-dialog-primary">
     <Setter Property="Background" Value="{DynamicResource MmTextBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource MmBackgroundBrush}" />
-    <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="CornerRadius" Value="6" />
-    <Setter Property="Padding" Value="14,8" />
-    <Setter Property="FontSize" Value="12" />
-    <Setter Property="Cursor" Value="Hand" />
   </Style>
-  <Style Selector="Button.mm-dialog-primary:pointerover /template/ ContentPresenter">
-    <Setter Property="Opacity" Value="0.85" />
+  <Style Selector="Button.mm-dialog-primary:pointerover /template/ ContentPresenter, Button.mm-dialog-primary:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTextBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmBackgroundBrush}" />
+    <Setter Property="Opacity" Value="0.88" />
   </Style>
 
-  <!-- Отмена в карточке удаления: обведённая, а не залитая — заливка тут у деструктивного
-       действия, и две сплошные кнопки рядом спорили бы за внимание (макет 10). -->
-  <Style Selector="Button.mm-dialog-outline">
-    <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmTextBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="6" />
-    <Setter Property="Padding" Value="14,8" />
-    <Setter Property="FontSize" Value="12" />
-    <Setter Property="Cursor" Value="Hand" />
+  <Style Selector="Button.mm-dialog-destructive">
+    <Setter Property="Background" Value="{DynamicResource MmAccentBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmElevatedBackgroundBrush}" />
   </Style>
-  <Style Selector="Button.mm-dialog-outline:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmSurfaceHoverBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmTextBrush}" />
-  </Style>
-
-  <Style Selector="Button.mm-dialog-secondary">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="6" />
-    <Setter Property="Padding" Value="14,8" />
-    <Setter Property="FontSize" Value="12" />
-    <Setter Property="Cursor" Value="Hand" />
-  </Style>
-  <Style Selector="Button.mm-dialog-secondary:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource MmTextBrush}" />
+  <Style Selector="Button.mm-dialog-destructive:pointerover /template/ ContentPresenter, Button.mm-dialog-destructive:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmAccentBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmElevatedBackgroundBrush}" />
+    <Setter Property="Opacity" Value="0.88" />
   </Style>
 
   <Style Selector="TextBlock.mm-md-heading">

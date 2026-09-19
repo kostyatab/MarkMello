@@ -94,7 +94,7 @@ public partial class ShellViewModel
 
         // Без открытой папки любая выбранная откроется в этом окне, а под диалогом о правках
         // это запрещено — выбор был бы впустую, так что и picker не показываем.
-        if (IsDirtyPromptOpen && Workspace is null)
+        if (IsModalDialogOpen && Workspace is null)
         {
             return;
         }
@@ -129,7 +129,7 @@ public partial class ShellViewModel
 
         // В этом окне папка восстановила бы свои вкладки и сменила активную под вопросом
         // о правках. Другое окно вопросу не мешает, поэтому проверка стоит только здесь.
-        if (IsDirtyPromptOpen)
+        if (IsModalDialogOpen)
         {
             return;
         }
@@ -170,7 +170,7 @@ public partial class ShellViewModel
         // а не только об активной; файлы, открытые поверх папки, остаются — окно просто
         // возвращается в обычный single-file режим (ADR-0007 Rule 3).
         await ResolveDirtyTabsThenAsync(
-                PendingDirtyActionKind.CloseFile,
+                PendingDirtyActionKind.CloseFolder,
                 static tab => tab.BelongsToWorkspace,
                 CloseWorkspaceCoreAsync)
             .ConfigureAwait(true);
@@ -215,10 +215,10 @@ public partial class ShellViewModel
                 _searchWorkspaceFiles,
                 _fileOperations,
                 _localization,
-                OpenDocumentFromTreeAsync,
+                OpenDocumentInTabAsync,
                 RequestDeleteAsync,
                 OnWorkspacePathChanged,
-                () => IsDirtyPromptOpen));
+                () => IsModalDialogOpen));
 
         // Подпись подвала живёт в shell, а считается по дереву: без подписки она
         // не менялась бы ни после создания файла, ни после удаления.
@@ -243,7 +243,7 @@ public partial class ShellViewModel
         // который заменяет пустой экран осмысленным содержимым (ADR-0007 Rule 2).
         if (!OpenDocuments.HasTabs && workspace.TryGetRootReadmePath() is { Length: > 0 } readmePath)
         {
-            await OpenDocumentFromTreeAsync(readmePath).ConfigureAwait(true);
+            await OpenDocumentInTabAsync(readmePath).ConfigureAwait(true);
             return;
         }
 
@@ -252,14 +252,6 @@ public partial class ShellViewModel
         // до первого переключения вкладок.
         SyncWorkspaceActiveDocument();
         RefreshWindowTitle();
-    }
-
-    private async Task OpenDocumentFromTreeAsync(string path)
-    {
-        await RunWithDirtyCheckAsync(
-                PendingDirtyActionKind.OpenFile,
-                () => LoadDocumentAsync(path, preserveEditModeAfterLoad: false))
-            .ConfigureAwait(true);
     }
 
     private void FailFolderOpen(string titleKey, string detailsKey, string path)

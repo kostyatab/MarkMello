@@ -102,21 +102,6 @@
       <Setter Property="Opacity" Value="1" />
     </Style>
 
-    <Style Selector="Button.mm-dialog-destructive">
-      <Setter Property="Padding" Value="16,8" />
-      <Setter Property="Background" Value="{DynamicResource MmAccentBrush}" />
-      <Setter Property="Foreground" Value="{DynamicResource MmElevatedBackgroundBrush}" />
-      <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="CornerRadius" Value="6" />
-      <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
-      <Setter Property="FontSize" Value="13" />
-      <Setter Property="FontWeight" Value="Medium" />
-    </Style>
-    <Style Selector="Button.mm-dialog-destructive:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource MmAccentBrush}" />
-      <Setter Property="Opacity" Value="0.88" />
-    </Style>
-
     <Style Selector="Border.mm-external-change">
       <Setter Property="Padding" Value="14,8" />
       <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
@@ -502,82 +487,106 @@
                      HorizontalAlignment="Center"
                      VerticalAlignment="Center" />
         </Border>
-
-        <!-- Подтверждение удаления: скрим начинается под строкой окна, окно остаётся перетаскиваемым -->
-        <ContentControl Content="{Binding DeletePromptContent}">
-          <ContentControl.ContentTemplate>
-            <DataTemplate x:DataType="vm:ShellViewModel">
-        <Grid Background="{DynamicResource MmScrimBrush}">
-          <Border Classes="mm-dialog-card"
-                  Width="420"
-                  HorizontalAlignment="Center"
-                  VerticalAlignment="Center">
-            <StackPanel>
-              <TextBlock Classes="mm-dialog-title"
-                         Text="{Binding DeletePromptTitle}" />
-              <TextBlock Classes="mm-dialog-body"
-                         Text="{Binding DeletePromptMessage}"
-                         TextWrapping="Wrap" />
-              <StackPanel Orientation="Horizontal"
-                          HorizontalAlignment="Right"
-                          Spacing="8"
-                          Margin="0,18,0,0">
-                <Button Classes="mm-dialog-destructive"
-                        IsVisible="{Binding !IsDeleteErrorPrompt}"
-                        Content="{Binding DeleteConfirmLabel}"
-                        Command="{Binding ConfirmDeleteCommand}" />
-                <Button Classes="mm-dialog-outline"
-                        IsVisible="{Binding !IsDeleteErrorPrompt}"
-                        Content="{Binding DeleteCancelLabel}"
-                        Command="{Binding CancelDeleteCommand}" />
-                <Button Classes="mm-dialog-outline"
-                        IsVisible="{Binding IsDeleteErrorPrompt}"
-                        Content="{Binding DeleteErrorCloseLabel}"
-                        Command="{Binding CancelDeleteCommand}" />
-              </StackPanel>
-            </StackPanel>
-          </Border>
-        </Grid>
-            </DataTemplate>
-          </ContentControl.ContentTemplate>
-        </ContentControl>
-
-        <Grid IsVisible="{Binding IsDirtyPromptOpen}"
-              Background="{DynamicResource MmScrimBrush}">
-          <Border Classes="mm-dialog-card"
-                  Width="420"
-                  HorizontalAlignment="Center"
-                  VerticalAlignment="Center">
-            <StackPanel>
-              <TextBlock Classes="mm-dialog-title"
-                         Text="{Binding DirtyPromptTitle}" />
-              <TextBlock Classes="mm-dialog-body"
-                         Text="{Binding DirtyPromptMessage}" />
-              <Border Classes="mm-dialog-error-shell"
-                      IsVisible="{Binding HasDirtyPromptError}">
-                <TextBlock Classes="mm-dialog-error"
-                           Text="{Binding DirtyPromptErrorMessage}" />
-              </Border>
-              <StackPanel Orientation="Horizontal"
-                          HorizontalAlignment="Right"
-                          Spacing="8"
-                          Margin="0,18,0,0">
-                <Button Classes="mm-dialog-secondary"
-                        Content="{Binding DirtyPromptCancel}"
-                        Command="{Binding CancelDirtyPromptCommand}" />
-                <Button Classes="mm-dialog-secondary"
-                        Content="{Binding DirtyPromptDiscard}"
-                        Command="{Binding ConfirmDirtyDiscardCommand}" />
-                <Button Classes="mm-dialog-primary"
-                        Content="{Binding DirtyPromptSave}"
-                        Command="{Binding ConfirmDirtySaveCommand}" />
-              </StackPanel>
-            </StackPanel>
-          </Border>
-        </Grid>
       </Panel>
 
       </Grid>
+
+      <!-- Модальные диалоги (ADR-0009 Rule 10): один скрим на всё окно — сайдбар,
+           вкладки и строку. Карточки создаются в момент вопроса, а не на старте. -->
+      <ContentControl Grid.Column="0"
+                      Grid.ColumnSpan="3"
+                      Content="{Binding DeletePromptContent}">
+        <ContentControl.ContentTemplate>
+          <DataTemplate x:DataType="vm:ShellViewModel">
+            <views:ModalDialogFrame FocusResetKey="{Binding DeletePromptMessage}">
+              <StackPanel>
+                <TextBlock Classes="mm-dialog-title"
+                           Text="{Binding DeletePromptTitle}" />
+                <TextBlock Classes="mm-dialog-body"
+                           Text="{Binding DeletePromptMessage}" />
+                <Grid Classes="mm-dialog-buttons"
+                      ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+                  <!-- Фокус сразу на «Отмене»: удаление по случайному Enter не случится -->
+                  <Button Classes="mm-dialog-secondary"
+                          Grid.Column="{Binding DeleteCancelColumn}"
+                          KeyboardNavigation.TabIndex="{Binding DeleteCancelColumn}"
+                          views:ModalDialogFrame.IsInitialFocus="True"
+                          Content="{Binding DeleteCancelLabel}"
+                          Command="{Binding CancelDeleteCommand}"
+                          ToolTip.Tip="{Binding DialogCancelShortcut}" />
+                  <Button Classes="mm-dialog-destructive"
+                          Grid.Column="{Binding DeleteConfirmColumn}"
+                          KeyboardNavigation.TabIndex="{Binding DeleteConfirmColumn}"
+                          IsVisible="{Binding !IsDeleteErrorPrompt}"
+                          Content="{Binding DeleteConfirmLabel}"
+                          Command="{Binding ConfirmDeleteCommand}" />
+                </Grid>
+              </StackPanel>
+            </views:ModalDialogFrame>
+          </DataTemplate>
+        </ContentControl.ContentTemplate>
+      </ContentControl>
+
+      <ContentControl Grid.Column="0"
+                      Grid.ColumnSpan="3"
+                      Content="{Binding DirtyPromptContent}">
+        <ContentControl.ContentTemplate>
+          <DataTemplate x:DataType="vm:ShellViewModel">
+            <views:ModalDialogFrame>
+              <!-- «Не сохранять» — ⌘⌫ на macOS, Ctrl+Backspace на Windows и Linux. Пара
+                   сочетаний, как у окна; действует, только пока фокус в диалоге. -->
+              <views:ModalDialogFrame.KeyBindings>
+                <KeyBinding Gesture="Ctrl+Back" Command="{Binding ConfirmDirtyDiscardCommand}" />
+                <KeyBinding Gesture="Cmd+Back" Command="{Binding ConfirmDirtyDiscardCommand}" />
+              </views:ModalDialogFrame.KeyBindings>
+              <StackPanel>
+                <TextBlock Classes="mm-dialog-title"
+                           Text="{Binding DirtyPromptTitle}" />
+                <TextBlock Classes="mm-dialog-body"
+                           Text="{Binding DirtyPromptMessage}" />
+                <!-- Ошибка сохранения — внутри карточки: диалог остаётся открытым -->
+                <Border Classes="mm-dialog-error-shell"
+                        IsVisible="{Binding HasDirtyPromptError}">
+                  <Grid ColumnDefinitions="Auto,*"
+                        ColumnSpacing="10">
+                    <views:LucideIcon Classes="mm-dialog-error-icon"
+                                      Data="{DynamicResource LucideCircleAlertGeometry}"
+                                      Width="16"
+                                      Height="16" />
+                    <TextBlock Grid.Column="1"
+                               Classes="mm-dialog-error"
+                               Text="{Binding DirtyPromptErrorMessage}" />
+                  </Grid>
+                </Border>
+                <Grid Classes="mm-dialog-buttons"
+                      ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+                  <Button Classes="mm-dialog-secondary"
+                          Grid.Column="{Binding DirtyPromptDiscardColumn}"
+                          KeyboardNavigation.TabIndex="{Binding DirtyPromptDiscardColumn}"
+                          Content="{Binding DirtyPromptDiscard}"
+                          Command="{Binding ConfirmDirtyDiscardCommand}"
+                          ToolTip.Tip="{Binding DirtyPromptDiscardShortcut}" />
+                  <Button Classes="mm-dialog-secondary"
+                          Grid.Column="{Binding DirtyPromptCancelColumn}"
+                          KeyboardNavigation.TabIndex="{Binding DirtyPromptCancelColumn}"
+                          Content="{Binding DirtyPromptCancel}"
+                          Command="{Binding CancelDirtyPromptCommand}"
+                          ToolTip.Tip="{Binding DialogCancelShortcut}" />
+                  <!-- Enter — «Сохранить»; Esc отменяет через общий Escape окна -->
+                  <Button Classes="mm-dialog-primary"
+                          Grid.Column="{Binding DirtyPromptSaveColumn}"
+                          KeyboardNavigation.TabIndex="{Binding DirtyPromptSaveColumn}"
+                          IsDefault="True"
+                          views:ModalDialogFrame.IsInitialFocus="True"
+                          Content="{Binding DirtyPromptSave}"
+                          Command="{Binding ConfirmDirtySaveCommand}"
+                          ToolTip.Tip="{Binding DialogConfirmShortcut}" />
+                </Grid>
+              </StackPanel>
+            </views:ModalDialogFrame>
+          </DataTemplate>
+        </ContentControl.ContentTemplate>
+      </ContentControl>
 
     </Grid>
   </Border>
