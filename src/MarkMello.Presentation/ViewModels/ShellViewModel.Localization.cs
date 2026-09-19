@@ -1,3 +1,4 @@
+using Avalonia.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MarkMello.Application.Updates;
@@ -248,7 +249,7 @@ public partial class ShellViewModel
     public string DirtyPromptDiscard => _localization["DirtyPromptDiscard"];
     public string DirtyPromptSave => _localization["DirtyPromptSave"];
     public string DragDropHint => _localization["DragDropHint"];
-    public string EditToggleTooltip => _localization["EditToggleTooltip"];
+    public string EditToggleTooltip => _localization.Format("EditToggleTooltip", CommandShortcut(Key.E));
     public string FindCloseTooltip => _localization["FindCloseTooltip"];
     public string FindNextTooltip => _localization["FindNextTooltip"];
     public string FindPlaceholder => _localization["FindPlaceholder"];
@@ -284,7 +285,7 @@ public partial class ShellViewModel
     public string ReadingMinimapLabel => _localization["ReadingMinimapLabel"];
     public string ReadingMinimapOff => _localization["ReadingMinimapOff"];
     public string ReadingMinimapOn => _localization["ReadingMinimapOn"];
-    public string ReadingSettingsTooltip => _localization["ReadingSettingsTooltip"];
+    public string ReadingSettingsTooltip => _localization.Format("ReadingSettingsTooltip", CommandShortcut(Key.OemComma));
     public string ReadingSizeHint => _localization["ReadingSizeHint"];
     public string ReadingSizeLabel => _localization["ReadingSizeLabel"];
     public string ReadingWidthHint => _localization["ReadingWidthHint"];
@@ -305,6 +306,23 @@ public partial class ShellViewModel
     public string WelcomeOpenFile => _localization["WelcomeOpenFile"];
     public string WelcomeOpenFolder => _localization["WelcomeOpenFolder"];
     public string WelcomeTagline => _localization["WelcomeTagline"];
+
+    /// <summary>
+    /// Подписи сочетаний для меню и стартового экрана: ⌘ на macOS, Ctrl на Windows и Linux.
+    /// От языка не зависят, поэтому в <see cref="LocalizedBindingPropertyNames"/> их нет.
+    /// </summary>
+    public string OpenFileShortcut => CommandShortcut(Key.O);
+
+    public string OpenFolderShortcut => CommandShortcut(Key.O, KeyModifiers.Shift);
+
+    public string ToggleSidebarShortcut => CommandShortcut(Key.B);
+
+    /// <summary>Клавиши «Открыть файл» по отдельности — на стартовом экране каждая в своей плашке.</summary>
+    public IReadOnlyList<string> OpenFileShortcutKeys
+        => ShortcutLabel.Keys(ShortcutLabel.Command(Key.O, _platform.PlatformName), _platform.PlatformName);
+
+    private string CommandShortcut(Key key, KeyModifiers extra = KeyModifiers.None)
+        => ShortcutLabel.Format(ShortcutLabel.Command(key, _platform.PlatformName, extra), _platform.PlatformName);
 
     public string WordCountStatusLabel => _localization.Format("StatusWordCount", WordCount);
 

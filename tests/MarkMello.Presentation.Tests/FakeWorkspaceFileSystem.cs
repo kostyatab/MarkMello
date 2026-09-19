@@ -183,7 +183,7 @@ internal sealed class FakePlatformServices : IPlatformServices
 
     public FakePlatformServices(FakeWorkspaceFileSystem? fileSystem = null) => _fileSystem = fileSystem;
 
-    public string PlatformName => "Windows";
+    public string PlatformName { get; init; } = "Windows";
 
     public TrashResult TrashResult { get; set; } = TrashResult.Trashed;
 

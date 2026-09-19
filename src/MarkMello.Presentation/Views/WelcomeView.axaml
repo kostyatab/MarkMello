@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:MarkMello.Presentation.ViewModels"
              xmlns:views="using:MarkMello.Presentation.Views"
+             xmlns:sys="using:System"
              mc:Ignorable="d"
              x:Class="MarkMello.Presentation.Views.WelcomeView"
              x:DataType="vm:ShellViewModel">
@@ -65,12 +66,21 @@
       <!-- Hotkey hint -->
       <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center"
                   Margin="0,28,0,0">
-        <Border Classes="kbd">
-          <TextBlock Text="Ctrl" FontFamily="{DynamicResource MmDocumentMonoFontFamily}" FontSize="10" />
-        </Border>
-        <Border Classes="kbd">
-          <TextBlock Text="O" FontFamily="{DynamicResource MmDocumentMonoFontFamily}" FontSize="10" />
-        </Border>
+        <!-- ⌘ O на macOS, Ctrl O на Windows и Linux: каждая клавиша — своя плашка -->
+        <ItemsControl ItemsSource="{Binding OpenFileShortcutKeys}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" Spacing="6" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="sys:String">
+              <Border Classes="kbd">
+                <TextBlock Text="{Binding}" FontFamily="{DynamicResource MmDocumentMonoFontFamily}" FontSize="10" />
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
         <TextBlock Text="{Binding WelcomeDropHint}"
                    FontSize="11"
                    Foreground="{DynamicResource MmTextFaintBrush}"

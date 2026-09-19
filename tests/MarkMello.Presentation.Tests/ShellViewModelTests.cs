@@ -637,6 +637,38 @@ public sealed class ShellViewModelTests
             harness.ViewModel.SelectedLanguageOption);
     }
 
+    [Theory]
+    [InlineData("macOS", "Toggle edit mode (⌘E)", "Reading preferences (⌘,)", "⌘O", "⇧⌘O", "⌘B")]
+    [InlineData("Windows", "Toggle edit mode (Ctrl+E)", "Reading preferences (Ctrl+,)", "Ctrl+O", "Ctrl+Shift+O", "Ctrl+B")]
+    [InlineData("Linux", "Toggle edit mode (Ctrl+E)", "Reading preferences (Ctrl+,)", "Ctrl+O", "Ctrl+Shift+O", "Ctrl+B")]
+    public void ShortcutLabelsFollowPlatform(
+        string platformName,
+        string editTooltip,
+        string readingTooltip,
+        string openFile,
+        string openFolder,
+        string toggleSidebar)
+    {
+        var viewModel = CreateHarness(platformName: platformName).ViewModel;
+
+        Assert.Equal(editTooltip, viewModel.EditToggleTooltip);
+        Assert.Equal(readingTooltip, viewModel.ReadingSettingsTooltip);
+        Assert.Equal(openFile, viewModel.OpenFileShortcut);
+        Assert.Equal(openFolder, viewModel.OpenFolderShortcut);
+        Assert.Equal(toggleSidebar, viewModel.ToggleSidebarShortcut);
+    }
+
+    [Fact]
+    public void ShortcutTooltipsKeepShortcutAfterLanguageChange()
+    {
+        var viewModel = CreateHarness(platformName: "macOS").ViewModel;
+
+        viewModel.SelectRussianLanguageCommand.Execute(null);
+
+        Assert.Equal("Переключить режим редактирования (⌘E)", viewModel.EditToggleTooltip);
+        Assert.Equal("Параметры чтения (⌘,)", viewModel.ReadingSettingsTooltip);
+    }
+
     private static MarkdownSource CreateSource(string path, string content)
         => new(path, Path.GetFileName(path), content);
 
@@ -653,7 +685,7 @@ public sealed class ShellViewModelTests
             ArchitectureName: "x64",
             InstallAction: AppUpdateInstallAction.LaunchInstaller);
 
-    private static TestHarness CreateHarness(FakeWorkspaceFileSystem? workspaceFileSystem = null)
+    private static TestHarness CreateHarness(FakeWorkspaceFileSystem? workspaceFileSystem = null, string platformName = "Windows")
     {
         var loader = new StubDocumentLoader();
         var saver = new RecordingDocumentSaver();
@@ -680,7 +712,7 @@ public sealed class ShellViewModelTests
             new ExpandFolderNodeUseCase(fileSystem),
             new SearchWorkspaceFilesUseCase(fileSystem),
             new WorkspaceFileOperationsUseCase(fileSystem, new FakePlatformServices()),
-            new FakePlatformServices(),
+            new FakePlatformServices { PlatformName = platformName },
             static () => new FakeWorkspaceWatcher(),
             new RecordingWindowLauncher());
 
