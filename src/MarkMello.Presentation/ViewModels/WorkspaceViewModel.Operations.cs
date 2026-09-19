@@ -64,6 +64,11 @@ public sealed partial class WorkspaceViewModel
     /// </summary>
     private void StartCreate(TreeEditKind kind)
     {
+        if (_areFileOperationsBlocked())
+        {
+            return;
+        }
+
         CancelEdit();
 
         var parent = SelectedNode switch
@@ -126,7 +131,7 @@ public sealed partial class WorkspaceViewModel
     private void StartRename(FileTreeNodeViewModel? node)
     {
         var target = node ?? SelectedNode;
-        if (target is null)
+        if (target is null || _areFileOperationsBlocked())
         {
             return;
         }
@@ -158,10 +163,14 @@ public sealed partial class WorkspaceViewModel
         EditError = null;
     }
 
+    /// <summary>
+    /// Ввод, начатый до вопроса shell о правках, под ним не подтверждается и остаётся открытым:
+    /// переименование увело бы файл открытой вкладки, а новый файл открылся бы вместо спрошенной.
+    /// </summary>
     [RelayCommand]
     private async Task CommitEditAsync()
     {
-        if (EditKind == TreeEditKind.None)
+        if (EditKind == TreeEditKind.None || _areFileOperationsBlocked())
         {
             return;
         }
@@ -221,7 +230,7 @@ public sealed partial class WorkspaceViewModel
     private async Task DuplicateAsync(FileTreeNodeViewModel? node)
     {
         var target = node ?? SelectedNode;
-        if (target is null)
+        if (target is null || _areFileOperationsBlocked())
         {
             return;
         }

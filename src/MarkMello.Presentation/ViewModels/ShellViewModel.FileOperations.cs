@@ -42,9 +42,17 @@ public partial class ShellViewModel
 
     public string DeleteErrorCloseLabel => _localization["FileOpErrorClose"];
 
-    /// <summary>Готовит тексты подтверждения: у файла, пустой и непустой папки они разные.</summary>
+    /// <summary>
+    /// Готовит тексты подтверждения: у файла, пустой и непустой папки они разные.
+    /// Под диалогом о правках удаление не начинается: оно закрыло бы спрошенную вкладку.
+    /// </summary>
     private async Task RequestDeleteAsync(FileTreeNodeViewModel node)
     {
+        if (IsDirtyPromptOpen)
+        {
+            return;
+        }
+
         _deleteTarget = node;
         IsPermanentDeletePrompt = false;
         IsDeleteErrorPrompt = false;

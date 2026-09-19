@@ -92,6 +92,13 @@ public partial class ShellViewModel
     {
         CloseOverlayCore();
 
+        // Без открытой папки любая выбранная откроется в этом окне, а под диалогом о правках
+        // это запрещено — выбор был бы впустую, так что и picker не показываем.
+        if (IsDirtyPromptOpen && Workspace is null)
+        {
+            return;
+        }
+
         var path = await _filePicker.PickFolderAsync().ConfigureAwait(true);
         if (string.IsNullOrEmpty(path))
         {
@@ -117,6 +124,13 @@ public partial class ShellViewModel
             }
 
             _windowLauncher.OpenFolderInNewWindow(path);
+            return;
+        }
+
+        // В этом окне папка восстановила бы свои вкладки и сменила активную под вопросом
+        // о правках. Другое окно вопросу не мешает, поэтому проверка стоит только здесь.
+        if (IsDirtyPromptOpen)
+        {
             return;
         }
 
@@ -203,7 +217,8 @@ public partial class ShellViewModel
                 _localization,
                 OpenDocumentFromTreeAsync,
                 RequestDeleteAsync,
-                OnWorkspacePathChanged));
+                OnWorkspacePathChanged,
+                () => IsDirtyPromptOpen));
 
         // Подпись подвала живёт в shell, а считается по дереву: без подписки она
         // не менялась бы ни после создания файла, ни после удаления.

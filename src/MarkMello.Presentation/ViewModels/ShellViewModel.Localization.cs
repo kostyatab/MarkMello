@@ -500,6 +500,7 @@ public partial class ShellViewModel
     private void ClearDirtyPromptState()
     {
         _pendingDirtyAction = null;
+        _dirtyPromptTab = null;
         _dirtyPromptKind = null;
         _dirtyPromptErrorResult = null;
         IsDirtyPromptOpen = false;

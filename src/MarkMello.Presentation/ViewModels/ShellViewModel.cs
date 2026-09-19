@@ -51,6 +51,19 @@ public partial class ShellViewModel : ObservableObject
     private bool _editorActivationMarked;
     private string? _currentPath;
     private Func<Task>? _pendingDirtyAction;
+
+    /// <summary>
+    /// Вкладка, о правках которой спрашивает диалог. Ответ относится к ней, а не к той,
+    /// что окажется активной к моменту нажатия кнопки.
+    /// </summary>
+    private DocumentTabViewModel? _dirtyPromptTab;
+
+    /// <summary>
+    /// Файлы, которые ОС попросила открыть под диалогом: открытие сменило бы активную вкладку
+    /// под вопросом. Очередь заводится только тогда и живёт в памяти.
+    /// </summary>
+    private Queue<string>? _deferredActivationPaths;
+
     private readonly bool _showCustomTitleBar = OperatingSystem.IsWindows();
     private readonly string _aboutVersion;
     private readonly string _aboutLicense = "GPLv3";
@@ -115,18 +128,47 @@ public partial class ShellViewModel : ObservableObject
     /// after startup. On macOS Finder sends an Apple Event to the already-
     /// running process; cold-start activations come back through
     /// <see cref="ICommandLineActivation.GetActivationFilePath"/> instead.
+    /// Под диалогом несохранённых правок файл ждёт его окончательного закрытия.
     /// </summary>
     private async void OnFileActivated(object? sender, FileActivationEventArgs e)
     {
+        if (IsDirtyPromptOpen)
+        {
+            (_deferredActivationPaths ??= new Queue<string>()).Enqueue(e.Path);
+            return;
+        }
+
+        await OpenActivatedFileAsync(e.Path).ConfigureAwait(true);
+    }
+
+    private async Task OpenActivatedFileAsync(string path)
+    {
         try
         {
-            await OpenPathAsync(e.Path).ConfigureAwait(true);
+            await OpenPathAsync(path).ConfigureAwait(true);
         }
         catch (Exception)
         {
             // The open use-case already surfaces user-visible errors via
             // the view-state machine; the event handler must not throw
             // back into Avalonia's lifetime dispatch loop.
+        }
+    }
+
+    /// <summary>
+    /// Диалог закрыт окончательно: отложенные файлы открываются по порядку, активным остаётся
+    /// последний. Если по дороге открылся новый вопрос, оставшиеся ждут уже его.
+    /// </summary>
+    private async Task OpenDeferredActivationsAsync()
+    {
+        if (_deferredActivationPaths is not { } paths)
+        {
+            return;
+        }
+
+        while (!IsDirtyPromptOpen && paths.TryDequeue(out var path))
+        {
+            await OpenActivatedFileAsync(path).ConfigureAwait(true);
         }
     }
 
@@ -911,6 +953,11 @@ public partial class ShellViewModel : ObservableObject
             return;
         }
 
+        if (!await ShowDirtyPromptTabAsync().ConfigureAwait(true))
+        {
+            return;
+        }
+
         SetDirtyPromptError(null);
 
         var outcome = await SaveEditorAsync(promptForPathWhenMissing: true, forceSaveAs: false).ConfigureAwait(true);
@@ -932,14 +979,41 @@ public partial class ShellViewModel : ObservableObject
     [RelayCommand]
     private async Task ConfirmDirtyDiscardAsync()
     {
+        if (!await ShowDirtyPromptTabAsync().ConfigureAwait(true))
+        {
+            return;
+        }
+
         DiscardEditorChanges();
         await ContinuePendingDirtyActionAsync().ConfigureAwait(true);
     }
 
+    /// <summary>
+    /// Сохранение и сброс работают с активной сессией, поэтому перед ответом активной
+    /// становится вкладка, о которой спросили. Если её уже нет, ответ равен «Отмене»:
+    /// сохранять и сбрасывать нечего, а чужие правки трогать нельзя.
+    /// </summary>
+    private async Task<bool> ShowDirtyPromptTabAsync()
+    {
+        if (_dirtyPromptTab is not { } tab || !OpenDocuments.Tabs.Contains(tab))
+        {
+            await CancelDirtyPromptAsync().ConfigureAwait(true);
+            return false;
+        }
+
+        if (!ReferenceEquals(OpenDocuments.ActiveTab, tab))
+        {
+            await RestoreTabAsync(tab).ConfigureAwait(true);
+        }
+
+        return true;
+    }
+
     [RelayCommand]
-    private void CancelDirtyPrompt()
+    private async Task CancelDirtyPromptAsync()
     {
         ClearDirtyPrompt();
+        await OpenDeferredActivationsAsync().ConfigureAwait(true);
     }
 
     [RelayCommand]
@@ -1186,7 +1260,7 @@ public partial class ShellViewModel : ObservableObject
 
         if (IsDirtyPromptOpen)
         {
-            CancelDirtyPrompt();
+            _ = CancelDirtyPromptAsync();
             return;
         }
 
@@ -1233,6 +1307,8 @@ public partial class ShellViewModel : ObservableObject
             static _ => true,
             () =>
             {
+                // Окно закрывается — файлы, пришедшие под вопросами, открывать уже некуда.
+                _deferredActivationPaths?.Clear();
                 CloseRequested?.Invoke(this, EventArgs.Empty);
                 return Task.CompletedTask;
             });
@@ -1657,7 +1733,9 @@ public partial class ShellViewModel : ObservableObject
             return;
         }
 
+        // Спрашивают всегда о правках активной вкладки: кто закрывает фоновую, сначала её показывает.
         _pendingDirtyAction = action;
+        _dirtyPromptTab = OpenDocuments.ActiveTab;
         SetDirtyPrompt(kind);
     }
 
@@ -1665,12 +1743,14 @@ public partial class ShellViewModel : ObservableObject
     {
         var pendingAction = _pendingDirtyAction;
         ClearDirtyPrompt();
-        if (pendingAction is null)
+        if (pendingAction is not null)
         {
-            return;
+            await pendingAction().ConfigureAwait(true);
         }
 
-        await pendingAction().ConfigureAwait(true);
+        // Действие могло задать следующий вопрос (очередь грязных вкладок) — тогда
+        // отложенные файлы ждут и его.
+        await OpenDeferredActivationsAsync().ConfigureAwait(true);
     }
 
     private void ClearDirtyPrompt()

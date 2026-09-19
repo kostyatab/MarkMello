@@ -299,6 +299,83 @@ public sealed class WorkspaceFileOperationsTests
         Assert.Contains("Unsaved changes in \"adr_0001.md\" will be lost.", harness.ViewModel.DeletePromptMessage);
     }
 
+    /// <summary>
+    /// Под диалогом несохранённых правок дерево не трогает файлы: удаление закрыло бы
+    /// спрошенную вкладку, и ответ достался бы соседней.
+    /// </summary>
+    [Fact]
+    public async Task TreeOperationsDoNothingWhileTheDirtyPromptIsOpen()
+    {
+        var harness = await CreateAsync();
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
+        harness.ViewModel.ToggleEditModeCommand.Execute(null);
+        harness.ViewModel.EditorSession!.SourceText = "# first edited";
+
+        // Имя начали вводить до вопроса, а подтверждают уже под ним.
+        var folder = harness.Workspace.Roots.Single(static row => row.Name == "adr");
+        harness.Workspace.StartRenameCommand.Execute(folder);
+        harness.Workspace.EditName = "decisions";
+
+        await harness.ViewModel.CloseActiveTabCommand.ExecuteAsync(null);
+        Assert.True(harness.ViewModel.IsDirtyPromptOpen);
+
+        await harness.Workspace.CommitEditCommand.ExecuteAsync(null);
+
+        var file = harness.Workspace.Roots.Single(static row => row.Name == "first.md");
+        await harness.Workspace.RequestDeleteCommand.ExecuteAsync(file);
+        harness.Workspace.StartRenameCommand.Execute(file);
+        harness.Workspace.StartNewFileCommand.Execute(null);
+        harness.Workspace.StartNewFolderCommand.Execute(null);
+        await harness.Workspace.DuplicateCommand.ExecuteAsync(file);
+
+        Assert.True(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.False(harness.ViewModel.IsDeletePromptOpen);
+        Assert.False(file.IsEditing);
+        Assert.Equal(["adr", "first.md"], harness.Workspace.Roots.Select(static row => row.Name));
+        Assert.Empty(harness.Platform.TrashedPaths);
+        Assert.Single(harness.ViewModel.OpenDocuments.Tabs);
+    }
+
+    /// <summary>
+    /// Удаление, подтверждённое поверх диалога о правках, закрыло спрошенную вкладку.
+    /// Раньше ответ доставался вкладке, ставшей активной: «Сохранить» записывало её правки
+    /// в файл, «Не сохранять» их стирало. Теперь любая кнопка работает как «Отмена».
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AnswerAboutAClosedTabWorksAsCancel(bool save)
+    {
+        var harness = await CreateAsync();
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "adr", "adr_0001.md"));
+        harness.ViewModel.ToggleEditModeCommand.Execute(null);
+        harness.ViewModel.EditorSession!.SourceText = "# adr edited";
+        var adr = harness.ViewModel.OpenDocuments.ActiveTab!;
+
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
+        harness.ViewModel.ToggleEditModeCommand.Execute(null);
+        harness.ViewModel.EditorSession!.SourceText = "# first edited";
+
+        var file = harness.Workspace.Roots.Single(static row => row.Name == "first.md");
+        await harness.Workspace.RequestDeleteCommand.ExecuteAsync(file);
+        await harness.ViewModel.CloseActiveTabCommand.ExecuteAsync(null);
+        Assert.True(harness.ViewModel.IsDirtyPromptOpen);
+
+        await harness.ViewModel.ConfirmDeleteCommand.ExecuteAsync(null);
+        Assert.Same(adr, Assert.Single(harness.ViewModel.OpenDocuments.Tabs));
+
+        var answer = save
+            ? harness.ViewModel.ConfirmDirtySaveCommand
+            : harness.ViewModel.ConfirmDirtyDiscardCommand;
+        await answer.ExecuteAsync(null);
+
+        Assert.False(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.Empty(harness.Saver.Saves);
+        Assert.Same(adr, harness.ViewModel.OpenDocuments.ActiveTab);
+        Assert.True(adr.IsDirty);
+        Assert.Equal("# adr edited", harness.ViewModel.EditorSession!.SourceText);
+    }
+
     [Fact]
     public async Task RevealAsksThePlatformForTheRealPath()
     {
@@ -329,9 +406,11 @@ public sealed class WorkspaceFileOperationsTests
         loader.Sources[TestPaths.At("docs", "meeting.md")] = new MarkdownSource(TestPaths.At("docs", "meeting.md"), "meeting.md", string.Empty);
         loader.Sources[TestPaths.At("docs", "renamed.md")] = new MarkdownSource(TestPaths.At("docs", "renamed.md"), "renamed.md", "# first");
 
+        var saver = new RecordingDocumentSaver();
+
         var viewModel = new ShellViewModel(
             new OpenDocumentUseCase(loader),
-            new SaveDocumentUseCase(new RecordingDocumentSaver()),
+            new SaveDocumentUseCase(saver),
             new StubFilePicker(),
             new StubCommandLineActivation(),
             new LocalizationService(AppLanguage.English),
@@ -350,12 +429,13 @@ public sealed class WorkspaceFileOperationsTests
 
         await viewModel.OpenFolderPathAsync(Root);
 
-        return new OperationsHarness(fileSystem, platform, viewModel, viewModel.Workspace!);
+        return new OperationsHarness(fileSystem, platform, saver, viewModel, viewModel.Workspace!);
     }
 
     private sealed record OperationsHarness(
         FakeWorkspaceFileSystem FileSystem,
         FakePlatformServices Platform,
+        RecordingDocumentSaver Saver,
         ShellViewModel ViewModel,
         WorkspaceViewModel Workspace);
 }

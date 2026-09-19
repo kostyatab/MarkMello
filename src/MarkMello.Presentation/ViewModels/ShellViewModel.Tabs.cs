@@ -95,11 +95,13 @@ public partial class ShellViewModel
 
     /// <summary>
     /// Переключение на другую вкладку. Документ не перечитывается с диска — берётся снимок,
-    /// поэтому переключение стоит столько же, сколько перерисовка.
+    /// поэтому переключение стоит столько же, сколько перерисовка. Сюда сходятся клик,
+    /// «ещё N» и Ctrl+Tab; под диалогом о правках вкладка не меняется — он спрашивает
+    /// о текущей.
     /// </summary>
     private async Task ActivateTabAsync(DocumentTabViewModel tab)
     {
-        if (ReferenceEquals(OpenDocuments.ActiveTab, tab))
+        if (IsDirtyPromptOpen || ReferenceEquals(OpenDocuments.ActiveTab, tab))
         {
             return;
         }
@@ -155,9 +157,16 @@ public partial class ShellViewModel
     /// <summary>
     /// Закрытие вкладки. Грязная вкладка проходит через существующий диалог
     /// «Сохранить / Не сохранять / Отмена», причём «Отмена» оставляет вкладку на месте.
+    /// Под уже открытым диалогом не закрывается ни одна вкладка (×, Ctrl+W): грязную
+    /// пришлось бы показать вместо спрошенной, а чистая пропала бы у пользователя из-под рук.
     /// </summary>
     private async Task CloseTabAsync(DocumentTabViewModel tab)
     {
+        if (IsDirtyPromptOpen)
+        {
+            return;
+        }
+
         if (tab.EditorSession?.IsDirty == true)
         {
             // Диалог работает с активной сессией, поэтому сначала показываем пользователю

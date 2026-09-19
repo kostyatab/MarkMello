@@ -20,6 +20,7 @@ public sealed partial class WorkspaceViewModel : ObservableObject
     private readonly Func<string, Task> _openDocumentAsync;
     private readonly Func<FileTreeNodeViewModel, Task> _deleteRequested;
     private readonly Action<string, string> _pathChanged;
+    private readonly Func<bool> _areFileOperationsBlocked;
 
     private WorkspaceViewModel(
         WorkspaceFolder folder,
@@ -34,6 +35,7 @@ public sealed partial class WorkspaceViewModel : ObservableObject
         _openDocumentAsync = dependencies.OpenDocumentAsync;
         _deleteRequested = dependencies.DeleteRequested;
         _pathChanged = dependencies.PathChanged;
+        _areFileOperationsBlocked = dependencies.AreFileOperationsBlocked;
 
         foreach (var node in CreateNodes(rootEntries, depth: 0))
         {
@@ -58,6 +60,8 @@ public sealed partial class WorkspaceViewModel : ObservableObject
     /// <summary>
     /// Всё, что нужно открытой папке: use cases и обратные вызовы shell.
     /// Свёрнуто в один тип, чтобы конструктор не превращался в список из восьми аргументов.
+    /// <see cref="AreFileOperationsBlocked"/> — shell ждёт ответа о несохранённых правках:
+    /// создание, переименование и дублирование в это время не начинаются.
     /// </summary>
     public sealed record WorkspaceDependencies(
         ExpandFolderNodeUseCase ExpandFolderNode,
@@ -66,7 +70,8 @@ public sealed partial class WorkspaceViewModel : ObservableObject
         ILocalizationService Localization,
         Func<string, Task> OpenDocumentAsync,
         Func<FileTreeNodeViewModel, Task> DeleteRequested,
-        Action<string, string> PathChanged);
+        Action<string, string> PathChanged,
+        Func<bool> AreFileOperationsBlocked);
 
     public WorkspaceFolder Folder { get; }
 

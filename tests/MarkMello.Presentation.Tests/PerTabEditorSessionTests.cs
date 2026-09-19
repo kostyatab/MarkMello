@@ -1,5 +1,6 @@
 using MarkMello.Application.UseCases;
 using MarkMello.Domain;
+using MarkMello.Domain.Workspace;
 using MarkMello.Presentation.Localization;
 using MarkMello.Presentation.ViewModels;
 
@@ -11,6 +12,8 @@ namespace MarkMello.Presentation.Tests;
 /// </summary>
 public sealed class PerTabEditorSessionTests
 {
+    private static readonly string NotesFolder = TestPaths.At("notes");
+
     [Fact]
     public async Task EditingSurvivesSwitchingToAnotherTabAndBack()
     {
@@ -448,6 +451,178 @@ public sealed class PerTabEditorSessionTests
         Assert.All(schedulers, static scheduler => Assert.Equal(1, scheduler.DisposeCount));
     }
 
+    /// <summary>
+    /// Ctrl+Tab под диалогом переключал вкладку, и ответ доставался ей: «Не сохранять» стирало
+    /// правки соседней вкладки, а спрошенная закрывалась вместе со своими — без вопроса.
+    /// </summary>
+    [Theory]
+    [InlineData(1)]
+    [InlineData(-1)]
+    public async Task SwitchingTabsByKeyboardDoesNothingWhileTheDirtyPromptIsOpen(int direction)
+    {
+        var harness = await CreateHarnessWithTwoDirtyTabsAsync();
+        var first = harness.ViewModel.OpenDocuments.Tabs[0];
+        var second = harness.ViewModel.OpenDocuments.Tabs[1];
+
+        await harness.ViewModel.OpenDocuments.CloseCommand.ExecuteAsync(first);
+        Assert.True(harness.ViewModel.IsDirtyPromptOpen);
+
+        var switchTab = direction > 0
+            ? harness.ViewModel.ActivateNextTabCommand
+            : harness.ViewModel.ActivatePreviousTabCommand;
+        await switchTab.ExecuteAsync(null);
+
+        Assert.Same(first, harness.ViewModel.OpenDocuments.ActiveTab);
+        Assert.Equal("# first edited", harness.ViewModel.EditorSession!.SourceText);
+
+        await harness.ViewModel.ConfirmDirtyDiscardCommand.ExecuteAsync(null);
+
+        AssertOnlySecondTabKeepsItsChanges(harness, second);
+    }
+
+    /// <summary>Клик по вкладке и выбор из «ещё N» идут одной командой — под диалогом она молчит.</summary>
+    [Fact]
+    public async Task ActivatingAnotherTabDoesNothingWhileTheDirtyPromptIsOpen()
+    {
+        var harness = await CreateHarnessWithTwoDirtyTabsAsync();
+        var first = harness.ViewModel.OpenDocuments.Tabs[0];
+        var second = harness.ViewModel.OpenDocuments.Tabs[1];
+
+        await harness.ViewModel.OpenDocuments.CloseCommand.ExecuteAsync(first);
+        await harness.ViewModel.OpenDocuments.ActivateCommand.ExecuteAsync(second);
+
+        Assert.True(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.Same(first, harness.ViewModel.OpenDocuments.ActiveTab);
+        Assert.Equal("# first edited", harness.ViewModel.EditorSession!.SourceText);
+
+        await harness.ViewModel.ConfirmDirtyDiscardCommand.ExecuteAsync(null);
+
+        AssertOnlySecondTabKeepsItsChanges(harness, second);
+    }
+
+    /// <summary>
+    /// Под диалогом не закрывается ни одна вкладка: × на грязной фоновой вкладке раньше
+    /// показывал её вместо спрошенной, а на чистой — молча закрывал.
+    /// </summary>
+    [Fact]
+    public async Task ClosingTabsDoesNothingWhileTheDirtyPromptIsOpen()
+    {
+        var harness = await CreateHarnessWithTwoDirtyTabsAsync();
+        await harness.ViewModel.OpenPathAsync(@"C:\docs\third.md");
+        var tabs = harness.ViewModel.OpenDocuments.Tabs.ToList();
+        var first = tabs[0];
+
+        await harness.ViewModel.OpenDocuments.CloseCommand.ExecuteAsync(first);
+        Assert.True(harness.ViewModel.IsDirtyPromptOpen);
+
+        await harness.ViewModel.OpenDocuments.CloseCommand.ExecuteAsync(tabs[1]);
+        await harness.ViewModel.OpenDocuments.CloseCommand.ExecuteAsync(tabs[2]);
+        await harness.ViewModel.CloseActiveTabCommand.ExecuteAsync(null);
+
+        Assert.True(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.Equal(tabs, harness.ViewModel.OpenDocuments.Tabs);
+        Assert.Same(first, harness.ViewModel.OpenDocuments.ActiveTab);
+        Assert.Equal("# first edited", harness.ViewModel.EditorSession!.SourceText);
+    }
+
+    /// <summary>Папка в этом окне восстановила бы свои вкладки и сменила активную под вопросом.</summary>
+    [Fact]
+    public async Task OpeningAFolderInThisWindowDoesNothingWhileTheDirtyPromptIsOpen()
+    {
+        var harness = await CreateHarnessWithOneDirtyTabAsync();
+        await harness.ViewModel.CloseActiveTabCommand.ExecuteAsync(null);
+
+        await harness.ViewModel.OpenFolderPathAsync(NotesFolder);
+
+        Assert.True(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.Null(harness.ViewModel.Workspace);
+        Assert.Equal(ViewState.Viewing, harness.ViewModel.State);
+        Assert.Equal(@"C:\docs\first.md", harness.ViewModel.CurrentDocumentPath);
+    }
+
+    /// <summary>
+    /// Файл из Finder, пришедший под диалогом, раньше открывался сразу и становился активным:
+    /// ответ доставался ему. Теперь такие файлы ждут ответа и открываются по порядку.
+    /// </summary>
+    [Fact]
+    public async Task FilesFromTheSystemOpenAfterTheDirtyPromptIsAnswered()
+    {
+        var harness = await CreateHarnessWithOneDirtyTabAsync();
+        var first = harness.ViewModel.OpenDocuments.ActiveTab!;
+        await harness.ViewModel.CloseActiveTabCommand.ExecuteAsync(null);
+
+        harness.Activation.RaiseFileActivated(@"C:\docs\second.md");
+        harness.Activation.RaiseFileActivated(@"C:\docs\third.md");
+
+        Assert.True(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.Same(first, Assert.Single(harness.ViewModel.OpenDocuments.Tabs));
+        Assert.Same(first, harness.ViewModel.OpenDocuments.ActiveTab);
+
+        await harness.ViewModel.ConfirmDirtyDiscardCommand.ExecuteAsync(null);
+
+        Assert.False(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.Equal(
+            [@"C:\docs\second.md", @"C:\docs\third.md"],
+            harness.ViewModel.OpenDocuments.Tabs.Select(static tab => tab.Path));
+        Assert.Equal(@"C:\docs\third.md", harness.ViewModel.CurrentDocumentPath);
+    }
+
+    [Fact]
+    public async Task FilesFromTheSystemOpenAfterTheDirtyPromptIsCancelled()
+    {
+        var harness = await CreateHarnessWithOneDirtyTabAsync();
+        var first = harness.ViewModel.OpenDocuments.ActiveTab!;
+        await harness.ViewModel.CloseActiveTabCommand.ExecuteAsync(null);
+
+        harness.Activation.RaiseFileActivated(@"C:\docs\second.md");
+        Assert.Same(first, harness.ViewModel.OpenDocuments.ActiveTab);
+
+        await harness.ViewModel.CancelDirtyPromptCommand.ExecuteAsync(null);
+
+        Assert.False(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.Equal(@"C:\docs\second.md", harness.ViewModel.CurrentDocumentPath);
+        Assert.Equal(2, harness.ViewModel.OpenDocuments.Tabs.Count);
+        Assert.True(first.IsDirty);
+        Assert.Equal("# first edited", first.EditorSession!.SourceText);
+    }
+
+    /// <summary>
+    /// Файл, пришедший, пока окно спрашивает о правках перед закрытием, ждёт вместе со всеми:
+    /// на первой вкладке он увёл бы ответ на себя, а после последней окну уже не до него.
+    /// </summary>
+    [Fact]
+    public async Task FilesFromTheSystemDoNotOpenWhenTheWindowCloses()
+    {
+        var harness = await CreateHarnessWithTwoDirtyTabsAsync();
+        var closeRequests = 0;
+        harness.ViewModel.CloseRequested += (_, _) => closeRequests++;
+
+        Assert.True(harness.ViewModel.TryQueueCloseRequest());
+        harness.Activation.RaiseFileActivated(@"C:\docs\third.md");
+
+        Assert.Equal(@"C:\docs\first.md", harness.ViewModel.CurrentDocumentPath);
+
+        await harness.ViewModel.ConfirmDirtyDiscardCommand.ExecuteAsync(null);
+
+        // Очередь грязных вкладок продолжается — файл всё ещё ждёт.
+        Assert.True(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.Equal(@"C:\docs\second.md", harness.ViewModel.CurrentDocumentPath);
+
+        await harness.ViewModel.ConfirmDirtyDiscardCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, closeRequests);
+        Assert.DoesNotContain(
+            harness.ViewModel.OpenDocuments.Tabs,
+            static tab => tab.Path == @"C:\docs\third.md");
+    }
+
+    private static void AssertOnlySecondTabKeepsItsChanges(EditorTestHarness harness, DocumentTabViewModel second)
+    {
+        Assert.False(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.Same(second, Assert.Single(harness.ViewModel.OpenDocuments.Tabs));
+        Assert.True(second.IsDirty);
+        Assert.Equal("# second edited", second.EditorSession!.SourceText);
+    }
 
     /// <summary>Закрывает все вкладки по одной, отвечая «Не сохранять» на вопрос о правках.</summary>
     private static async Task CloseAllTabsDiscardingChangesAsync(EditorTestHarness harness)
@@ -462,6 +637,17 @@ public sealed class PerTabEditorSessionTests
         }
 
         Assert.Empty(harness.ViewModel.OpenDocuments.Tabs);
+    }
+
+    private static async Task<EditorTestHarness> CreateHarnessWithOneDirtyTabAsync()
+    {
+        var harness = CreateHarness();
+
+        await harness.ViewModel.OpenPathAsync(@"C:\docs\first.md");
+        harness.ViewModel.ToggleEditModeCommand.Execute(null);
+        harness.ViewModel.EditorSession!.SourceText = "# first edited";
+
+        return harness;
     }
 
     private static async Task<EditorTestHarness> CreateHarnessWithTwoDirtyTabsAsync()
@@ -484,14 +670,19 @@ public sealed class PerTabEditorSessionTests
         var loader = new StubDocumentLoader();
         loader.Sources[@"C:\docs\first.md"] = new MarkdownSource(@"C:\docs\first.md", "first.md", "# first");
         loader.Sources[@"C:\docs\second.md"] = new MarkdownSource(@"C:\docs\second.md", "second.md", "# second");
+        loader.Sources[@"C:\docs\third.md"] = new MarkdownSource(@"C:\docs\third.md", "third.md", "# third");
 
         var fileSystem = new FakeWorkspaceFileSystem();
+        fileSystem.AddDirectory(
+            NotesFolder,
+            WorkspaceEntry.ForFile(TestPaths.At("notes", "README.md"), "README.md"));
+        var activation = new StubCommandLineActivation();
 
         var viewModel = new ShellViewModel(
             new OpenDocumentUseCase(loader),
             new SaveDocumentUseCase(new RecordingDocumentSaver()),
             new StubFilePicker(),
-            new StubCommandLineActivation(),
+            activation,
             new LocalizationService(AppLanguage.English),
             new InMemorySettingsStore(),
             new RecordingThemeService(),
@@ -514,8 +705,11 @@ public sealed class PerTabEditorSessionTests
                     return scheduler;
                 });
 
-        return new EditorTestHarness(loader, viewModel);
+        return new EditorTestHarness(loader, activation, viewModel);
     }
 
-    private sealed record EditorTestHarness(StubDocumentLoader Loader, ShellViewModel ViewModel);
+    private sealed record EditorTestHarness(
+        StubDocumentLoader Loader,
+        StubCommandLineActivation Activation,
+        ShellViewModel ViewModel);
 }
