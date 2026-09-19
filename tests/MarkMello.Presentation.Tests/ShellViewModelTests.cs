@@ -638,13 +638,12 @@ public sealed class ShellViewModelTests
     }
 
     [Theory]
-    [InlineData("macOS", "Toggle edit mode (⌘E)", "Reading preferences (⌘,)", "⌘O", "⇧⌘O", "⌘B")]
-    [InlineData("Windows", "Toggle edit mode (Ctrl+E)", "Reading preferences (Ctrl+,)", "Ctrl+O", "Ctrl+Shift+O", "Ctrl+B")]
-    [InlineData("Linux", "Toggle edit mode (Ctrl+E)", "Reading preferences (Ctrl+,)", "Ctrl+O", "Ctrl+Shift+O", "Ctrl+B")]
+    [InlineData("macOS", "Toggle edit mode (⌘E)", "⌘O", "⇧⌘O", "⌘B")]
+    [InlineData("Windows", "Toggle edit mode (Ctrl+E)", "Ctrl+O", "Ctrl+Shift+O", "Ctrl+B")]
+    [InlineData("Linux", "Toggle edit mode (Ctrl+E)", "Ctrl+O", "Ctrl+Shift+O", "Ctrl+B")]
     public void ShortcutLabelsFollowPlatform(
         string platformName,
         string editTooltip,
-        string readingTooltip,
         string openFile,
         string openFolder,
         string toggleSidebar)
@@ -652,7 +651,6 @@ public sealed class ShellViewModelTests
         var viewModel = CreateHarness(platformName: platformName).ViewModel;
 
         Assert.Equal(editTooltip, viewModel.EditToggleTooltip);
-        Assert.Equal(readingTooltip, viewModel.ReadingSettingsTooltip);
         Assert.Equal(openFile, viewModel.OpenFileShortcut);
         Assert.Equal(openFolder, viewModel.OpenFolderShortcut);
         Assert.Equal(toggleSidebar, viewModel.ToggleSidebarShortcut);
@@ -666,7 +664,246 @@ public sealed class ShellViewModelTests
         viewModel.SelectRussianLanguageCommand.Execute(null);
 
         Assert.Equal("Переключить режим редактирования (⌘E)", viewModel.EditToggleTooltip);
-        Assert.Equal("Параметры чтения (⌘,)", viewModel.ReadingSettingsTooltip);
+        Assert.Equal("Вид: тема, шрифт, размер", viewModel.ReadingSettingsTooltip);
+        Assert.Equal("Меньше (⌘-)", viewModel.ReadingSizeDecreaseTooltip);
+        Assert.Equal("Больше (⌘+)", viewModel.ReadingSizeIncreaseTooltip);
+    }
+
+    [Theory]
+    [InlineData("macOS", "Smaller (⌘-)", "Larger (⌘+)", "⌘,")]
+    [InlineData("Windows", "Smaller (Ctrl+-)", "Larger (Ctrl++)", "Ctrl+,")]
+    [InlineData("Linux", "Smaller (Ctrl+-)", "Larger (Ctrl++)", "Ctrl+,")]
+    public void ReadingCardShortcutLabelsFollowPlatform(
+        string platformName,
+        string decreaseTooltip,
+        string increaseTooltip,
+        string settingsShortcut)
+    {
+        var viewModel = CreateHarness(platformName: platformName).ViewModel;
+
+        // ⌘, открывает настройки приложения, а не карточку: у кнопки Aa сочетания нет.
+        Assert.Equal("View: theme, font, size", viewModel.ReadingSettingsTooltip);
+
+        Assert.Equal(decreaseTooltip, viewModel.ReadingSizeDecreaseTooltip);
+        Assert.Equal(increaseTooltip, viewModel.ReadingSizeIncreaseTooltip);
+        Assert.Equal(settingsShortcut, viewModel.SettingsShortcut);
+    }
+
+    [Fact]
+    public async Task TextSizeCommandsStepByOnePixelAndPersistLikeTheSlider()
+    {
+        var harness = CreateHarness();
+        await OpenSampleAsync(harness);
+        var viewModel = harness.ViewModel;
+
+        Assert.Equal(18, viewModel.ReadingPreferences.FontSize);
+        Assert.Equal("18 px", viewModel.FontSizeLabel);
+
+        viewModel.IncreaseTextSizeCommand.Execute(null);
+        Assert.Equal(19, viewModel.ReadingPreferences.FontSize);
+        Assert.Equal(19, viewModel.FontSizeSetting);
+        Assert.Equal("19 px", viewModel.FontSizeLabel);
+        await WaitUntilAsync(() => harness.Settings.Preferences.FontSize == 19);
+
+        // Каждое сохранение идёт в фоне отдельной задачей: ждём его перед следующим
+        // шагом, иначе запись «18» могла бы лечь после «17».
+        viewModel.DecreaseTextSizeCommand.Execute(null);
+        Assert.Equal(18, viewModel.ReadingPreferences.FontSize);
+        await WaitUntilAsync(() => harness.Settings.Preferences.FontSize == 18);
+
+        viewModel.DecreaseTextSizeCommand.Execute(null);
+        Assert.Equal(17, viewModel.ReadingPreferences.FontSize);
+        await WaitUntilAsync(() => harness.Settings.Preferences.FontSize == 17);
+
+        viewModel.ResetTextSizeCommand.Execute(null);
+        Assert.Equal(ReadingPreferences.Default.FontSize, viewModel.ReadingPreferences.FontSize);
+        await WaitUntilAsync(() => harness.Settings.Preferences.FontSize == 18);
+    }
+
+    [Fact]
+    public async Task TextSizeCommandsDoNothingAtTheBoundsOfTheRange()
+    {
+        var harness = CreateHarness();
+        await OpenSampleAsync(harness);
+        var viewModel = harness.ViewModel;
+
+        viewModel.FontSizeSetting = ReadingPreferences.MaxFontSize;
+        Assert.False(viewModel.IncreaseTextSizeCommand.CanExecute(null));
+        Assert.True(viewModel.DecreaseTextSizeCommand.CanExecute(null));
+        viewModel.IncreaseTextSizeCommand.Execute(null);
+        Assert.Equal(24, viewModel.ReadingPreferences.FontSize);
+
+        viewModel.FontSizeSetting = ReadingPreferences.MinFontSize;
+        Assert.False(viewModel.DecreaseTextSizeCommand.CanExecute(null));
+        Assert.True(viewModel.IncreaseTextSizeCommand.CanExecute(null));
+        viewModel.DecreaseTextSizeCommand.Execute(null);
+        Assert.Equal(14, viewModel.ReadingPreferences.FontSize);
+
+        viewModel.ResetTextSizeCommand.Execute(null);
+        Assert.Equal(18, viewModel.ReadingPreferences.FontSize);
+        Assert.False(viewModel.ResetTextSizeCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task TextSizeCommandsWorkInEditModeButNotWithoutADocument()
+    {
+        var harness = CreateHarness();
+        var viewModel = harness.ViewModel;
+
+        Assert.False(viewModel.IncreaseTextSizeCommand.CanExecute(null));
+        Assert.False(viewModel.DecreaseTextSizeCommand.CanExecute(null));
+
+        await OpenSampleAsync(harness);
+        await viewModel.ToggleEditModeCommand.ExecuteAsync(null);
+        Assert.True(viewModel.IsEditMode);
+
+        viewModel.IncreaseTextSizeCommand.Execute(null);
+
+        Assert.Equal(19, viewModel.ReadingPreferences.FontSize);
+        Assert.Equal(19, viewModel.EditorSession!.ReadingPreferences.FontSize);
+    }
+
+    [Fact]
+    public async Task ReadingSettingsToggleIsHiddenInEditModeAndTheCardCloses()
+    {
+        var harness = CreateHarness();
+        await OpenSampleAsync(harness);
+        var viewModel = harness.ViewModel;
+
+        Assert.True(viewModel.ShowsReadingSettingsToggle);
+        viewModel.ToggleSettingsCommand.Execute(null);
+        Assert.Same(viewModel, viewModel.ReadingSettingsOverlayContent);
+
+        await viewModel.ToggleEditModeCommand.ExecuteAsync(null);
+
+        Assert.False(viewModel.ShowsReadingSettingsToggle);
+        Assert.False(viewModel.IsSettingsOpen);
+        Assert.Null(viewModel.ReadingSettingsOverlayContent);
+
+        viewModel.ToggleSettingsCommand.Execute(null);
+        Assert.False(viewModel.IsSettingsOpen);
+    }
+
+    [Fact]
+    public async Task SettingsShortcutTogglesAppSettingsEverywhereButEditMode()
+    {
+        var harness = CreateHarness();
+        var viewModel = harness.ViewModel;
+
+        // Стартовый экран: документа нет, настройки всё равно открываются.
+        viewModel.ToggleAppSettingsCommand.Execute(null);
+        Assert.True(viewModel.IsAppSettingsOpen);
+        viewModel.ToggleAppSettingsCommand.Execute(null);
+        Assert.False(viewModel.HasOpenOverlay);
+
+        // Из открытой карточки Aa — туда же, куда ведёт её нижняя строка.
+        await OpenSampleAsync(harness);
+        viewModel.ToggleSettingsCommand.Execute(null);
+        viewModel.ToggleAppSettingsCommand.Execute(null);
+        Assert.False(viewModel.IsSettingsOpen);
+        Assert.True(viewModel.IsAppSettingsOpen);
+
+        // В правке меню приложения нет — до окна «Настройки» сочетание молчит.
+        viewModel.CloseOverlayCommand.Execute(null);
+        await viewModel.ToggleEditModeCommand.ExecuteAsync(null);
+        viewModel.ToggleAppSettingsCommand.Execute(null);
+        Assert.False(viewModel.HasOpenOverlay);
+    }
+
+    [Theory]
+    [InlineData(ThemeMode.System)]
+    [InlineData(ThemeMode.Light)]
+    [InlineData(ThemeMode.Dark)]
+    public async Task ThemeSelectionAppliesAndPersistsEachOfTheThreeModes(ThemeMode mode)
+    {
+        var harness = CreateHarness();
+        harness.Settings.Theme = mode == ThemeMode.Dark ? ThemeMode.Light : ThemeMode.Dark;
+        var viewModel = harness.ViewModel;
+        await viewModel.InitializeAsync();
+
+        switch (mode)
+        {
+            case ThemeMode.System:
+                viewModel.IsSystemThemeSelected = true;
+                break;
+            case ThemeMode.Light:
+                viewModel.IsLightThemeSelected = true;
+                break;
+            default:
+                viewModel.IsDarkThemeSelected = true;
+                break;
+        }
+
+        Assert.Equal(mode, viewModel.Theme);
+        Assert.Equal(mode, harness.ThemeService.AppliedTheme);
+        Assert.Equal(mode == ThemeMode.System, viewModel.IsSystemThemeSelected);
+        Assert.Equal(mode == ThemeMode.Light, viewModel.IsLightThemeSelected);
+        Assert.Equal(mode == ThemeMode.Dark, viewModel.IsDarkThemeSelected);
+        await WaitUntilAsync(() => harness.Settings.Theme == mode);
+    }
+
+    [Fact]
+    public async Task UncheckingTheSelectedThemeKeepsIt()
+    {
+        var harness = CreateHarness();
+        harness.Settings.Theme = ThemeMode.Dark;
+        var viewModel = harness.ViewModel;
+        await viewModel.InitializeAsync();
+
+        viewModel.IsDarkThemeSelected = false;
+
+        Assert.Equal(ThemeMode.Dark, viewModel.Theme);
+        Assert.True(viewModel.IsDarkThemeSelected);
+        Assert.Equal(ThemeMode.Dark, harness.ThemeService.AppliedTheme);
+    }
+
+    [Theory]
+    [InlineData("""{"theme":"Dark","language":"English"}""", ThemeMode.Dark)]
+    [InlineData("""{"theme":"Light"}""", ThemeMode.Light)]
+    [InlineData("""{"theme":"System"}""", ThemeMode.System)]
+    [InlineData("""{"language":"English"}""", ThemeMode.System)]
+    public async Task ThemeFromAnExistingSettingsFileIsSelectedOnStart(string settingsJson, ThemeMode expected)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "theme-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(directory, "settings.json"), settingsJson);
+            var themeService = new RecordingThemeService();
+            var viewModel = CreateHarness(
+                settingsStore: new MarkMello.Infrastructure.Settings.JsonSettingsStore(directory),
+                themeService: themeService).ViewModel;
+
+            await viewModel.InitializeAsync();
+
+            Assert.Equal(expected, viewModel.Theme);
+            Assert.Equal(expected, themeService.AppliedTheme);
+            Assert.Equal(expected == ThemeMode.System, viewModel.IsSystemThemeSelected);
+            Assert.Equal(expected == ThemeMode.Light, viewModel.IsLightThemeSelected);
+            Assert.Equal(expected == ThemeMode.Dark, viewModel.IsDarkThemeSelected);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    private static async Task OpenSampleAsync(TestHarness harness)
+    {
+        var path = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "one.md");
+        harness.Loader.Sources[path] = CreateSource(path, "alpha beta");
+        await harness.ViewModel.OpenPathAsync(path);
+        Assert.True(harness.ViewModel.IsViewer);
+    }
+
+    private static async Task WaitUntilAsync(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (!condition())
+        {
+            Assert.True(DateTime.UtcNow < deadline, "Condition was not met in time.");
+            await Task.Delay(10);
+        }
     }
 
     private static MarkdownSource CreateSource(string path, string content)
@@ -685,14 +922,18 @@ public sealed class ShellViewModelTests
             ArchitectureName: "x64",
             InstallAction: AppUpdateInstallAction.LaunchInstaller);
 
-    private static TestHarness CreateHarness(FakeWorkspaceFileSystem? workspaceFileSystem = null, string platformName = "Windows")
+    private static TestHarness CreateHarness(
+        FakeWorkspaceFileSystem? workspaceFileSystem = null,
+        string platformName = "Windows",
+        MarkMello.Application.Abstractions.ISettingsStore? settingsStore = null,
+        RecordingThemeService? themeService = null)
     {
         var loader = new StubDocumentLoader();
         var saver = new RecordingDocumentSaver();
         var picker = new StubFilePicker();
         var settings = new InMemorySettingsStore();
         var localization = new LocalizationService(AppLanguage.English);
-        var themeService = new RecordingThemeService();
+        themeService ??= new RecordingThemeService();
         var startupMetrics = new RecordingStartupMetrics();
         var updateService = new StubUpdateService();
         var commandLine = new StubCommandLineActivation();
@@ -703,7 +944,7 @@ public sealed class ShellViewModelTests
             picker,
             commandLine,
             localization,
-            settings,
+            settingsStore ?? settings,
             themeService,
             startupMetrics,
             new RenderMarkdownDocumentUseCase(new TestMarkdownRenderer(), new FakeDiagramRenderService()),
@@ -721,6 +962,7 @@ public sealed class ShellViewModelTests
             saver,
             picker,
             settings,
+            themeService,
             startupMetrics,
             updateService,
             commandLine,
@@ -733,6 +975,7 @@ public sealed class ShellViewModelTests
         RecordingDocumentSaver DocumentSaver,
         StubFilePicker FilePicker,
         InMemorySettingsStore Settings,
+        RecordingThemeService ThemeService,
         RecordingStartupMetrics StartupMetrics,
         StubUpdateService UpdateService,
         StubCommandLineActivation CommandLine,

@@ -60,6 +60,16 @@ public sealed class IconStateColoursTests
             ("mm-code-copy-button", false, ":pointerover", Text),
             ("mm-code-copy-button", false, ":focus-visible", Text),
             ("mm-code-copy-button", false, ":pressed", Faint),
+            // Карточка Aa: сегменты темы с иконкой и кнопки «− / +» размера текста.
+            ("mm-card-segment", true, "", Soft),
+            ("mm-card-segment", true, ":pointerover", Text),
+            ("mm-card-segment", true, ":pointerover :pressed", Text),
+            ("mm-card-segment", true, ":checked", Text),
+            ("mm-card-segment", true, ":checked :pointerover", Text),
+            ("mm-card-step", false, "", Soft),
+            ("mm-card-step", false, ":pointerover", Text),
+            ("mm-card-step", false, ":pointerover :pressed", Text),
+            ("mm-card-step", false, ":disabled", Faint),
         ];
 
         var data = new TheoryData<string, string, bool, string, string>();

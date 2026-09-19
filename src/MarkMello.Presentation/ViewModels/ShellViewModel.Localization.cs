@@ -92,13 +92,10 @@ public partial class ShellViewModel
         nameof(OverlayCloseAbout),
         nameof(OverlayCloseMenu),
         nameof(OverlayCloseSettings),
-        nameof(ReadingFontHint),
         nameof(ReadingFontLabel),
         nameof(ReadingFontMono),
         nameof(ReadingFontSans),
         nameof(ReadingFontSerif),
-        nameof(ReadingHeader),
-        nameof(ReadingLineHeightHint),
         nameof(ReadingLineHeightLabel),
         nameof(WindowBorderAuto),
         nameof(WindowBorderHint),
@@ -106,14 +103,19 @@ public partial class ShellViewModel
         nameof(WindowBorderOff),
         nameof(WindowBorderOn),
         nameof(ReadingMinimapAuto),
-        nameof(ReadingMinimapHint),
         nameof(ReadingMinimapLabel),
         nameof(ReadingMinimapOff),
         nameof(ReadingMinimapOn),
+        nameof(ReadingMoreSettingsHint),
+        nameof(ReadingMoreSettingsLink),
         nameof(ReadingSettingsTooltip),
-        nameof(ReadingSizeHint),
+        nameof(ReadingSizeDecreaseTooltip),
+        nameof(ReadingSizeIncreaseTooltip),
         nameof(ReadingSizeLabel),
-        nameof(ReadingWidthHint),
+        nameof(ReadingThemeAuto),
+        nameof(ReadingThemeDark),
+        nameof(ReadingThemeLabel),
+        nameof(ReadingThemeLight),
         nameof(ReadingWidthLabel),
         nameof(ReadingWidthMedium),
         nameof(ReadingWidthNarrow),
@@ -261,13 +263,10 @@ public partial class ShellViewModel
     public string OverlayCloseAbout => _localization["OverlayCloseAbout"];
     public string OverlayCloseMenu => _localization["OverlayCloseMenu"];
     public string OverlayCloseSettings => _localization["OverlayCloseSettings"];
-    public string ReadingFontHint => _localization["ReadingFontHint"];
     public string ReadingFontLabel => _localization["ReadingFontLabel"];
     public string ReadingFontMono => _localization["ReadingFontMono"];
     public string ReadingFontSans => _localization["ReadingFontSans"];
     public string ReadingFontSerif => _localization["ReadingFontSerif"];
-    public string ReadingHeader => _localization["ReadingHeader"];
-    public string ReadingLineHeightHint => _localization["ReadingLineHeightHint"];
     public string ReadingLineHeightLabel => _localization["ReadingLineHeightLabel"];
     public string WindowBorderAuto => _localization["WindowBorderAuto"];
     public string WindowBorderHint => _localization["WindowBorderHint"];
@@ -275,14 +274,19 @@ public partial class ShellViewModel
     public string WindowBorderOff => _localization["WindowBorderOff"];
     public string WindowBorderOn => _localization["WindowBorderOn"];
     public string ReadingMinimapAuto => _localization["ReadingMinimapAuto"];
-    public string ReadingMinimapHint => _localization["ReadingMinimapHint"];
     public string ReadingMinimapLabel => _localization["ReadingMinimapLabel"];
     public string ReadingMinimapOff => _localization["ReadingMinimapOff"];
     public string ReadingMinimapOn => _localization["ReadingMinimapOn"];
-    public string ReadingSettingsTooltip => _localization.Format("ReadingSettingsTooltip", CommandShortcut(Key.OemComma));
-    public string ReadingSizeHint => _localization["ReadingSizeHint"];
+    public string ReadingMoreSettingsHint => _localization["ReadingMoreSettingsHint"];
+    public string ReadingMoreSettingsLink => _localization["ReadingMoreSettingsLink"];
+    public string ReadingSettingsTooltip => _localization["ReadingSettingsTooltip"];
+    public string ReadingSizeDecreaseTooltip => _localization.Format("ReadingSizeDecreaseTooltip", CommandShortcut(Key.OemMinus));
+    public string ReadingSizeIncreaseTooltip => _localization.Format("ReadingSizeIncreaseTooltip", CommandShortcut(Key.OemPlus));
     public string ReadingSizeLabel => _localization["ReadingSizeLabel"];
-    public string ReadingWidthHint => _localization["ReadingWidthHint"];
+    public string ReadingThemeAuto => _localization["ReadingThemeAuto"];
+    public string ReadingThemeDark => _localization["ReadingThemeDark"];
+    public string ReadingThemeLabel => _localization["ReadingThemeLabel"];
+    public string ReadingThemeLight => _localization["ReadingThemeLight"];
     public string ReadingWidthLabel => _localization["ReadingWidthLabel"];
     public string ReadingWidthMedium => _localization["ReadingWidthMedium"];
     public string ReadingWidthNarrow => _localization["ReadingWidthNarrow"];
@@ -308,6 +312,9 @@ public partial class ShellViewModel
     public string OpenFolderShortcut => CommandShortcut(Key.O, KeyModifiers.Shift);
 
     public string ToggleSidebarShortcut => CommandShortcut(Key.B);
+
+    /// <summary>Сочетание настроек приложения — плашка в нижней строке карточки Aa.</summary>
+    public string SettingsShortcut => CommandShortcut(Key.OemComma);
 
     /// <summary>Клавиши «Открыть файл» по отдельности — на стартовом экране каждая в своей плашке.</summary>
     public IReadOnlyList<string> OpenFileShortcutKeys
@@ -391,7 +398,6 @@ public partial class ShellViewModel
         EditorSession?.RefreshLocalizedProperties();
 
         OnPropertyChanged(nameof(EditToggleLabel));
-        OnPropertyChanged(nameof(NextThemeHint));
         OnPropertyChanged(nameof(FindResultLabel));
         OnPropertyChanged(nameof(CheckForUpdatesLabel));
         OnPropertyChanged(nameof(DownloadUpdateLabel));

@@ -8,6 +8,8 @@ namespace MarkMello.Presentation.Services;
 /// <summary>
 /// Применяет тему к <see cref="global::Avalonia.Application.RequestedThemeVariant"/>.
 /// Маршалинг на UI-поток, потому что вызов может прийти из любого контекста.
+/// <see cref="ThemeMode.System"/> — это <see cref="ThemeVariant.Default"/>: с ним Avalonia
+/// сама берёт тему ОС и переключает её, когда ОС меняет тему на ходу.
 /// </summary>
 public sealed class AvaloniaThemeService : IThemeService
 {
@@ -28,13 +30,6 @@ public sealed class AvaloniaThemeService : IThemeService
         {
             Dispatcher.UIThread.Post(() => ApplyCore(variant));
         }
-    }
-
-
-    public ThemeMode GetEffectiveTheme()
-    {
-        var variant = global::Avalonia.Application.Current?.ActualThemeVariant;
-        return variant == ThemeVariant.Dark ? ThemeMode.Dark : ThemeMode.Light;
     }
 
     private static void ApplyCore(ThemeVariant variant)

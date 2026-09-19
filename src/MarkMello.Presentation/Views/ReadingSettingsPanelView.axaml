@@ -7,204 +7,201 @@
              mc:Ignorable="d"
              x:Class="MarkMello.Presentation.Views.ReadingSettingsPanelView"
              x:DataType="vm:ShellViewModel">
-      <Border
-              Classes="mm-settings-panel mm-popover-right mm-reading-panel"
-              Width="320">
-        <StackPanel>
-          <Border Classes="mm-settings-head-shell">
-            <Grid ColumnDefinitions="*,Auto"
-                  ColumnSpacing="12">
-              <TextBlock Classes="mm-settings-title"
-                         Grid.Column="0"
-                         Text="{Binding ReadingHeader}" />
-              <Button Grid.Column="1"
-                      Classes="mm-settings-close"
-                      Command="{Binding CloseSettingsCommand}"
-                      ToolTip.Tip="{Binding OverlayCloseSettings}">
-                <views:LucideIcon Data="{DynamicResource LucideXGeometry}"
-                                  Width="14"
-                                  Height="14" />
-              </Button>
-            </Grid>
-          </Border>
-
-          <Border Classes="mm-settings-body-shell">
-            <StackPanel Spacing="0">
-              <Border Classes="mm-setting-row">
-                <Grid ColumnDefinitions="Auto,*"
-                      ColumnSpacing="12">
-                  <StackPanel Grid.Column="0"
-                              Spacing="2"
-                              VerticalAlignment="Center">
-                    <TextBlock Classes="mm-setting-label"
-                               Text="{Binding ReadingFontLabel}" />
-                    <TextBlock Classes="mm-setting-hint"
-                               Text="{Binding ReadingFontHint}" />
+      <!-- Карточка Aa по A-SetAa: тема, шрифт, размер и остальное чтение в одном месте -->
+      <Border Classes="mm-settings-panel mm-popover-right mm-reading-panel mm-view-card"
+              Width="312">
+        <StackPanel Spacing="14">
+          <StackPanel Spacing="6">
+            <TextBlock Classes="mm-card-label"
+                       Text="{Binding ReadingThemeLabel}" />
+            <Border Classes="mm-card-segments">
+              <Grid ColumnDefinitions="*,*,*"
+                    ColumnSpacing="2">
+                <ToggleButton Grid.Column="0"
+                              Classes="mm-card-segment"
+                              IsChecked="{Binding IsSystemThemeSelected}">
+                  <StackPanel Orientation="Horizontal"
+                              Spacing="5">
+                    <views:LucideIcon Data="{DynamicResource LucideMonitorGeometry}"
+                                      Width="14"
+                                      Height="14" />
+                    <TextBlock Text="{Binding ReadingThemeAuto}" />
                   </StackPanel>
-                  <Border Grid.Column="1"
-                          Classes="mm-segmented"
-                          HorizontalAlignment="Right">
-                    <StackPanel Orientation="Horizontal"
-                                Spacing="1">
-                      <ToggleButton Classes="mm-segmented-item"
-                                    IsChecked="{Binding IsSerifFontSelected}">
-                        <TextBlock Text="{Binding ReadingFontSerif}" />
-                      </ToggleButton>
-                      <ToggleButton Classes="mm-segmented-item"
-                                    IsChecked="{Binding IsSansFontSelected}">
-                        <TextBlock Text="{Binding ReadingFontSans}" />
-                      </ToggleButton>
-                      <ToggleButton Classes="mm-segmented-item"
-                                    IsChecked="{Binding IsMonoFontSelected}">
-                        <TextBlock Text="{Binding ReadingFontMono}" />
-                      </ToggleButton>
-                    </StackPanel>
-                  </Border>
-                </Grid>
+                </ToggleButton>
+                <ToggleButton Grid.Column="1"
+                              Classes="mm-card-segment"
+                              IsChecked="{Binding IsLightThemeSelected}">
+                  <StackPanel Orientation="Horizontal"
+                              Spacing="5">
+                    <views:LucideIcon Data="{DynamicResource LucideSunGeometry}"
+                                      Width="14"
+                                      Height="14" />
+                    <TextBlock Text="{Binding ReadingThemeLight}" />
+                  </StackPanel>
+                </ToggleButton>
+                <ToggleButton Grid.Column="2"
+                              Classes="mm-card-segment"
+                              IsChecked="{Binding IsDarkThemeSelected}">
+                  <StackPanel Orientation="Horizontal"
+                              Spacing="5">
+                    <views:LucideIcon Data="{DynamicResource LucideMoonGeometry}"
+                                      Width="14"
+                                      Height="14" />
+                    <TextBlock Text="{Binding ReadingThemeDark}" />
+                  </StackPanel>
+                </ToggleButton>
+              </Grid>
+            </Border>
+          </StackPanel>
+
+          <!-- Каждый вариант шрифта набран своей гарнитурой -->
+          <StackPanel Spacing="6">
+            <TextBlock Classes="mm-card-label"
+                       Text="{Binding ReadingFontLabel}" />
+            <Border Classes="mm-card-segments">
+              <Grid ColumnDefinitions="*,*,*"
+                    ColumnSpacing="2">
+                <ToggleButton Grid.Column="0"
+                              Classes="mm-card-segment"
+                              IsChecked="{Binding IsSerifFontSelected}">
+                  <TextBlock Text="{Binding ReadingFontSerif}"
+                             FontFamily="{DynamicResource MmDocumentSerifFontFamily}"
+                             FontSize="13" />
+                </ToggleButton>
+                <ToggleButton Grid.Column="1"
+                              Classes="mm-card-segment"
+                              IsChecked="{Binding IsSansFontSelected}">
+                  <TextBlock Text="{Binding ReadingFontSans}"
+                             FontFamily="{DynamicResource MmDocumentSansFontFamily}" />
+                </ToggleButton>
+                <ToggleButton Grid.Column="2"
+                              Classes="mm-card-segment"
+                              IsChecked="{Binding IsMonoFontSelected}">
+                  <TextBlock Text="{Binding ReadingFontMono}"
+                             FontFamily="{DynamicResource MmDocumentMonoFontFamily}"
+                             FontSize="11.5" />
+                </ToggleButton>
+              </Grid>
+            </Border>
+          </StackPanel>
+
+          <Grid ColumnDefinitions="*,Auto"
+                ColumnSpacing="12"
+                MinHeight="32">
+            <TextBlock Grid.Column="0"
+                       Classes="mm-card-label"
+                       Text="{Binding ReadingSizeLabel}" />
+            <Border Grid.Column="1"
+                    Classes="mm-card-stepper">
+              <StackPanel Orientation="Horizontal"
+                          Spacing="2">
+                <Button Classes="mm-card-step"
+                        Command="{Binding DecreaseTextSizeCommand}"
+                        ToolTip.Tip="{Binding ReadingSizeDecreaseTooltip}">
+                  <views:LucideIcon Data="{DynamicResource LucideMinusGeometry}"
+                                    Width="14"
+                                    Height="14" />
+                </Button>
+                <TextBlock Classes="mm-card-step-value"
+                           Text="{Binding FontSizeLabel}" />
+                <Button Classes="mm-card-step"
+                        Command="{Binding IncreaseTextSizeCommand}"
+                        ToolTip.Tip="{Binding ReadingSizeIncreaseTooltip}">
+                  <views:LucideIcon Data="{DynamicResource LucidePlusGeometry}"
+                                    Width="14"
+                                    Height="14" />
+                </Button>
+              </StackPanel>
+            </Border>
+          </Grid>
+
+          <StackPanel Spacing="6">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Grid.Column="0"
+                         Classes="mm-card-label"
+                         Text="{Binding ReadingLineHeightLabel}" />
+              <TextBlock Grid.Column="1"
+                         Classes="mm-card-value"
+                         Text="{Binding LineHeightLabel}" />
+            </Grid>
+            <Slider Classes="mm-settings-slider mm-card-slider"
+                    Minimum="1.4"
+                    Maximum="2.0"
+                    TickFrequency="0.05"
+                    IsSnapToTickEnabled="True"
+                    Value="{Binding LineHeightSetting, Mode=TwoWay}" />
+          </StackPanel>
+
+          <StackPanel Spacing="6">
+            <TextBlock Classes="mm-card-label"
+                       Text="{Binding ReadingWidthLabel}" />
+            <Border Classes="mm-card-segments">
+              <Grid ColumnDefinitions="*,*,*"
+                    ColumnSpacing="2">
+                <ToggleButton Grid.Column="0"
+                              Classes="mm-card-segment"
+                              IsChecked="{Binding IsNarrowWidthSelected}">
+                  <TextBlock Text="{Binding ReadingWidthNarrow}" />
+                </ToggleButton>
+                <ToggleButton Grid.Column="1"
+                              Classes="mm-card-segment"
+                              IsChecked="{Binding IsMediumWidthSelected}">
+                  <TextBlock Text="{Binding ReadingWidthMedium}" />
+                </ToggleButton>
+                <ToggleButton Grid.Column="2"
+                              Classes="mm-card-segment"
+                              IsChecked="{Binding IsWideWidthSelected}">
+                  <TextBlock Text="{Binding ReadingWidthWide}" />
+                </ToggleButton>
+              </Grid>
+            </Border>
+          </StackPanel>
+
+          <StackPanel Spacing="6">
+            <TextBlock Classes="mm-card-label"
+                       Text="{Binding ReadingMinimapLabel}" />
+            <Border Classes="mm-card-segments">
+              <Grid ColumnDefinitions="*,*,*"
+                    ColumnSpacing="2">
+                <ToggleButton Grid.Column="0"
+                              Classes="mm-card-segment"
+                              IsChecked="{Binding IsDocumentMinimapAutoSelected}">
+                  <TextBlock Text="{Binding ReadingMinimapAuto}" />
+                </ToggleButton>
+                <ToggleButton Grid.Column="1"
+                              Classes="mm-card-segment"
+                              IsChecked="{Binding IsDocumentMinimapOnSelected}">
+                  <TextBlock Text="{Binding ReadingMinimapOn}" />
+                </ToggleButton>
+                <ToggleButton Grid.Column="2"
+                              Classes="mm-card-segment"
+                              IsChecked="{Binding IsDocumentMinimapOffSelected}">
+                  <TextBlock Text="{Binding ReadingMinimapOff}" />
+                </ToggleButton>
+              </Grid>
+            </Border>
+          </StackPanel>
+
+          <!-- До окна «Настройки» строка ведёт в нынешние настройки приложения -->
+          <Button Classes="mm-card-footer"
+                  Command="{Binding OpenAppSettingsCommand}">
+            <Grid ColumnDefinitions="*,Auto,Auto"
+                  ColumnSpacing="8">
+              <TextBlock Grid.Column="0"
+                         Text="{Binding ReadingMoreSettingsHint}"
+                         TextTrimming="CharacterEllipsis"
+                         VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1"
+                         Classes="mm-card-footer-link"
+                         Text="{Binding ReadingMoreSettingsLink}" />
+              <Border Grid.Column="2"
+                      Classes="kbd">
+                <TextBlock Text="{Binding SettingsShortcut}"
+                           FontFamily="{DynamicResource MmDocumentMonoFontFamily}"
+                           FontSize="10" />
               </Border>
-
-              <StackPanel Spacing="0">
-                <Line Classes="mm-setting-divider"
-                      StartPoint="0,0.5"
-                      EndPoint="1,0.5" />
-                <Border Classes="mm-setting-row">
-                  <Grid ColumnDefinitions="Auto,*"
-                        ColumnSpacing="12">
-                    <StackPanel Grid.Column="0"
-                                Spacing="2"
-                                VerticalAlignment="Center">
-                      <TextBlock Classes="mm-setting-label"
-                                 Text="{Binding ReadingSizeLabel}" />
-                      <TextBlock Classes="mm-setting-hint"
-                                 Text="{Binding ReadingSizeHint}" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="1"
-                                Orientation="Horizontal"
-                                Spacing="10"
-                                                  VerticalAlignment="Center">
-                      <Slider Classes="mm-settings-slider"
-                              Minimum="14"
-                              Maximum="24"
-                              TickFrequency="1"
-                              IsSnapToTickEnabled="True"
-                              Value="{Binding FontSizeSetting, Mode=TwoWay}" />
-                      <TextBlock Classes="mm-slider-value"
-                                 Text="{Binding FontSizeLabel}" />
-                    </StackPanel>
-                  </Grid>
-                </Border>
-              </StackPanel>
-
-              <StackPanel Spacing="0">
-                <Line Classes="mm-setting-divider"
-                      StartPoint="0,0.5"
-                      EndPoint="1,0.5" />
-                <Border Classes="mm-setting-row">
-                  <Grid ColumnDefinitions="Auto,*"
-                        ColumnSpacing="12">
-                    <StackPanel Grid.Column="0"
-                                Spacing="2"
-                                VerticalAlignment="Center">
-                      <TextBlock Classes="mm-setting-label"
-                                 Text="{Binding ReadingLineHeightLabel}" />
-                      <TextBlock Classes="mm-setting-hint"
-                                 Text="{Binding ReadingLineHeightHint}" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="1"
-                                Orientation="Horizontal"
-                                Spacing="10"
-                                                  VerticalAlignment="Center">
-                      <Slider Classes="mm-settings-slider"
-                              Minimum="1.4"
-                              Maximum="2.0"
-                              TickFrequency="0.05"
-                              IsSnapToTickEnabled="True"
-                              Value="{Binding LineHeightSetting, Mode=TwoWay}" />
-                      <TextBlock Classes="mm-slider-value"
-                                 Text="{Binding LineHeightLabel}" />
-                    </StackPanel>
-                  </Grid>
-                </Border>
-              </StackPanel>
-
-              <StackPanel Spacing="0">
-                <Line Classes="mm-setting-divider"
-                      StartPoint="0,0.5"
-                      EndPoint="1,0.5" />
-                <Border Classes="mm-setting-row">
-                  <Grid ColumnDefinitions="Auto,*"
-                        ColumnSpacing="12">
-                    <StackPanel Grid.Column="0"
-                                Spacing="2"
-                                VerticalAlignment="Center">
-                      <TextBlock Classes="mm-setting-label"
-                                 Text="{Binding ReadingWidthLabel}" />
-                      <TextBlock Classes="mm-setting-hint"
-                                 Text="{Binding ReadingWidthHint}" />
-                    </StackPanel>
-                    <Border Grid.Column="1"
-                            Classes="mm-segmented"
-                            HorizontalAlignment="Right">
-                      <StackPanel Orientation="Horizontal"
-                                  Spacing="1">
-                        <ToggleButton Classes="mm-segmented-item"
-                                      IsChecked="{Binding IsNarrowWidthSelected}">
-                          <TextBlock Text="{Binding ReadingWidthNarrow}" />
-                        </ToggleButton>
-                        <ToggleButton Classes="mm-segmented-item"
-                                      IsChecked="{Binding IsMediumWidthSelected}">
-                          <TextBlock Text="{Binding ReadingWidthMedium}" />
-                        </ToggleButton>
-                        <ToggleButton Classes="mm-segmented-item"
-                                      IsChecked="{Binding IsWideWidthSelected}">
-                          <TextBlock Text="{Binding ReadingWidthWide}" />
-                        </ToggleButton>
-                      </StackPanel>
-                    </Border>
-                  </Grid>
-                </Border>
-              </StackPanel>
-
-
-              <StackPanel Spacing="0">
-                <Line Classes="mm-setting-divider"
-                      StartPoint="0,0.5"
-                      EndPoint="1,0.5" />
-                <Border Classes="mm-setting-row">
-                  <Grid ColumnDefinitions="Auto,*"
-                        ColumnSpacing="12">
-                    <StackPanel Grid.Column="0"
-                                Spacing="2"
-                                VerticalAlignment="Center">
-                      <TextBlock Classes="mm-setting-label"
-                                 Text="{Binding ReadingMinimapLabel}" />
-                      <TextBlock Classes="mm-setting-hint"
-                                 Text="{Binding ReadingMinimapHint}" />
-                    </StackPanel>
-                    <Border Grid.Column="1"
-                            Classes="mm-segmented"
-                            HorizontalAlignment="Right">
-                      <StackPanel Orientation="Horizontal"
-                                  Spacing="1">
-                        <ToggleButton Classes="mm-segmented-item"
-                                      IsChecked="{Binding IsDocumentMinimapAutoSelected}">
-                          <TextBlock Text="{Binding ReadingMinimapAuto}" />
-                        </ToggleButton>
-                        <ToggleButton Classes="mm-segmented-item"
-                                      IsChecked="{Binding IsDocumentMinimapOnSelected}">
-                          <TextBlock Text="{Binding ReadingMinimapOn}" />
-                        </ToggleButton>
-                        <ToggleButton Classes="mm-segmented-item"
-                                      IsChecked="{Binding IsDocumentMinimapOffSelected}">
-                          <TextBlock Text="{Binding ReadingMinimapOff}" />
-                        </ToggleButton>
-                      </StackPanel>
-                    </Border>
-                  </Grid>
-                </Border>
-              </StackPanel>
-            </StackPanel>
-          </Border>
+            </Grid>
+          </Button>
         </StackPanel>
       </Border>
 </UserControl>

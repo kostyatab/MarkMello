@@ -182,6 +182,9 @@ public partial class ShellViewModel : ObservableObject
     private int _findMatchCount;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSystemThemeSelected))]
+    [NotifyPropertyChangedFor(nameof(IsLightThemeSelected))]
+    [NotifyPropertyChangedFor(nameof(IsDarkThemeSelected))]
     private ThemeMode _theme = ThemeMode.System;
 
     [ObservableProperty]
@@ -189,12 +192,6 @@ public partial class ShellViewModel : ObservableObject
 
     [ObservableProperty]
     private RenderedMarkdownDocument _renderedDocument = RenderedMarkdownDocument.Empty;
-
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowsMoonThemeIcon))]
-    [NotifyPropertyChangedFor(nameof(ShowsSunThemeIcon))]
-    [NotifyPropertyChangedFor(nameof(NextThemeHint))]
-    private ThemeMode _effectiveTheme = ThemeMode.Light;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ActiveDocumentContent))]
@@ -292,7 +289,13 @@ public partial class ShellViewModel : ObservableObject
 
     public object? AppAboutOverlayContent => IsAppAboutOpen ? this : null;
 
-    public object? ReadingSettingsOverlayContent => IsSettingsOpen && IsViewer ? this : null;
+    /// <summary>
+    /// Кнопка Aa и её карточка есть только при чтении: в правке блок справа
+    /// показывает «Готово», а размер текста меняется сочетаниями.
+    /// </summary>
+    public bool ShowsReadingSettingsToggle => IsViewer && !IsEditMode;
+
+    public object? ReadingSettingsOverlayContent => IsSettingsOpen && ShowsReadingSettingsToggle ? this : null;
 
     public bool ShowsReadingStatus => IsViewer && !IsEditMode;
 
@@ -310,10 +313,6 @@ public partial class ShellViewModel : ObservableObject
             return _localization.Format("FindResultCount", FindMatchIndex + 1, FindMatchCount);
         }
     }
-
-    public bool ShowsMoonThemeIcon => EffectiveTheme == ThemeMode.Light;
-
-    public bool ShowsSunThemeIcon => EffectiveTheme == ThemeMode.Dark;
 
     public ReadingPreferences DocumentReadingPreferences => _documentReadingPreferences;
 
@@ -398,6 +397,33 @@ public partial class ShellViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Размер текста сочетаниями ⌘+ / ⌘− / ⌘0 (Ctrl на Windows и Linux) и кнопками
+    /// «− / +» карточки Aa. Работают при открытом документе — и в чтении, и в правке;
+    /// на границах диапазона команда недоступна, и сочетание ничего не делает.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanIncreaseTextSize))]
+    private void IncreaseTextSize() => FontSizeSetting = ReadingPreferences.FontSize + 1;
+
+    private bool CanIncreaseTextSize() => IsViewer && ReadingPreferences.FontSize < ReadingPreferences.MaxFontSize;
+
+    [RelayCommand(CanExecute = nameof(CanDecreaseTextSize))]
+    private void DecreaseTextSize() => FontSizeSetting = ReadingPreferences.FontSize - 1;
+
+    private bool CanDecreaseTextSize() => IsViewer && ReadingPreferences.FontSize > ReadingPreferences.MinFontSize;
+
+    [RelayCommand(CanExecute = nameof(CanResetTextSize))]
+    private void ResetTextSize() => FontSizeSetting = ReadingPreferences.Default.FontSize;
+
+    private bool CanResetTextSize() => IsViewer && ReadingPreferences.FontSize != ReadingPreferences.Default.FontSize;
+
+    private void UpdateTextSizeCommandStates()
+    {
+        IncreaseTextSizeCommand.NotifyCanExecuteChanged();
+        DecreaseTextSizeCommand.NotifyCanExecuteChanged();
+        ResetTextSizeCommand.NotifyCanExecuteChanged();
+    }
+
     public double LineHeightSetting
     {
         get => ReadingPreferences.LineHeight;
@@ -436,7 +462,7 @@ public partial class ShellViewModel : ObservableObject
         }
     }
 
-    public string FontSizeLabel => $"{ReadingPreferences.FontSize}px";
+    public string FontSizeLabel => _localization.Format("ReadingFontSizeValue", ReadingPreferences.FontSize);
 
     public string LineHeightLabel => ReadingPreferences.LineHeight.ToString("0.00", _localization.Culture);
 
@@ -594,6 +620,46 @@ public partial class ShellViewModel : ObservableObject
         OnPropertyChanged(nameof(IsWindowBorderOffSelected));
     }
 
+    /// <summary>
+    /// Тема «Авто / Светлая / Тёмная» в карточке Aa (ADR-0009). «Авто» — сохраняемый
+    /// выбор <see cref="ThemeMode.System"/>: приложение само идёт за темой ОС.
+    /// </summary>
+    public bool IsSystemThemeSelected
+    {
+        get => Theme == ThemeMode.System;
+        set => SelectTheme(value, ThemeMode.System, nameof(IsSystemThemeSelected));
+    }
+
+    public bool IsLightThemeSelected
+    {
+        get => Theme == ThemeMode.Light;
+        set => SelectTheme(value, ThemeMode.Light, nameof(IsLightThemeSelected));
+    }
+
+    public bool IsDarkThemeSelected
+    {
+        get => Theme == ThemeMode.Dark;
+        set => SelectTheme(value, ThemeMode.Dark, nameof(IsDarkThemeSelected));
+    }
+
+    private void SelectTheme(bool isChecked, ThemeMode mode, string propertyName)
+    {
+        if (!isChecked)
+        {
+            // Как и у остальных сегментов: снять отметку с выбранного нельзя.
+            OnPropertyChanged(propertyName);
+            return;
+        }
+
+        if (Theme == mode)
+        {
+            return;
+        }
+
+        ApplyTheme(mode);
+        PersistTheme(mode);
+    }
+
     public DocumentMinimapMode SelectedDocumentMinimapMode
     {
         get => ReadingPreferences.DocumentMinimapMode;
@@ -656,10 +722,6 @@ public partial class ShellViewModel : ObservableObject
     public int WordCount => EditorSession?.WordCount ?? CountWords(Document?.Content);
 
     public int ReadTimeMinutes => Math.Max(1, (int)Math.Round(WordCount / 220.0));
-
-    public string NextThemeHint => EffectiveTheme == ThemeMode.Light
-        ? _localization["ThemeSwitchToDark"]
-        : _localization["ThemeSwitchToLight"];
 
     private bool _suppressStartupActivation;
 
@@ -848,19 +910,14 @@ public partial class ShellViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task CycleThemeAsync()
-    {
-        var next = EffectiveTheme == ThemeMode.Light
-            ? ThemeMode.Dark
-            : ThemeMode.Light;
-
-        ApplyTheme(next);
-        await _settings.SaveThemeAsync(next).ConfigureAwait(true);
-    }
-
-    [RelayCommand]
     private void ToggleSettings()
     {
+        // В правке кнопки Aa нет — карточка без кнопки не открывается.
+        if (!IsSettingsOpen && IsEditMode)
+        {
+            return;
+        }
+
         MarkSecondaryFeaturesReady();
 
         IsFindBarOpen = false;
@@ -927,6 +984,23 @@ public partial class ShellViewModel : ObservableObject
 
         IsFindBarOpen = false;
         ShellOverlay = ShellOverlayKind.AppSettings;
+    }
+
+    /// <summary>
+    /// ⌘, (Ctrl+, на Windows и Linux) — настройки приложения, как обещает нижняя строка
+    /// карточки Aa (ADR-0009 Rule 7). Повторное нажатие закрывает их. До окна «Настройки»
+    /// открываются нынешние, поэтому в правке, где меню приложения нет, сочетание молчит.
+    /// </summary>
+    [RelayCommand]
+    private void ToggleAppSettings()
+    {
+        if (IsAppSettingsOpen)
+        {
+            CloseOverlayCore();
+            return;
+        }
+
+        OpenAppSettings();
     }
 
     [RelayCommand]
@@ -1174,6 +1248,7 @@ public partial class ShellViewModel : ObservableObject
         OnPropertyChanged(nameof(HasDocumentTitle));
         OnPropertyChanged(nameof(ShowsReadingStatus));
         OnPropertyChanged(nameof(ShowsEditToggle));
+        OnPropertyChanged(nameof(ShowsReadingSettingsToggle));
         OnPropertyChanged(nameof(ReadingSettingsOverlayContent));
 
         // Пустое состояние зависит от State, а вкладка регистрируется до перехода
@@ -1194,12 +1269,15 @@ public partial class ShellViewModel : ObservableObject
         if (value)
         {
             CloseAppOverlayCore();
+            CloseSettings();
         }
 
         OnPropertyChanged(nameof(EditToggleLabel));
         OnPropertyChanged(nameof(ShowsEditPencilIcon));
         OnPropertyChanged(nameof(ShowsReadEyeIcon));
         OnPropertyChanged(nameof(ShowsReadingStatus));
+        OnPropertyChanged(nameof(ShowsReadingSettingsToggle));
+        OnPropertyChanged(nameof(ReadingSettingsOverlayContent));
         OnPropertyChanged(nameof(ShowsAppMenuControl));
         OnPropertyChanged(nameof(ShowsFloatingAppMenuButton));
         OnPropertyChanged(nameof(IsAppMenuOpen));
@@ -1276,6 +1354,7 @@ public partial class ShellViewModel : ObservableObject
         OnPropertyChanged(nameof(IsDocumentMinimapAutoSelected));
         OnPropertyChanged(nameof(IsDocumentMinimapOnSelected));
         OnPropertyChanged(nameof(IsDocumentMinimapOffSelected));
+        UpdateTextSizeCommandStates();
     }
 
     private async Task OpenFileCoreAsync()
@@ -1637,7 +1716,22 @@ public partial class ShellViewModel : ObservableObject
     {
         Theme = mode;
         _themeService.Apply(mode);
-        EffectiveTheme = _themeService.GetEffectiveTheme();
+    }
+
+    private void PersistTheme(ThemeMode mode)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _settings.SaveThemeAsync(mode).ConfigureAwait(false);
+            }
+            catch
+            {
+                // Как и настройки чтения: несохранённая тема не повод
+                // прерывать чтение — выбор уже применён к окну.
+            }
+        });
     }
 
     private static ReadingPreferences GetDocumentRenderingPreferences(ReadingPreferences preferences)
@@ -1735,6 +1829,7 @@ public partial class ShellViewModel : ObservableObject
         CheckForUpdatesCommand.NotifyCanExecuteChanged();
         DownloadUpdateCommand.NotifyCanExecuteChanged();
         OpenDownloadedUpdateCommand.NotifyCanExecuteChanged();
+        UpdateTextSizeCommandStates();
 
         OnPropertyChanged(nameof(CanCheckForUpdates));
         OnPropertyChanged(nameof(CanDownloadAvailableUpdate));

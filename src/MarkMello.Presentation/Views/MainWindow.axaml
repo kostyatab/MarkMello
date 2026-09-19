@@ -50,6 +50,18 @@
     <KeyBinding Gesture="Cmd+R" Command="{Binding ReloadCommand}" />
     <KeyBinding Gesture="Ctrl+F" Command="{Binding ToggleFindBarCommand}" />
     <KeyBinding Gesture="Cmd+F" Command="{Binding ToggleFindBarCommand}" />
+    <!-- Размер текста. OemPlus — клавиша «=», с Shift это «+»; Add и Subtract
+         с цифрового блока жест сводит к OemPlus и OemMinus сам, а NumPad0 — нет. -->
+    <KeyBinding Gesture="Ctrl+OemPlus" Command="{Binding IncreaseTextSizeCommand}" />
+    <KeyBinding Gesture="Cmd+OemPlus" Command="{Binding IncreaseTextSizeCommand}" />
+    <KeyBinding Gesture="Ctrl+Shift+OemPlus" Command="{Binding IncreaseTextSizeCommand}" />
+    <KeyBinding Gesture="Cmd+Shift+OemPlus" Command="{Binding IncreaseTextSizeCommand}" />
+    <KeyBinding Gesture="Ctrl+OemMinus" Command="{Binding DecreaseTextSizeCommand}" />
+    <KeyBinding Gesture="Cmd+OemMinus" Command="{Binding DecreaseTextSizeCommand}" />
+    <KeyBinding Gesture="Ctrl+D0" Command="{Binding ResetTextSizeCommand}" />
+    <KeyBinding Gesture="Cmd+D0" Command="{Binding ResetTextSizeCommand}" />
+    <KeyBinding Gesture="Ctrl+NumPad0" Command="{Binding ResetTextSizeCommand}" />
+    <KeyBinding Gesture="Cmd+NumPad0" Command="{Binding ResetTextSizeCommand}" />
     <KeyBinding Gesture="Escape" Command="{Binding ClearErrorCommand}" />
   </Window.KeyBindings>
 
@@ -312,22 +324,6 @@
                 VerticalAlignment="Top"
                 Margin="0,12,16,0">
           <StackPanel Orientation="Horizontal" Spacing="6">
-            <Button Classes="topbar-ghost"
-                    Command="{Binding CycleThemeCommand}"
-                    ToolTip.Tip="{Binding NextThemeHint}">
-              <Panel Width="14"
-                     Height="14">
-                <views:LucideIcon IsVisible="{Binding ShowsMoonThemeIcon}"
-                                  Data="{DynamicResource LucideMoonGeometry}"
-                                  Width="14"
-                                  Height="14" />
-                <views:LucideIcon IsVisible="{Binding ShowsSunThemeIcon}"
-                                  Data="{DynamicResource LucideSunGeometry}"
-                                  Width="14"
-                                  Height="14" />
-              </Panel>
-            </Button>
-
             <ToggleButton Classes="topbar-action"
                           IsVisible="{Binding ShowsEditToggle}"
                           IsChecked="{Binding IsEditMode, Mode=OneWay}"
@@ -356,11 +352,11 @@
 
             <ToggleButton Name="SettingsTriggerButton"
                           Classes="topbar-ghost"
-                          IsVisible="{Binding IsViewer}"
+                          IsVisible="{Binding ShowsReadingSettingsToggle}"
                           Command="{Binding ToggleSettingsCommand}"
                           IsChecked="{Binding IsSettingsOpen, Mode=OneWay}"
                           ToolTip.Tip="{Binding ReadingSettingsTooltip}">
-              <views:LucideIcon Data="{DynamicResource LucideSettings2Geometry}"
+              <views:LucideIcon Data="{DynamicResource LucideALargeSmallGeometry}"
                                 Width="14"
                                 Height="14" />
             </ToggleButton>

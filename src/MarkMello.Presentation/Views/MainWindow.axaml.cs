@@ -462,7 +462,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        _viewModel.ToggleSettingsCommand.Execute(null);
+        _viewModel.ToggleAppSettingsCommand.Execute(null);
         e.Handled = true;
     }
 

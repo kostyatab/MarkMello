@@ -183,15 +183,7 @@ internal sealed class RecordingThemeService : IThemeService
 {
     public ThemeMode AppliedTheme { get; private set; } = ThemeMode.System;
 
-    public ThemeMode EffectiveTheme { get; private set; } = ThemeMode.Light;
-
-    public void Apply(ThemeMode mode)
-    {
-        AppliedTheme = mode;
-        EffectiveTheme = mode == ThemeMode.System ? ThemeMode.Light : mode;
-    }
-
-    public ThemeMode GetEffectiveTheme() => EffectiveTheme;
+    public void Apply(ThemeMode mode) => AppliedTheme = mode;
 }
 
 internal sealed class RecordingStartupMetrics : IStartupMetrics

@@ -122,6 +122,10 @@ dotnet run --project ./src/MarkMello.Desktop/MarkMello.Desktop.csproj -- ./sampl
 | Find in document | `Ctrl+F` | `Cmd+F` |
 | Save | `Ctrl+S` | `Cmd+S` |
 | Save as | `Ctrl+Shift+S` | `Cmd+Shift+S` |
+| Larger text | `Ctrl+=` / `Ctrl++` | `Cmd+=` / `Cmd++` |
+| Smaller text | `Ctrl+-` | `Cmd+-` |
+| Reset text size | `Ctrl+0` | `Cmd+0` |
+| Settings | `Ctrl+,` | `Cmd+,` |
 
 ## Ideas and suggestions
 
