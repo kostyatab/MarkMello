@@ -88,7 +88,7 @@ public sealed class OpenDocumentsViewModelTests
     }
 
     [Fact]
-    public void TabsFitWithinTheStripStayVisible()
+    public void TabsKeepTheirFullWidthWhileTheyFit()
     {
         var documents = CreateDocuments();
         documents.AvailableWidth = 1000;
@@ -98,6 +98,63 @@ public sealed class OpenDocumentsViewModelTests
         Assert.Equal(2, documents.VisibleTabs.Count);
         Assert.Empty(documents.OverflowTabs);
         Assert.False(documents.HasOverflow);
+        Assert.Equal(OpenDocumentsViewModel.PreferredTabWidth, documents.TabWidth);
+    }
+
+    /// <summary>
+    /// Ширина вкладки не зависит от имени: короткое и длинное имя получают одни 180,
+    /// а длинное гаснет многоточием внутри вкладки.
+    /// </summary>
+    [Fact]
+    public void TabWidthDoesNotDependOnTheName()
+    {
+        var documents = CreateDocuments();
+        documents.AvailableWidth = 1000;
+        Open(documents, TestPaths.At("docs", "a.md"));
+        Open(documents, TestPaths.At("docs", "implementation-plan-folders-and-tabs-revision.md"));
+
+        Assert.Equal(2, documents.VisibleTabs.Count);
+        Assert.Equal(OpenDocumentsViewModel.PreferredTabWidth, documents.TabWidth);
+    }
+
+    /// <summary>
+    /// Четыре вкладки по 180 с «+» не помещаются в 600, а по 120 — помещаются:
+    /// все остаются видимыми и делят место поровну.
+    /// </summary>
+    [Fact]
+    public void CrowdedTabsShrinkBeforeAnyOfThemOverflows()
+    {
+        var documents = CreateDocuments();
+        documents.AvailableWidth = 600;
+        for (var index = 0; index < 4; index++)
+        {
+            Open(documents, TestPaths.At("docs", $"doc-{index}.md"));
+        }
+
+        Assert.Equal(4, documents.VisibleTabs.Count);
+        Assert.False(documents.HasOverflow);
+
+        // 600 − «+» с промежутком (36) − три промежутка между вкладками (18) = 546 на четыре.
+        Assert.Equal(136.5, documents.TabWidth);
+    }
+
+    /// <summary>
+    /// Уже 120 вкладки не сжимаются: при 500 четыре по 120 с «+» не помещаются,
+    /// и лишняя уходит в «ещё N», а видимые остаются по 120.
+    /// </summary>
+    [Fact]
+    public void TabsOverflowOnlyOnceTheyHitTheMinimumWidth()
+    {
+        var documents = CreateDocuments();
+        documents.AvailableWidth = 500;
+        var tabs = Enumerable.Range(0, 4)
+            .Select(index => Open(documents, TestPaths.At("docs", $"doc-{index}.md")))
+            .ToList();
+        documents.Activate(tabs[0]);
+
+        Assert.Equal(tabs.Take(3), documents.VisibleTabs);
+        Assert.Equal([tabs[3]], documents.OverflowTabs);
+        Assert.Equal(OpenDocumentsViewModel.MinimumTabWidth, documents.TabWidth);
     }
 
     [Fact]
@@ -110,8 +167,8 @@ public sealed class OpenDocumentsViewModelTests
         var third = Open(documents, TestPaths.At("docs", "third-document.md"));
         documents.Activate(first);
 
-        Assert.Contains(first, documents.VisibleTabs);
-        Assert.Contains(third, documents.OverflowTabs);
+        Assert.Equal([first, second], documents.VisibleTabs);
+        Assert.Equal([third], documents.OverflowTabs);
         Assert.True(documents.HasOverflow);
         Assert.Equal(documents.OverflowTabs.Count.ToString(CultureInfo.CurrentCulture), documents.OverflowCountLabel);
     }
@@ -121,14 +178,14 @@ public sealed class OpenDocumentsViewModelTests
     {
         var documents = CreateDocuments();
         documents.AvailableWidth = 400;
-        Open(documents, TestPaths.At("docs", "first-document.md"));
-        Open(documents, TestPaths.At("docs", "second-document.md"));
+        var first = Open(documents, TestPaths.At("docs", "first-document.md"));
+        var second = Open(documents, TestPaths.At("docs", "second-document.md"));
         var third = Open(documents, TestPaths.At("docs", "third-document.md"));
 
         documents.Activate(third);
 
-        Assert.Contains(third, documents.VisibleTabs);
-        Assert.DoesNotContain(third, documents.OverflowTabs);
+        Assert.Equal([first, third], documents.VisibleTabs);
+        Assert.Equal([second], documents.OverflowTabs);
     }
 
     [Fact]
@@ -139,6 +196,20 @@ public sealed class OpenDocumentsViewModelTests
         var only = Open(documents, TestPaths.At("docs", "a-very-long-document-name.md"));
 
         Assert.Equal([only], documents.VisibleTabs);
+        Assert.Equal(OpenDocumentsViewModel.MinimumTabWidth, documents.TabWidth);
+    }
+
+    [Fact]
+    public void NarrowStripWithManyTabsKeepsTheActiveOneVisible()
+    {
+        var documents = CreateDocuments();
+        documents.AvailableWidth = 80;
+        Open(documents, TestPaths.At("docs", "a.md"));
+        var second = Open(documents, TestPaths.At("docs", "b.md"));
+        documents.Activate(second);
+
+        Assert.Equal([second], documents.VisibleTabs);
+        Assert.Single(documents.OverflowTabs);
     }
 
     [Fact]
@@ -160,18 +231,6 @@ public sealed class OpenDocumentsViewModelTests
         await documents.CloseOthersCommand.ExecuteAsync(second);
 
         Assert.Equal([first, third], closed);
-    }
-
-    [Fact]
-    public void TabWidthIsClampedToTheDesignRange()
-    {
-        var shortTab = new DocumentTabViewModel(TestPaths.At("a.md"), "a.md");
-        var longTab = new DocumentTabViewModel(
-            TestPaths.At("implementation-plan-folders-and-tabs-revision.md"),
-            "implementation-plan-folders-and-tabs-revision.md");
-
-        Assert.Equal(DocumentTabViewModel.MinimumWidth, shortTab.EstimateWidth());
-        Assert.Equal(DocumentTabViewModel.MaximumWidth, longTab.EstimateWidth());
     }
 
     private static OpenDocumentsViewModel CreateDocuments()

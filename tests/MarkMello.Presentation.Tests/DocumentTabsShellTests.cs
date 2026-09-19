@@ -145,7 +145,56 @@ public sealed class DocumentTabsShellTests
         Assert.Empty(harness.ViewModel.OpenDocuments.Tabs);
         Assert.True(harness.ViewModel.IsEmptyDocumentSurface);
         Assert.False(harness.ViewModel.IsWelcome);
+
+        // В папке без вкладок в строке остаётся «+».
+        Assert.True(harness.ViewModel.ShowsTabStrip);
+    }
+
+    /// <summary>
+    /// «+» живёт в полосе вкладок (ADR-0009 Rule 3): на стартовом экране полосы нет,
+    /// в папке без открытых вкладок она держит одну «+», с документом — вкладки и «+».
+    /// </summary>
+    [Fact]
+    public async Task NewDocumentButtonFollowsTheShellState()
+    {
+        var harness = CreateHarness();
+
+        Assert.True(harness.ViewModel.IsWelcome);
         Assert.False(harness.ViewModel.ShowsTabStrip);
+        Assert.Null(harness.ViewModel.TabStripContent);
+
+        var notified = new List<string?>();
+        harness.ViewModel.PropertyChanged += (_, e) => notified.Add(e.PropertyName);
+
+        await harness.ViewModel.OpenFolderPathAsync(Root);
+        await harness.ViewModel.CloseActiveTabCommand.ExecuteAsync(null);
+
+        Assert.Contains(nameof(ShellViewModel.ShowsTabStrip), notified);
+        Assert.False(harness.ViewModel.OpenDocuments.HasTabs);
+        Assert.True(harness.ViewModel.ShowsTabStrip);
+        Assert.Same(harness.ViewModel, harness.ViewModel.TabStripContent);
+
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
+
+        Assert.True(harness.ViewModel.OpenDocuments.HasTabs);
+        Assert.True(harness.ViewModel.ShowsTabStrip);
+    }
+
+    /// <summary>
+    /// Закрытая папка без вкладок возвращает стартовый экран — и строка снова пустая.
+    /// </summary>
+    [Fact]
+    public async Task ClosingAnEmptyFolderHidesTheNewDocumentButton()
+    {
+        var harness = CreateHarness();
+        await harness.ViewModel.OpenFolderPathAsync(Root);
+        await harness.ViewModel.CloseActiveTabCommand.ExecuteAsync(null);
+
+        await harness.ViewModel.CloseFolderCommand.ExecuteAsync(null);
+
+        Assert.True(harness.ViewModel.IsWelcome);
+        Assert.False(harness.ViewModel.ShowsTabStrip);
+        Assert.Null(harness.ViewModel.TabStripContent);
     }
 
     [Fact]
@@ -160,8 +209,46 @@ public sealed class DocumentTabsShellTests
 
         Assert.True(readme.BelongsToWorkspace);
         Assert.False(outside.BelongsToWorkspace);
-        Assert.Equal("README.md", readme.Tooltip);
+    }
+
+    /// <summary>
+    /// Тултип — полный путь, домашняя папка сокращается до <c>~</c> (ADR-0009 Rule 3).
+    /// Раньше у файлов папки был путь от её корня — он не говорил, какая это папка.
+    /// </summary>
+    [Fact]
+    public async Task TabTooltipIsTheFullPathWithHomeAsTilde()
+    {
+        var harness = CreateHarness(homeDirectory: TestPaths.At("docs"));
+        await harness.ViewModel.OpenFolderPathAsync(Root);
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("outside", "notes.md"));
+
+        var readme = harness.ViewModel.OpenDocuments.Tabs.Single(tab => tab.Title == "README.md");
+        var outside = harness.ViewModel.OpenDocuments.Tabs.Single(tab => tab.Title == "notes.md");
+
+        Assert.Equal($"~{Path.DirectorySeparatorChar}README.md", readme.Tooltip);
         Assert.Equal(TestPaths.At("outside", "notes.md"), outside.Tooltip);
+    }
+
+    /// <summary>Папка, чьё имя лишь начинается с имени домашней, домашней не считается.</summary>
+    [Fact]
+    public async Task TabTooltipDoesNotShortenASiblingThatSharesTheHomePrefix()
+    {
+        var harness = CreateHarness(homeDirectory: TestPaths.At("doc"));
+
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
+
+        Assert.Equal(TestPaths.At("docs", "first.md"), harness.ViewModel.OpenDocuments.ActiveTab!.Tooltip);
+    }
+
+    /// <summary>Домашняя папка с разделителем на конце сокращается так же.</summary>
+    [Fact]
+    public async Task TabTooltipShortensHomeWithATrailingSeparator()
+    {
+        var harness = CreateHarness(homeDirectory: TestPaths.At("docs") + Path.DirectorySeparatorChar);
+
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
+
+        Assert.Equal($"~{Path.DirectorySeparatorChar}first.md", harness.ViewModel.OpenDocuments.ActiveTab!.Tooltip);
     }
 
     /// <summary>
@@ -182,8 +269,6 @@ public sealed class DocumentTabsShellTests
         var outside = harness.ViewModel.OpenDocuments.Tabs.Single(tab => tab.Title == "notes.md");
         Assert.True(first.BelongsToWorkspace);
         Assert.False(outside.BelongsToWorkspace);
-        Assert.Equal("first.md", first.Tooltip);
-        Assert.Equal(TestPaths.At("outside", "notes.md"), outside.Tooltip);
         Assert.True(harness.ViewModel.Workspace!.Roots.Single(node => node.Name == "first.md").IsDirty);
         Assert.Equal("Documents: 2 · Unsaved: 1", harness.ViewModel.SidebarFooterLabel);
     }
@@ -334,8 +419,12 @@ public sealed class DocumentTabsShellTests
         harness.ViewModel.EditorSession!.SourceText = text;
     }
 
-    private static TabsTestHarness CreateHarness(WorkspaceSessionState? session = null)
+    private static TabsTestHarness CreateHarness(WorkspaceSessionState? session = null, string? homeDirectory = null)
     {
+        var platform = homeDirectory is null
+            ? new FakePlatformServices()
+            : new FakePlatformServices { HomeDirectory = homeDirectory };
+
         var fileSystem = new FakeWorkspaceFileSystem();
         fileSystem.AddDirectory(
             Root,
@@ -362,8 +451,8 @@ public sealed class DocumentTabsShellTests
             new OpenFolderUseCase(fileSystem),
             new ExpandFolderNodeUseCase(fileSystem),
             new SearchWorkspaceFilesUseCase(fileSystem),
-            new WorkspaceFileOperationsUseCase(fileSystem, new FakePlatformServices()),
-            new FakePlatformServices(),
+            new WorkspaceFileOperationsUseCase(fileSystem, platform),
+            platform,
             static () => new FakeWorkspaceWatcher(),
             new RecordingWindowLauncher(),
             fileExists: path => fileSystem.Exists(path));

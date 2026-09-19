@@ -8,120 +8,120 @@
              x:Class="MarkMello.Presentation.Views.TabStripView"
              x:DataType="vm:ShellViewModel">
 
-  <!-- Стили полосы: она создаётся с первой вкладкой, до этого их незачем разбирать. -->
+  <!-- Стили полосы: она создаётся с первой вкладкой или папкой, до этого их незачем разбирать. -->
   <UserControl.Styles>
     <!-- ======================= Полоса вкладок ======================= -->
 
     <!-- Полоса живёт в строке окна и берёт её высоту и фон. Прозрачный фон, а не
-         пустой: пустое место между вкладками должно ловить нажатие и тянуть окно. -->
+         пустой: пустое место правее «+» должно ловить нажатие и тянуть окно. -->
     <Style Selector="Border.mm-tab-strip">
       <Setter Property="Background" Value="Transparent" />
     </Style>
 
+    <!-- Вкладка — плашка 30 px с заливкой вместо рамок и акцентной полосы
+         (ADR-0009 Rule 3). Ширину, одну на все вкладки, считает OpenDocuments. -->
     <Style Selector="Border.mm-tab">
-      <Setter Property="MinWidth" Value="120" />
-      <Setter Property="MaxWidth" Value="240" />
-      <Setter Property="Padding" Value="10,0" />
-      <!-- Ничто не выходит за границы вкладки, даже если имя длиннее её ширины -->
-      <Setter Property="ClipToBounds" Value="True" />
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="VerticalAlignment" Value="Stretch" />
+      <Setter Property="Height" Value="30" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Background" Value="{DynamicResource MmTabBrush}" />
+      <Setter Property="Focusable" Value="True" />
+      <!-- Фокус рисует своё кольцо, системная рамка Fluent легла бы поверх него -->
+      <Setter Property="FocusAdorner" Value="{x:Null}" />
     </Style>
     <Style Selector="Border.mm-tab:pointerover">
-      <Setter Property="Background" Value="{DynamicResource MmSurfaceHoverBrush}" />
+      <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
     </Style>
-    <!-- Активная вкладка — цвета документа плюс акцентная полоса сверху -->
+    <!-- Ниже наведения: активная держит свою заливку и под курсором -->
     <Style Selector="Border.mm-tab.active">
-      <Setter Property="Background" Value="{DynamicResource MmBackgroundBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
-      <Setter Property="BorderThickness" Value="1,0,1,0" />
+      <Setter Property="Background" Value="{DynamicResource MmTabActiveBrush}" />
     </Style>
 
-    <Style Selector="Border.mm-tab-active-bar">
-      <Setter Property="Height" Value="2" />
-      <Setter Property="VerticalAlignment" Value="Top" />
-      <Setter Property="Margin" Value="-10,0" />
-      <Setter Property="Background" Value="{DynamicResource MmAccentBrush}" />
+    <!-- Фокус с клавиатуры — кольцо акцентом через 2 px от плашки. Клик мышью фокус
+         вкладке не даёт, поэтому кольцо видно только при переходе клавишей Tab. -->
+    <Style Selector="Border.mm-tab-focus-ring">
+      <Setter Property="Margin" Value="-4" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="BorderBrush" Value="{DynamicResource MmAccentBrush}" />
+      <Setter Property="IsHitTestVisible" Value="False" />
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Border.mm-tab:focus-visible Border.mm-tab-focus-ring">
+      <Setter Property="IsVisible" Value="True" />
     </Style>
 
-    <Style Selector="TextBlock.mm-tab-title">
+    <Style Selector="TextBlock.mm-tab-name">
       <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
-      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontSize" Value="13" />
       <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
       <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
       <Setter Property="TextTrimming" Value="CharacterEllipsis" />
     </Style>
-    <Style Selector="Border.mm-tab.active TextBlock.mm-tab-title">
+    <Style Selector="Border.mm-tab.active TextBlock.mm-tab-name">
       <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
       <Setter Property="FontWeight" Value="Medium" />
     </Style>
 
-    <Style Selector="TextBlock.mm-tab-disambiguator">
-      <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
-      <Setter Property="FontSize" Value="11" />
-      <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
-      <Setter Property="VerticalAlignment" Value="Center" />
-      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    <!-- Иконка файла и крестик делят одну ячейку слева: у активной вкладки и под
+         курсором на месте иконки стоит крестик. -->
+    <Style Selector="Border.mm-tab views|LucideIcon">
+      <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+    </Style>
+    <Style Selector="Border.mm-tab.active views|LucideIcon">
+      <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+    </Style>
+    <Style Selector="Border.mm-tab:pointerover Panel.mm-tab-file-icon, Border.mm-tab.active Panel.mm-tab-file-icon">
+      <Setter Property="IsVisible" Value="False" />
     </Style>
 
+    <!-- Крестик не встаёт в обход по Tab: вкладку с клавиатуры закрывает ⌘W. -->
     <Style Selector="Button.mm-tab-close">
-      <Setter Property="Width" Value="14" />
-      <Setter Property="Height" Value="14" />
+      <Setter Property="Width" Value="18" />
+      <Setter Property="Height" Value="18" />
       <Setter Property="Padding" Value="0" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="CornerRadius" Value="3" />
-      <Setter Property="Opacity" Value="0" />
+      <Setter Property="CornerRadius" Value="5" />
+      <Setter Property="Focusable" Value="False" />
+      <Setter Property="IsVisible" Value="False" />
       <Setter Property="HorizontalContentAlignment" Value="Center" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
-    <!-- Цвет крестика не зависит от состояния кнопки, поэтому стоит на самой иконке:
-         Foreground кнопки Fluent меняет по состояниям -->
-    <Style Selector="Button.mm-tab-close views|LucideIcon">
-      <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
+    <Style Selector="Border.mm-tab:pointerover Button.mm-tab-close, Border.mm-tab.active Button.mm-tab-close">
+      <Setter Property="IsVisible" Value="True" />
     </Style>
-    <!-- Крестик появляется под курсором; у несохранённой вкладки он подменяет точку -->
-    <Style Selector="Border.mm-tab:pointerover Button.mm-tab-close">
-      <Setter Property="Opacity" Value="1" />
+    <!-- Своей подложки у крестика нет: Fluent красит её по состояниям кнопки -->
+    <Style Selector="Button.mm-tab-close:pointerover /template/ ContentPresenter, Button.mm-tab-close:pressed /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
     </Style>
-    <Style Selector="Border.mm-tab.active Button.mm-tab-close">
-      <Setter Property="Opacity" Value="1" />
-    </Style>
-    <!-- У несохранённой вкладки место занимает точка: крестик и точка стоят в одной
-         ячейке, и без этого правила активная вкладка рисовала бы их друг на друге. -->
-    <Style Selector="Border.mm-tab.dirty Button.mm-tab-close">
-      <Setter Property="Opacity" Value="0" />
-    </Style>
-    <Style Selector="Border.mm-tab.dirty:pointerover Button.mm-tab-close">
-      <Setter Property="Opacity" Value="1" />
-    </Style>
-    <Style Selector="Border.mm-tab:pointerover Ellipse.mm-tab-dirty">
-      <Setter Property="IsVisible" Value="False" />
-    </Style>
-    <!-- В меню переполнения крестик и точка живут по тем же правилам, что и во вкладке -->
-    <Style Selector="Button.mm-tab-overflow-item:pointerover Button.mm-tab-close">
-      <Setter Property="Opacity" Value="1" />
-    </Style>
-    <Style Selector="Button.mm-tab-overflow-item:pointerover Ellipse.mm-tab-dirty">
-      <Setter Property="IsVisible" Value="False" />
+    <Style Selector="Border.mm-tab Button.mm-tab-close:pointerover views|LucideIcon">
+      <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
     </Style>
 
+    <!-- ======================= «ещё N» ======================= -->
+
+    <!-- Плашка той же высоты и заливки, что вкладка; пока меню открыто — заливка активной. -->
     <Style Selector="Button.mm-tab-overflow">
-      <Setter Property="Padding" Value="8,0,10,0" />
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
-      <Setter Property="BorderThickness" Value="1,0,0,0" />
-      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Height" Value="30" />
+      <Setter Property="Padding" Value="10,0,8,0" />
+      <Setter Property="Background" Value="{DynamicResource MmTabBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="8" />
       <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
-      <Setter Property="FontSize" Value="11" />
-      <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
-      <Setter Property="VerticalAlignment" Value="Stretch" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="VerticalAlignment" Value="Center" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
     <Style Selector="Button.mm-tab-overflow:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource MmSurfaceHoverBrush}" />
-      <Setter Property="TextBlock.Foreground" Value="{DynamicResource MmTextBrush}" />
+      <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+    </Style>
+    <Style Selector="Button.mm-tab-overflow:pressed /template/ ContentPresenter, Button.mm-tab-overflow:flyout-open /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource MmTabActiveBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
     </Style>
 
     <Style Selector="Border.mm-tab-overflow-card">
@@ -142,6 +142,14 @@
       <Setter Property="Margin" Value="8,4,8,8" />
     </Style>
 
+    <Style Selector="TextBlock.mm-tab-overflow-title">
+      <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+
     <Style Selector="Button.mm-tab-overflow-item">
       <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -157,92 +165,122 @@
       <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
       <Setter Property="CornerRadius" Value="6" />
     </Style>
+
+    <!-- В меню крестик появляется под курсором и подменяет точку несохранённого -->
+    <Style Selector="Button.mm-tab-overflow-close">
+      <Setter Property="Width" Value="14" />
+      <Setter Property="Height" Value="14" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="Opacity" Value="0" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <!-- Цвет крестика не зависит от состояния кнопки, поэтому стоит на самой иконке:
+         Foreground кнопки Fluent меняет по состояниям -->
+    <Style Selector="Button.mm-tab-overflow-close views|LucideIcon">
+      <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
+    </Style>
+    <Style Selector="Button.mm-tab-overflow-item:pointerover Button.mm-tab-overflow-close">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Button.mm-tab-overflow-item:pointerover Ellipse.mm-tab-dirty">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
   </UserControl.Styles>
 
   <Border Classes="mm-tab-strip"
           SizeChanged="OnStripSizeChanged">
-    <Grid ColumnDefinitions="*,Auto">
+    <!-- Вкладки, «ещё N» и «+» идут подряд слева; промежутки — те же 6 px,
+         что OpenDocuments резервирует под кнопки после вкладок. -->
+    <StackPanel Orientation="Horizontal"
+                Spacing="6"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Center">
 
-      <ItemsControl Grid.Column="0"
-                    Name="VisibleTabsHost"
+      <!-- Без обрезки: кольцо фокуса выходит за вкладку на 4 px, а список ровно
+           по высоте вкладок срезал бы его верх, низ и правый край. -->
+      <ItemsControl Name="VisibleTabsHost"
+                    ClipToBounds="False"
+                    IsVisible="{Binding OpenDocuments.HasTabs}"
                     ItemsSource="{Binding OpenDocuments.VisibleTabs}">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
-            <StackPanel Orientation="Horizontal" Spacing="2" />
+            <StackPanel Orientation="Horizontal" Spacing="6" />
           </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:DocumentTabViewModel">
             <Border Classes="mm-tab"
                     Classes.active="{Binding IsActive}"
-                    Classes.dirty="{Binding IsDirty}"
+                    Width="{Binding $parent[ItemsControl].((vm:ShellViewModel)DataContext).OpenDocuments.TabWidth}"
                     ToolTip.Tip="{Binding Tooltip}"
-                    PointerPressed="OnTabPointerPressed">
-              <Grid ColumnDefinitions="*,Auto"
-                    ColumnSpacing="8">
-                <!-- Акцентная полоса 2px во всю ширину активной вкладки (макет 03) -->
-                <Border Grid.Column="0"
-                        Grid.ColumnSpan="2"
-                        Classes="mm-tab-active-bar"
-                        IsVisible="{Binding IsActive}" />
+                    AutomationProperties.Name="{Binding AccessibleTitle}"
+                    PointerPressed="OnTabPointerPressed"
+                    KeyDown="OnTabKeyDown">
+              <Panel>
+                <Border Classes="mm-tab-focus-ring" />
 
-                <!-- Сетка, а не StackPanel: горизонтальный StackPanel даёт детям
-                     бесконечную ширину, и длинное имя вылезало за вкладку под крестик. -->
-                <Grid Grid.Column="0"
-                      ColumnDefinitions="*,Auto"
-                      ColumnSpacing="6"
-                      VerticalAlignment="Center">
-                  <!-- Длинное имя не обрывается и не подлезает под крестик:
-                       у правого края колонки текст плавно гаснет. -->
-                  <Panel Grid.Column="0" ClipToBounds="True">
-                    <Panel.OpacityMask>
-                      <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
-                        <GradientStop Offset="0" Color="White" />
-                        <GradientStop Offset="0.82" Color="White" />
-                        <GradientStop Offset="1" Color="Transparent" />
-                      </LinearGradientBrush>
-                    </Panel.OpacityMask>
-                    <TextBlock Classes="mm-tab-title"
-                               HorizontalAlignment="Left"
-                               TextTrimming="None"
-                               TextWrapping="NoWrap"
-                               Text="{Binding DisplayTitle}" />
+                <!-- Анатомия A-Tabs: 8 · иконка 18 · 8 · имя · 8 · точка 16 · 8 -->
+                <Grid Margin="8,0"
+                      ColumnDefinitions="18,*,16"
+                      ColumnSpacing="8">
+                  <Panel Grid.Column="0"
+                         Width="18"
+                         Height="18">
+                    <Panel Classes="mm-tab-file-icon">
+                      <views:LucideIcon Data="{DynamicResource LucideFileTextGeometry}"
+                                        IsVisible="{Binding !IsDeletedFromDisk}"
+                                        Width="16"
+                                        Height="16" />
+                      <views:LucideIcon Data="{DynamicResource LucideFileXGeometry}"
+                                        IsVisible="{Binding IsDeletedFromDisk}"
+                                        Width="16"
+                                        Height="16" />
+                    </Panel>
+                    <Button Classes="mm-tab-close"
+                            Command="{Binding $parent[ItemsControl].((vm:ShellViewModel)DataContext).OpenDocuments.CloseCommand}"
+                            CommandParameter="{Binding}">
+                      <views:LucideIcon Data="{DynamicResource LucideXGeometry}"
+                                        Width="14"
+                                        Height="14" />
+                    </Button>
                   </Panel>
-                  <!-- Имя родительской папки появляется только у одноимённых вкладок -->
-                  <TextBlock Grid.Column="1"
-                             Classes="mm-tab-disambiguator"
-                             IsVisible="{Binding HasDisambiguator}"
-                             Text="{Binding Disambiguator}" />
-                </Grid>
 
-                <Panel Grid.Column="1"
-                       Width="14"
-                       Height="14"
-                       VerticalAlignment="Center">
-                  <!-- Несохранённая вкладка показывает точку; крестик подменяет её под курсором -->
-                  <Ellipse Classes="mm-tab-dirty"
+                  <!-- Одно имя с одним многоточием в конце: « · папка» у одноимённых
+                       файлов и «(удалён)» дописываются к нему, а не стоят отдельно.
+                       Run-ы вплотную: перенос строки между ними XAML превратил бы в пробел. -->
+                  <TextBlock Grid.Column="1"
+                             Classes="mm-tab-name"><Run Text="{Binding Title}" /><Run Text="{Binding DisambiguatorSuffix}" Foreground="{DynamicResource MmTextFaintBrush}" /><Run Text="{Binding StateSuffixText}" FontStyle="Italic" /></TextBlock>
+
+                  <!-- Несохранённые правки — точка справа, крестик её не подменяет -->
+                  <Ellipse Grid.Column="2"
+                           Classes="mm-tab-dot"
                            IsVisible="{Binding IsDirty}"
-                           Width="6"
-                           Height="6"
+                           Width="7"
+                           Height="7"
                            Fill="{DynamicResource MmAccentBrush}" />
-                  <Button Classes="mm-tab-close"
-                          Command="{Binding $parent[ItemsControl].((vm:ShellViewModel)DataContext).OpenDocuments.CloseCommand}"
-                          CommandParameter="{Binding}">
-                    <views:LucideIcon Data="{DynamicResource LucideXGeometry}"
-                                      Width="12"
-                                      Height="12" />
-                  </Button>
-                </Panel>
-              </Grid>
+                </Grid>
+              </Panel>
             </Border>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
 
-      <Button Grid.Column="1"
+      <Button Name="TabsOverflowButton"
               Classes="mm-tab-overflow"
-              IsVisible="{Binding OpenDocuments.HasOverflow}"
-              Content="{Binding TabsOverflowLabel}">
+              IsVisible="{Binding OpenDocuments.HasOverflow}">
+        <StackPanel Orientation="Horizontal"
+                    Spacing="4">
+          <TextBlock VerticalAlignment="Center"
+                     Text="{Binding TabsOverflowLabel}" />
+          <views:LucideIcon Data="{DynamicResource LucideChevronDownGeometry}"
+                            VerticalAlignment="Center"
+                            Width="12"
+                            Height="12" />
+        </StackPanel>
         <Button.Flyout>
           <Flyout Placement="BottomEdgeAlignedRight">
             <Border Classes="mm-tab-overflow-card">
@@ -259,7 +297,7 @@
                         <Grid ColumnDefinitions="*,Auto"
                               ColumnSpacing="10">
                           <TextBlock Grid.Column="0"
-                                     Classes="mm-tab-title"
+                                     Classes="mm-tab-overflow-title"
                                      Text="{Binding DisplayTitle}" />
                           <!-- Скрытую вкладку можно закрыть, не делая её активной (макет 03) -->
                           <Panel Grid.Column="1"
@@ -271,7 +309,7 @@
                                      Width="6"
                                      Height="6"
                                      Fill="{DynamicResource MmAccentBrush}" />
-                            <Button Classes="mm-tab-close"
+                            <Button Classes="mm-tab-overflow-close"
                                     Command="{Binding $parent[ItemsControl].((vm:ShellViewModel)DataContext).OpenDocuments.CloseCommand}"
                                     CommandParameter="{Binding}">
                               <views:LucideIcon Data="{DynamicResource LucideXGeometry}"
@@ -298,7 +336,17 @@
           </Flyout>
         </Button.Flyout>
       </Button>
-    </Grid>
+
+      <!-- «+» — новый документ, то же, что ⌘N; без меню -->
+      <Button Name="NewDocumentButton"
+              Classes="mm-row-button"
+              Command="{Binding CreateNewDocumentCommand}"
+              ToolTip.Tip="{Binding NewDocumentTooltip}">
+        <views:LucideIcon Data="{DynamicResource LucidePlusGeometry}"
+                          Width="14"
+                          Height="14" />
+      </Button>
+    </StackPanel>
   </Border>
 
 </UserControl>

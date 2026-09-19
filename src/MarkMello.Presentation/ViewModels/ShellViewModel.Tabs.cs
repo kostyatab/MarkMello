@@ -16,11 +16,15 @@ public partial class ShellViewModel
 
     public OpenDocumentsViewModel OpenDocuments { get; private set; } = default!;
 
-    /// <summary>Полосы вкладок нет, пока нет ни одного открытого документа.</summary>
-    public bool ShowsTabStrip => OpenDocuments.HasTabs;
+    /// <summary>
+    /// Вкладки и «+» после них (ADR-0009 Rule 3): есть, когда есть документ — и в папке,
+    /// и без неё. В папке без открытых вкладок остаётся одна «+», на стартовом экране
+    /// нет ни того, ни другого.
+    /// </summary>
+    public bool ShowsTabStrip => OpenDocuments.HasTabs || Workspace is not null;
 
-    /// <summary>Полоса вкладок создаётся с первой вкладкой, а не висит скрытой с запуска.</summary>
-    public object? TabStripContent => OpenDocuments.HasTabs ? this : null;
+    /// <summary>Полоса вкладок создаётся с первой вкладкой или папкой, а не висит скрытой с запуска.</summary>
+    public object? TabStripContent => ShowsTabStrip ? this : null;
 
     /// <summary>
     /// Папка открыта, но документ не выбран. Отдельно от welcome: там предлагают открыть файл,
@@ -268,8 +272,8 @@ public partial class ShellViewModel
 
     /// <summary>
     /// Папку открыли поверх уже открытых вкладок: те, что лежат внутри неё, становятся
-    /// её вкладками так же, как открытые из дерева, — с относительным тултипом, точкой
-    /// несохранённого в дереве и местом в счётчике подвала.
+    /// её вкладками так же, как открытые из дерева, — с точкой несохранённого в дереве
+    /// и местом в счётчике подвала.
     /// </summary>
     private void AdoptOpenTabsIntoWorkspace()
     {
@@ -389,7 +393,11 @@ public partial class ShellViewModel
         CloseActiveTabCommand.NotifyCanExecuteChanged();
     }
 
-    /// <summary>Тултип — путь относительно корня папки, для файлов вне её — абсолютный.</summary>
+    /// <summary>
+    /// Тултип — полный путь к файлу, домашняя папка сокращается до <c>~</c> (ADR-0009 Rule 3):
+    /// имя без пути не отвечает на вопрос «какой из двух README», а путь от корня папки
+    /// не отвечает на вопрос «какая это папка».
+    /// </summary>
     private string BuildTabTooltip(string? path)
     {
         if (string.IsNullOrEmpty(path))
@@ -397,12 +405,15 @@ public partial class ShellViewModel
             return string.Empty;
         }
 
-        if (Workspace is not { } workspace || !IsInsideWorkspace(path, workspace.Folder))
+        var home = Path.TrimEndingDirectorySeparator(_platform.HomeDirectory);
+        if (home.Length == 0)
         {
             return path;
         }
 
-        var root = Path.TrimEndingDirectorySeparator(workspace.Folder.RootPath) + Path.DirectorySeparatorChar;
-        return path[root.Length..];
+        var prefix = home + Path.DirectorySeparatorChar;
+        return path.StartsWith(prefix, PathComparison)
+            ? "~" + path[home.Length..]
+            : path;
     }
 }

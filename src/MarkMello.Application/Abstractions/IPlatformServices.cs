@@ -23,6 +23,12 @@ public interface IPlatformServices
     string PlatformName { get; }
 
     /// <summary>
+    /// Домашняя папка пользователя — её путь в подписях сокращается до <c>~</c>.
+    /// Пустая строка, если ОС её не сообщила.
+    /// </summary>
+    string HomeDirectory { get; }
+
+    /// <summary>
     /// Переместить элемент в корзину ОС. Удаление из дерева обязано быть обратимым,
     /// поэтому безвозвратный <c>File.Delete</c> здесь недопустим (ADR-0007 Rule 7).
     /// </summary>

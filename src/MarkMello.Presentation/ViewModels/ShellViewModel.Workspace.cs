@@ -26,6 +26,9 @@ public partial class ShellViewModel
     [NotifyPropertyChangedFor(nameof(IsWelcome))]
     [NotifyPropertyChangedFor(nameof(IsEmptyDocumentSurface))]
     [NotifyPropertyChangedFor(nameof(CanToggleSidebar))]
+    // В папке без открытых вкладок строка всё равно держит «+».
+    [NotifyPropertyChangedFor(nameof(ShowsTabStrip))]
+    [NotifyPropertyChangedFor(nameof(TabStripContent))]
     private WorkspaceViewModel? _workspace;
 
     [ObservableProperty]

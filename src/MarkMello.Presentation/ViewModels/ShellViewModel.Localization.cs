@@ -88,6 +88,7 @@ public partial class ShellViewModel
         nameof(LoadErrorTryAgain),
         nameof(MetaCurrent),
         nameof(MetaOpen),
+        nameof(NewDocumentTooltip),
         nameof(OverlayBackToMenu),
         nameof(OverlayBackToSettings),
         nameof(OverlayCloseAbout),
@@ -263,6 +264,9 @@ public partial class ShellViewModel
     public string FindPlaceholder => _localization["FindPlaceholder"];
     public string FindPreviousTooltip => _localization["FindPreviousTooltip"];
     public string FindToggleTooltip => _localization.Format("FindToggleTooltip", CommandShortcut(Key.F));
+
+    /// <summary>«+» после вкладок — то же, что сочетание, поэтому оно и стоит в подсказке.</summary>
+    public string NewDocumentTooltip => _localization.Format("NewDocumentTooltip", CommandShortcut(Key.N));
     public string LanguageHint => _localization["LanguageHint"];
     public string LanguageLabel => _localization["LanguageLabel"];
     public string LoadErrorOpenAnotherFile => _localization["LoadErrorOpenAnotherFile"];

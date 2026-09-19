@@ -10,10 +10,6 @@ namespace MarkMello.Presentation.ViewModels;
 /// </summary>
 public sealed partial class DocumentTabViewModel : ObservableObject, IDisposable
 {
-    /// <summary>Ширина вкладки из макета: меньше 120px имя нечитаемо, больше 240px полоса пустеет.</summary>
-    public const double MinimumWidth = 120;
-    public const double MaximumWidth = 240;
-
     public DocumentTabViewModel(string? path, string title)
     {
         Path = path;
@@ -25,6 +21,7 @@ public sealed partial class DocumentTabViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DisplayTitle))]
+    [NotifyPropertyChangedFor(nameof(AccessibleTitle))]
     private string _title;
 
     /// <summary>
@@ -34,14 +31,31 @@ public sealed partial class DocumentTabViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DisplayTitle))]
     [NotifyPropertyChangedFor(nameof(HasDisambiguator))]
+    [NotifyPropertyChangedFor(nameof(DisambiguatorSuffix))]
+    [NotifyPropertyChangedFor(nameof(AccessibleTitle))]
     private string? _disambiguator;
 
     public bool HasDisambiguator => !string.IsNullOrEmpty(Disambiguator);
 
+    /// <summary>Хвост имени во вкладке: « · docs». Пустой, пока имя ни с кем не совпало.</summary>
+    public string DisambiguatorSuffix => HasDisambiguator ? $" · {Disambiguator}" : string.Empty;
+
     /// <summary>Пометка состояния в заголовке вкладки: «(удалён)» у пропавшего файла.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DisplayTitle))]
+    [NotifyPropertyChangedFor(nameof(StateSuffixText))]
+    [NotifyPropertyChangedFor(nameof(IsDeletedFromDisk))]
+    [NotifyPropertyChangedFor(nameof(AccessibleTitle))]
     private string? _stateSuffix;
+
+    /// <summary>Пометка с пробелом перед ней — вкладка дописывает её к имени курсивом.</summary>
+    public string StateSuffixText => string.IsNullOrEmpty(StateSuffix) ? string.Empty : $" {StateSuffix}";
+
+    /// <summary>
+    /// Пометку ставит только удаление файла снаружи: вкладка с правками остаётся,
+    /// а её иконка меняется на перечёркнутый файл.
+    /// </summary>
+    public bool IsDeletedFromDisk => !string.IsNullOrEmpty(StateSuffix);
 
     /// <summary>Файл изменился на диске, а во вкладке есть правки — ждём решения пользователя.</summary>
     [ObservableProperty]
@@ -56,6 +70,12 @@ public sealed partial class DocumentTabViewModel : ObservableObject, IDisposable
     public string DisplayTitle => string.IsNullOrEmpty(StateSuffix)
         ? Title
         : $"{Title} {StateSuffix}";
+
+    /// <summary>
+    /// Всё, что видно во вкладке, одной строкой — её читает экранный диктор. Без « · папка»
+    /// две вкладки README.md звучали бы одинаково, хотя на экране различаются.
+    /// </summary>
+    public string AccessibleTitle => Title + DisambiguatorSuffix + StateSuffixText;
 
     /// <summary>Полный путь в тултипе: имя без пути не отвечает на вопрос «какой из двух README».</summary>
     [ObservableProperty]
@@ -111,22 +131,5 @@ public sealed partial class DocumentTabViewModel : ObservableObject, IDisposable
     {
         EditorSession?.Dispose();
         EditorSession = null;
-    }
-
-    /// <summary>
-    /// Ширина вкладки для расчёта переполнения. Точную ширину знает только layout,
-    /// но полоса всё равно зажата в [120; 240], поэтому оценки по длине имени достаточно,
-    /// чтобы решить, сколько вкладок показать.
-    /// </summary>
-    public double EstimateWidth()
-    {
-        // 10px паддинги по краям + ~7.2px на символ 12px Inter + 8px gap + 14px крестик.
-        var content = 20 + (DisplayTitle.Length * 7.2) + 22;
-        if (HasDisambiguator)
-        {
-            content += 6 + (Disambiguator!.Length * 6.4);
-        }
-
-        return Math.Clamp(content, MinimumWidth, MaximumWidth);
     }
 }

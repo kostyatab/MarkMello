@@ -185,6 +185,8 @@ internal sealed class FakePlatformServices : IPlatformServices
 
     public string PlatformName { get; init; } = "Windows";
 
+    public string HomeDirectory { get; init; } = TestPaths.At("home");
+
     public TrashResult TrashResult { get; set; } = TrashResult.Trashed;
 
     public List<string> TrashedPaths { get; } = [];

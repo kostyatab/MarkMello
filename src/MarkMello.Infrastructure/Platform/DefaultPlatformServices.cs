@@ -10,7 +10,13 @@ namespace MarkMello.Infrastructure.Platform;
 /// </summary>
 public sealed class DefaultPlatformServices : IPlatformServices
 {
+    private string? _homeDirectory;
+
     public string PlatformName { get; } = DetectPlatform();
+
+    /// <summary>Спрашиваем ОС при первой подписи с путём, а не при создании сервиса на старте.</summary>
+    public string HomeDirectory
+        => _homeDirectory ??= Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
     /// <summary>
     /// Windows — shell32, macOS — NSFileManager, Linux — freedesktop trash spec.

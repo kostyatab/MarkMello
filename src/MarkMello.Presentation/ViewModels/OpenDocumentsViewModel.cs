@@ -12,8 +12,25 @@ namespace MarkMello.Presentation.ViewModels;
 /// </summary>
 public sealed partial class OpenDocumentsViewModel : ObservableObject
 {
-    /// <summary>Место под кнопку «ещё N» — она обязана поместиться рядом с видимыми вкладками.</summary>
-    private const double OverflowButtonWidth = 60;
+    /// <summary>
+    /// Ширина вкладки (ADR-0009 Rule 3): 180, а когда тесно — сжимается до 120.
+    /// Уже 120 имя нечитаемо, поэтому дальше лишние вкладки уходят в «ещё N».
+    /// </summary>
+    public const double PreferredTabWidth = 180;
+
+    public const double MinimumTabWidth = 120;
+
+    /// <summary>Промежуток между вкладками и между вкладками и кнопками после них.</summary>
+    public const double TabSpacing = 6;
+
+    /// <summary>«+» после вкладок — кнопка строки окна 30 px.</summary>
+    private const double NewDocumentButtonWidth = 30;
+
+    /// <summary>
+    /// Место под плашку «ещё N» с шевроном. Её ширина зависит от числа и языка,
+    /// поэтому запас: лишний пиксель лучше, чем «+», уехавший под кнопки справа.
+    /// </summary>
+    private const double OverflowButtonWidth = 84;
 
     private readonly Func<DocumentTabViewModel, Task> _activateRequested;
     private readonly Func<DocumentTabViewModel, Task> _closeRequested;
@@ -40,16 +57,26 @@ public sealed partial class OpenDocumentsViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasTabs))]
     private DocumentTabViewModel? _activeTab;
 
-    /// <summary>Без вкладок полосы нет вообще — она не должна становиться постоянным chrome.</summary>
+    /// <summary>
+    /// Есть ли что показать вкладками. Без вкладок в строке окна остаётся только «+»
+    /// в режиме папки, а на стартовом экране — ничего (ADR-0009 Rule 3).
+    /// </summary>
     public bool HasTabs => Tabs.Count > 0;
 
     public bool HasOverflow => OverflowTabs.Count > 0;
 
     public string OverflowCountLabel => OverflowTabs.Count.ToString(CultureInfo.CurrentCulture);
 
-    /// <summary>Доступная ширина полосы. Проставляется вью при изменении размера окна.</summary>
+    /// <summary>
+    /// Доступная ширина полосы: вкладки, «ещё N» и «+». Проставляется вью при изменении
+    /// размера окна.
+    /// </summary>
     [ObservableProperty]
     private double _availableWidth;
+
+    /// <summary>Ширина каждой видимой вкладки — у всех одна, от 120 до 180.</summary>
+    [ObservableProperty]
+    private double _tabWidth = PreferredTabWidth;
 
     public DocumentTabViewModel? FindByPath(string? path)
     {
@@ -188,7 +215,7 @@ public sealed partial class OpenDocumentsViewModel : ObservableObject
     partial void OnAvailableWidthChanged(double value) => RefreshVisibility();
 
     /// <summary>
-    /// Одинаковые имена различаются именем родительской папки: «README.md docs».
+    /// Одинаковые имена различаются именем родительской папки: «README.md · docs».
     /// Подпись появляется только у конфликтующих вкладок и снимается, когда конфликт ушёл.
     /// </summary>
     private void RefreshDisambiguators()
@@ -209,8 +236,9 @@ public sealed partial class OpenDocumentsViewModel : ObservableObject
 
     private void RefreshVisibility()
     {
-        var visible = CalculateVisibleTabs();
+        var (visible, width) = CalculateLayout();
 
+        TabWidth = width;
         SyncCollection(VisibleTabs, visible);
         SyncCollection(OverflowTabs, Tabs.Where(tab => !visible.Contains(tab)).ToList());
 
@@ -218,44 +246,40 @@ public sealed partial class OpenDocumentsViewModel : ObservableObject
         OnPropertyChanged(nameof(OverflowCountLabel));
     }
 
-    private List<DocumentTabViewModel> CalculateVisibleTabs()
+    private (List<DocumentTabViewModel> Visible, double TabWidth) CalculateLayout()
     {
-        if (Tabs.Count == 0)
+        if (Tabs.Count == 0 || AvailableWidth <= 0)
         {
-            return [];
+            return ([.. Tabs], PreferredTabWidth);
         }
 
-        var total = Tabs.Sum(static tab => tab.EstimateWidth());
-        if (AvailableWidth <= 0 || total <= AvailableWidth)
+        // После вкладок всегда стоит «+».
+        var space = AvailableWidth - TabSpacing - NewDocumentButtonWidth;
+
+        // Пока помещаются все вкладки хотя бы по 120, они делят место поровну.
+        if (Tabs.Count == 1 || RowWidth(Tabs.Count, MinimumTabWidth) <= space)
         {
-            return [.. Tabs];
+            var shared = (space - ((Tabs.Count - 1) * TabSpacing)) / Tabs.Count;
+            return ([.. Tabs], Math.Clamp(shared, MinimumTabWidth, PreferredTabWidth));
         }
 
-        // Вкладки не сжимаются: лишние уходят с конца в меню «ещё N».
-        var budget = AvailableWidth - OverflowButtonWidth;
-        var visible = new List<DocumentTabViewModel>();
-
-        foreach (var tab in Tabs)
-        {
-            var width = tab.EstimateWidth();
-            if (visible.Count > 0 && budget - width < 0)
-            {
-                break;
-            }
-
-            budget -= width;
-            visible.Add(tab);
-        }
+        // Уже 120 не сжимаются: лишние уходят с конца в меню «ещё N».
+        space -= TabSpacing + OverflowButtonWidth;
+        var count = Math.Max(1, (int)Math.Floor((space + TabSpacing) / (MinimumTabWidth + TabSpacing)));
+        var visible = Tabs.Take(count).ToList();
 
         // Активная вкладка видна всегда: если она попала в вытесненные,
         // меняется местами с последней видимой.
-        if (ActiveTab is not null && !visible.Contains(ActiveTab) && visible.Count > 0)
+        if (ActiveTab is not null && !visible.Contains(ActiveTab))
         {
             visible[^1] = ActiveTab;
         }
 
-        return visible;
+        return (visible, MinimumTabWidth);
     }
+
+    private static double RowWidth(int count, double tabWidth)
+        => (count * tabWidth) + ((count - 1) * TabSpacing);
 
     private static void SyncCollection(
         ObservableCollection<DocumentTabViewModel> target,
