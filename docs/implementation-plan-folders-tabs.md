@@ -53,7 +53,7 @@
 
 - Зафиксированные на текущем `main` тайминги `StartupStage.AppBootstrap / FirstWindow / DocumentModelReady / ReadableDocument` для сценария «двойной клик по `sample.md`», 10 прогонов, медиана и худший.
 - Память в viewer mode после открытия документа.
-- `tools/measure-startup.ps1` — повторяемый замер, одинаковый для всех этапов.
+- `tools/measure-startup.ps1` — повторяемый замер, одинаковый для всех этапов; на macOS и Linux — `tools/measure-startup.py` с той же методикой (память — max RSS вместо Working Set, между ОС цифры не сравниваются).
 - Печать снимка `IStartupMetrics` в smoke-режиме, чтобы Release-сборка измерялась без Debug-сборки.
 - Результаты записаны в этот файл в раздел «Зафиксированные находки M0».
 
