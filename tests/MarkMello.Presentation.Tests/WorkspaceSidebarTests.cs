@@ -74,6 +74,28 @@ public sealed class WorkspaceSidebarTests
         Assert.Equal("docs — MarkMello", harness.ViewModel.WindowTitle);
     }
 
+    /// <summary>
+    /// Файл открыт раньше своей папки. Раньше вкладка оставалась активной, а строка
+    /// в дереве не подсвечивалась до первого переключения вкладок.
+    /// </summary>
+    [Fact]
+    public async Task OpeningFolderOfOpenDocumentHighlightsItInTheTree()
+    {
+        var harness = CreateHarness(CreateFileSystemWithTwoDocuments());
+        harness.Loader.Sources[TestPaths.At("docs", "notes.md")] = new MarkdownSource(TestPaths.At("docs", "notes.md"), "notes.md", "# notes");
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "notes.md"));
+
+        await harness.ViewModel.OpenFolderPathAsync(Root);
+
+        var workspace = harness.ViewModel.Workspace!;
+        Assert.Equal(TestPaths.At("docs", "notes.md"), harness.ViewModel.CurrentDocumentPath);
+        Assert.Equal(TestPaths.At("docs", "notes.md"), workspace.ActiveDocumentPath);
+        Assert.True(workspace.Roots.Single(node => node.Name == "notes.md").IsActiveDocument);
+        Assert.False(workspace.Roots.Single(node => node.Name == "README.md").IsActiveDocument);
+        Assert.Single(harness.ViewModel.OpenDocuments.Tabs);
+        Assert.Equal("notes.md — docs — MarkMello", harness.ViewModel.WindowTitle);
+    }
+
     [Fact]
     public async Task ExpandingDirectoryReadsChildrenOnce()
     {

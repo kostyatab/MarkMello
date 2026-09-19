@@ -217,6 +217,7 @@ public partial class ShellViewModel
         IsSidebarCollapsed = false;
         ClearLoadError();
         UpdateWorkspaceCommandStates();
+        AdoptOpenTabsIntoWorkspace();
 
         // Ширина читается здесь, а не в InitializeAsync: старт с одним файлом
         // не должен трогать ничего из workspace-подсистемы.
@@ -226,22 +227,19 @@ public partial class ShellViewModel
 
         // Та же папка, что в прошлый раз: возвращаем её вкладки и раскрытые узлы.
         await TryRestoreSessionAsync(workspace).ConfigureAwait(true);
-        if (OpenDocuments.HasTabs)
-        {
-            RefreshWindowTitle();
-            return;
-        }
 
         // Папка сама по себе документ не открывает — кроме README.md в корне,
         // который заменяет пустой экран осмысленным содержимым (ADR-0007 Rule 2).
-        var readmePath = workspace.TryGetRootReadmePath();
-        if (!string.IsNullOrEmpty(readmePath))
+        if (!OpenDocuments.HasTabs && workspace.TryGetRootReadmePath() is { Length: > 0 } readmePath)
         {
             await OpenDocumentFromTreeAsync(readmePath).ConfigureAwait(true);
             return;
         }
 
-        workspace.ActiveDocumentPath = CurrentDocumentPath;
+        // Документ мог быть открыт ещё до папки, а сессия синхронизирует дерево, только
+        // когда что-то восстанавливает: без этого строка файла не подсвечивалась бы
+        // до первого переключения вкладок.
+        SyncWorkspaceActiveDocument();
         RefreshWindowTitle();
     }
 

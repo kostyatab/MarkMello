@@ -164,6 +164,30 @@ public sealed class DocumentTabsShellTests
         Assert.Equal(TestPaths.At("outside", "notes.md"), outside.Tooltip);
     }
 
+    /// <summary>
+    /// Вкладка, открытая до папки, после её открытия ведёт себя как открытая из дерева:
+    /// раньше подвал не считал её правки, а дерево не ставило ей точку несохранённого.
+    /// </summary>
+    [Fact]
+    public async Task TabsOpenedBeforeTheFolderJoinItByPath()
+    {
+        var harness = CreateHarness();
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
+        EditActiveTab(harness, "# first edited");
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("outside", "notes.md"));
+
+        await harness.ViewModel.OpenFolderPathAsync(Root);
+
+        var first = harness.ViewModel.OpenDocuments.Tabs.Single(tab => tab.Title == "first.md");
+        var outside = harness.ViewModel.OpenDocuments.Tabs.Single(tab => tab.Title == "notes.md");
+        Assert.True(first.BelongsToWorkspace);
+        Assert.False(outside.BelongsToWorkspace);
+        Assert.Equal("first.md", first.Tooltip);
+        Assert.Equal(TestPaths.At("outside", "notes.md"), outside.Tooltip);
+        Assert.True(harness.ViewModel.Workspace!.Roots.Single(node => node.Name == "first.md").IsDirty);
+        Assert.Equal("Documents: 2 · Unsaved: 1", harness.ViewModel.SidebarFooterLabel);
+    }
+
     [Fact]
     public async Task CtrlTabWalksTabsInStripOrder()
     {

@@ -227,8 +227,7 @@ public partial class ShellViewModel
         }
 
         tab.ApplyDocument(source, rendered);
-        tab.Tooltip = BuildTabTooltip(source.Path);
-        tab.BelongsToWorkspace = Workspace is { } workspace && IsInsideWorkspace(source.Path, workspace.Folder);
+        ApplyWorkspaceMembership(tab);
         tab.IsDirty = false;
 
         OpenDocuments.Activate(tab);
@@ -258,10 +257,31 @@ public partial class ShellViewModel
 
         tab.Retarget(source.Path, source.FileName);
         tab.ApplyDocument(source, RenderedDocument);
-        tab.Tooltip = BuildTabTooltip(source.Path);
-        tab.BelongsToWorkspace = Workspace is { } workspace && IsInsideWorkspace(source.Path, workspace.Folder);
+        ApplyWorkspaceMembership(tab);
         OpenDocuments.Refresh();
         RefreshTabState();
+    }
+
+    /// <summary>
+    /// Папку открыли поверх уже открытых вкладок: те, что лежат внутри неё, становятся
+    /// её вкладками так же, как открытые из дерева, — с относительным тултипом, точкой
+    /// несохранённого в дереве и местом в счётчике подвала.
+    /// </summary>
+    private void AdoptOpenTabsIntoWorkspace()
+    {
+        foreach (var tab in OpenDocuments.Tabs.Where(static tab => tab.Path is not null))
+        {
+            ApplyWorkspaceMembership(tab);
+        }
+
+        SyncWorkspaceDirtyMarks();
+    }
+
+    /// <summary>Принадлежность папке и тултип считаются по пути вкладки, а не по тому, откуда её открыли.</summary>
+    private void ApplyWorkspaceMembership(DocumentTabViewModel tab)
+    {
+        tab.Tooltip = BuildTabTooltip(tab.Path);
+        tab.BelongsToWorkspace = Workspace is { } workspace && IsInsideWorkspace(tab.Path, workspace.Folder);
     }
 
     private void SyncActiveTabDirtyState()
