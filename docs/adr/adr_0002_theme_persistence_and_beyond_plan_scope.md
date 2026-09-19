@@ -4,6 +4,8 @@
 
 Accepted
 
+Частично заменено [ADR-0009](adr_0009_shell_redesign.md) — Shell redesign (2026-09-19): §1–2 (модель темы) и §3.3 в части показа кнопок оболочки по наведению.
+
 ## Date
 
 2026-04-19
@@ -27,6 +29,8 @@ Accepted
 
 ### 1. Theme persistence model is frozen as two explicit themes plus system fallback
 
+> **Частично заменено [ADR-0009](adr_0009_shell_redesign.md), Rule 6.** Тема выбирается из трёх сохраняемых значений «Авто / Светлая / Тёмная»; «Авто» — явный выбор `ThemeMode.System`, который следует теме ОС на лету. Переключатель `Light <-> Dark` удаляется. Текст ниже сохранён как история решения.
+
 Принимается следующая модель:
 
 - пользовательская persistable theme choice ограничивается двумя явными значениями: `Light` и `Dark`
@@ -37,6 +41,8 @@ Accepted
 - текущее quick-toggle поведение `Light <-> Dark` остаётся целевым
 
 ### 2. Plan interpretation is updated
+
+> **Частично заменено [ADR-0009](adr_0009_shell_redesign.md), Rule 6:** отдельный выбор `System` теперь есть, пункты ниже о его ненужности не действуют.
 
 Пункт плана про тему должен далее интерпретироваться так:
 
@@ -83,10 +89,12 @@ Accepted
 Также принят как сверхплановый polish следующий уже реализованный scope:
 
 - ускоренное wheel scrolling для reading scenario
-- hover-reveal поведение chrome-элементов shell
+- hover-reveal поведение chrome-элементов shell — _для кнопок оболочки отменено [ADR-0009](adr_0009_shell_redesign.md), Rule 2: они видны постоянно_
 - дополнительные детали native rendering behavior для links, code, tables и image placeholders
 
 ## Consequences
+
+> **Частично заменено [ADR-0009](adr_0009_shell_redesign.md), Rule 6.** Следствия, planning impact и final statement ниже описывают модель темы до ADR-0009: в части «отдельный `System` mode / tri-state selector не нужен» они больше не действуют. Остальное — принятый beyond-plan scope из §3 — в силе.
 
 ## Positive
 
@@ -114,6 +122,8 @@ Accepted
 - дальнейшее планирование должно идти уже от фактического состояния репозитория, где M0-M3 закрыты, M4 в основном закрыт, а часть M5 уже присутствует
 
 ## Final statement
+
+> **Частично заменено [ADR-0009](adr_0009_shell_redesign.md), Rule 6:** тема — выбор «Авто / Светлая / Тёмная», где «Авто» (`System`) сохраняется как явный выбор. Абзац о beyond-plan scope в силе.
 
 Для MarkMello правильной интерпретацией theme behavior является не полноценный tri-state persistent theme selector, а модель:
 

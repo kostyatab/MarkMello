@@ -1,5 +1,7 @@
 # MarkMello — next implementation plan
 
+> Оболочку приложения пересматривает [ADR-0009](adr/adr_0009_shell_redesign.md) — Shell redesign (2026-09-19): меню ⋯ справа в строке окна вместо top-left app menu, настройки приложения — одна модальная карточка вместо subview в popover, тема «Авто / Светлая / Тёмная», «Недавние» на стартовом экране. Разделы ниже о M4 и M6 описывают план до него.
+
 ## Target
 
 Собрать первый production-oriented Avalonia baseline, который уже соответствует vision и не ломает viewer-first fast path.

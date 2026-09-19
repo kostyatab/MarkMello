@@ -6,6 +6,8 @@ Accepted
 
 Supersedes: [ADR-0006](adr_0006_optional_folder_browsing_mode.md) — Optional folder browsing mode.
 
+Частично заменено [ADR-0009](adr_0009_shell_redesign.md) — Shell redesign (2026-09-19): правило о цветах в разделе «Architecture impact → Presentation»; Rule 4 уточнён там же.
+
 ## Date
 
 2026-08-29
@@ -100,6 +102,8 @@ Entry points: пункт меню приложения, кнопка на welcom
 - вкладки для не-документов (настройки, диаграммы, превью).
 
 Одновременно активен ровно один документ. Полоса вкладок не должна становиться постоянным chrome: без открытых вкладок её нет.
+
+> **Уточнено [ADR-0009](adr_0009_shell_redesign.md), Rule 3.** Вкладки живут в единой строке окна 44 px, которая заменяет тайтлбар; открытый документ — вкладка и в folder mode, и без папки; после вкладок — «+» «Новый документ». Требование выше относится к вкладкам: без открытых вкладок их нет, а в folder mode в строке остаётся только «+». Открытие документа не спрашивает про правки активной вкладки.
 
 ### 5. Дерево ленивое
 
@@ -213,7 +217,7 @@ Persistent workspace file (`.markmello`, `.workspace`), БД и project metadata
 - `FileTreeNodeViewModel`, `OpenDocumentsViewModel`, `DocumentTabViewModel`;
 - `WorkspaceSidebarView`; полоса вкладок — `ItemsControl` плюс один `ContentControl`, **не** `TabControl` (он пересоздаёт контент и теряет прокрутку `MarkdownDocumentView`);
 - дерево — `TreeView` и `HierarchicalDataTemplate` с `x:DataType`; `TreeDataGrid` не подключается;
-- новые стили — в `Themes/Controls.axaml`; новых **цветов** в `Colors.axaml` не добавляется. Вводится один новый **ключ** `MmTreeInertTextBrush` на существующих значениях палитры — light `#6F6A65`, dark `#A29E98`: `MmTextFaintBrush` даёт для 12.5px строки дерева 3.2:1 в светлой теме и 3.5:1 в тёмной;
+- новые стили — в `Themes/Controls.axaml`; новых **цветов** в `Colors.axaml` не добавляется (_частично заменено [ADR-0009](adr_0009_shell_redesign.md), Rule 9: добавлены `MmTabBrush`, `MmTabHoverBrush`, `MmTabActiveBrush`, `MmScrimBrush`, удалены `MmTitleBar*`; значения тёмной темы, включая `MmTreeInertTextBrush`, пересчитаны; новый цвет вводится ключом сразу в обеих темах_). Вводится один новый **ключ** `MmTreeInertTextBrush` на существующих значениях палитры — light `#6F6A65`, dark `#A29E98`: `MmTextFaintBrush` даёт для 12.5px строки дерева 3.2:1 в светлой теме и 3.5:1 в тёмной;
 - локализация: `TreeRevealInExplorer` — три ключа с выбором по `IPlatformServices.PlatformName`; счётчик в подвале сайдбара требует форм множественного числа, которых плоский словарь не даёт;
 - мультиокно требует пересмотра DI: `MainWindow`, `MainWindowViewModel` и `Func<TopLevel?>` сейчас синглтоны, привязанные к `lifetime.MainWindow`.
 
