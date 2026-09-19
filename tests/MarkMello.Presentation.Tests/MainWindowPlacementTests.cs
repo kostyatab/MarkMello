@@ -12,12 +12,12 @@ public sealed class MainWindowPlacementTests
     /// </summary>
     [Theory]
     [InlineData(false, 91)]
-    [InlineData(true, 8)]
+    [InlineData(true, 11)]
     public void WindowRowReservesTheTrafficLightsOnMacOSOnlyWithoutTheSidebar(bool showsSidebar, double leading)
     {
         var padding = MainWindow.CalculateWindowRowPadding(isMacOS: true, isWindows: false, showsSidebar);
 
-        Assert.Equal(new Thickness(leading, 0, 10, 0), padding);
+        Assert.Equal(new Thickness(leading, 0, 11, 0), padding);
     }
 
     /// <summary>
@@ -37,8 +37,8 @@ public sealed class MainWindowPlacementTests
     /// правее кнопок строки стоят кнопки окна, и карточки отступают на их ширину.
     /// </summary>
     [Theory]
-    [InlineData(0, 12)]
-    [InlineData(153, 165)]
+    [InlineData(0, 11)]
+    [InlineData(153, 164)]
     public void OverlayCardsKeepClearOfTheWindowButtons(double windowButtonsWidth, double trailing)
     {
         var margin = MainWindow.CalculateOverlayCardMargin(windowButtonsWidth);
@@ -48,14 +48,14 @@ public sealed class MainWindowPlacementTests
 
     [Theory]
     [InlineData(true, 0)]
-    [InlineData(false, 10)]
+    [InlineData(false, 11)]
     public void WindowRowKeepsTheWindowsButtonsAtTheEdge(bool isWindows, double trailing)
     {
         foreach (var showsSidebar in new[] { false, true })
         {
             var padding = MainWindow.CalculateWindowRowPadding(isMacOS: false, isWindows, showsSidebar);
 
-            Assert.Equal(new Thickness(8, 0, trailing, 0), padding);
+            Assert.Equal(new Thickness(11, 0, trailing, 0), padding);
         }
     }
 

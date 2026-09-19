@@ -179,8 +179,8 @@ public sealed class WorkspaceSidebarViewTests
     /// кнопка панели справа; на Windows и Linux кнопка слева.
     /// </summary>
     [Theory]
-    [InlineData(true, 16, 7, HorizontalAlignment.Right)]
-    [InlineData(false, 8, 8, HorizontalAlignment.Left)]
+    [InlineData(true, 11, 11, HorizontalAlignment.Right)]
+    [InlineData(false, 11, 11, HorizontalAlignment.Left)]
     public void HeaderLeavesRoomForTheTrafficLightsOnMacOS(bool isMacOS, double leading, double trailing, HorizontalAlignment alignment)
     {
         var (padding, toggleAlignment) = WorkspaceSidebarView.CalculateHeaderLayout(isMacOS);

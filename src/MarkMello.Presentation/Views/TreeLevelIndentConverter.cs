@@ -5,13 +5,13 @@ using Avalonia.Data.Converters;
 namespace MarkMello.Presentation.Views;
 
 /// <summary>
-/// Отступ строки дерева по её уровню: 6px у корня и +16px на уровень.
+/// Отступ строки дерева по её уровню: 8px у корня и +16px на уровень.
 /// Штатный отступ Fluent считает свой конвертер, и переопределить его иначе нельзя:
 /// вместе с ним пришлось бы потерять и сам отступ вложенности.
 /// </summary>
 public sealed class TreeLevelIndentConverter : IValueConverter
 {
-    public const double RootIndent = 6;
+    public const double RootIndent = 8;
     public const double LevelIndent = 16;
 
     public static TreeLevelIndentConverter Instance { get; } = new();

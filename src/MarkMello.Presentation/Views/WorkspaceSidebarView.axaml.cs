@@ -16,10 +16,8 @@ namespace MarkMello.Presentation.Views;
 public partial class WorkspaceSidebarView : UserControl
 {
     // Шапка по A-Chrome: на macOS слева светофор, кнопка панели справа; на Windows
-    // и Linux кнопка слева.
-    private const double MacOsHeaderLeadingInset = 16;
-    private const double MacOsHeaderTrailingInset = 7;
-    private const double HeaderInset = 8;
+    // и Linux кнопка слева. Подложка кнопки в 11px от края, как у всех кнопок сайдбара.
+    private const double HeaderInset = 11;
 
     /// <summary>
     /// Строка дерева показывает текущий документ. Заливку рисует шаблон
@@ -60,9 +58,7 @@ public partial class WorkspaceSidebarView : UserControl
     }
 
     internal static (Thickness Padding, HorizontalAlignment ToggleAlignment) CalculateHeaderLayout(bool isMacOS)
-        => isMacOS
-            ? (new Thickness(MacOsHeaderLeadingInset, 0, MacOsHeaderTrailingInset, 0), HorizontalAlignment.Right)
-            : (new Thickness(HeaderInset, 0), HorizontalAlignment.Left);
+        => (new Thickness(HeaderInset, 0), isMacOS ? HorizontalAlignment.Right : HorizontalAlignment.Left);
 
     private void OnTreePointerReleased(object? sender, PointerReleasedEventArgs e)
     {

@@ -14,6 +14,11 @@
   <UserControl.Styles>
     <!-- ======================= Сайдбар открытой папки ======================= -->
 
+    <!-- Сетка краёв, общая со строкой окна: подложки кнопок и строки дерева в 11px
+         от краёв, иконки и текст в 19px — на одной вертикали с красной кнопкой
+         светофора macOS. Поле поиска видно всегда, поэтому его рамка стоит по краям
+         светофора и иконок, в 19px. Слева и справа отступы одинаковые. -->
+
     <Style Selector="Border.mm-sidebar">
       <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
@@ -52,7 +57,7 @@
     <Style Selector="TreeView.mm-tree">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="Padding" Value="8,2,8,12" />
+      <Setter Property="Padding" Value="11,2,11,12" />
       <!-- Без виртуализации каталог на 5000 элементов реализует 5000 строк:
            замер давал 11 с на раскрытие и 939 МБ рабочего множества. -->
       <Setter Property="ItemsPanel">
@@ -84,10 +89,10 @@
       </Setter>
     </Style>
 
-    <!-- Отступы уровней из макета: 6px у корня, +16px на уровень, место под шеврон
-         12px с щелью 6px — в каждой строке, чтобы иконки файлов стояли ровно под
-         иконками папок того же уровня. Штатный отступ вложенности Fluent заменён
-         своим: вместе они давали дыру перед именем. -->
+    <!-- Отступы уровней: 8px у корня — шеврон встаёт на вертикаль иконок сайдбара, —
+         +16px на уровень, место под шеврон 12px с щелью 6px — в каждой строке, чтобы
+         иконки файлов стояли ровно под иконками папок того же уровня. Штатный отступ
+         вложенности Fluent заменён своим: вместе они давали дыру перед именем. -->
     <Style Selector="TreeView.mm-tree TreeViewItem /template/ Panel#PART_ExpandCollapseChevronContainer">
       <Setter Property="Width" Value="18" />
       <Setter Property="Margin"
@@ -192,8 +197,8 @@
 
     <Style Selector="Border.mm-search-shell">
       <Setter Property="Height" Value="30" />
-      <Setter Property="Margin" Value="10,0,10,10" />
-      <Setter Property="Padding" Value="10,0" />
+      <Setter Property="Margin" Value="19,0,19,10" />
+      <Setter Property="Padding" Value="8,0" />
       <Setter Property="Background" Value="{DynamicResource MmBackgroundBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
       <Setter Property="BorderThickness" Value="1" />
@@ -239,7 +244,7 @@
 
     <!-- Шапка списка совпадений: дерево в этот момент скрыто, и список надо назвать -->
     <Style Selector="TextBlock.mm-search-caption">
-      <Setter Property="Margin" Value="14,2,14,4" />
+      <Setter Property="Margin" Value="19,2,19,4" />
       <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
       <Setter Property="FontSize" Value="10.5" />
       <Setter Property="LetterSpacing" Value="0.8" />
@@ -256,7 +261,7 @@
     <Style Selector="Button.mm-search-hit">
       <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-      <Setter Property="Padding" Value="6,4" />
+      <Setter Property="Padding" Value="8,4" />
       <Setter Property="Margin" Value="0,1" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
@@ -281,7 +286,7 @@
       <Setter Property="VerticalAlignment" Value="Center" />
       <Setter Property="TextWrapping" Value="Wrap" />
       <Setter Property="TextAlignment" Value="Center" />
-      <Setter Property="Margin" Value="18,0" />
+      <Setter Property="Margin" Value="19,0" />
     </Style>
 
     <!-- Обрезанная выдача обязана быть видна: иначе 200 совпадений выглядят полным ответом -->
@@ -289,7 +294,7 @@
       <Setter Property="Background" Value="{DynamicResource MmSurfaceHoverBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
       <Setter Property="BorderThickness" Value="0,1,0,0" />
-      <Setter Property="Padding" Value="12,8" />
+      <Setter Property="Padding" Value="19,8" />
     </Style>
     <Style Selector="Border.mm-search-truncated TextBlock">
       <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
@@ -299,7 +304,7 @@
 
     <Style Selector="Border.mm-sidebar-footer">
       <Setter Property="Height" Value="30" />
-      <Setter Property="Padding" Value="14,0" />
+      <Setter Property="Padding" Value="19,0" />
       <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
       <Setter Property="BorderThickness" Value="0,1,0,0" />
     </Style>
@@ -387,7 +392,7 @@
       <!-- «имя папки ▾» — действия над самой папкой, «+» — создание в ней -->
       <Grid Grid.Row="1"
             ColumnDefinitions="*,Auto"
-            Margin="8,4,7,8">
+            Margin="11,4,11,8">
         <Button Grid.Column="0"
                 Name="FolderMenuButton"
                 Classes="mm-sidebar-folder"
@@ -576,7 +581,7 @@
 
         <ScrollViewer Grid.Row="1">
           <ItemsControl ItemsSource="{Binding Workspace.SearchHits}"
-                        Margin="8,2,8,12">
+                        Margin="11,2,11,12">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate>
                 <VirtualizingStackPanel />

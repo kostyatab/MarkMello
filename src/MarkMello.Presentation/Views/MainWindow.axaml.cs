@@ -24,12 +24,13 @@ public partial class MainWindow : Window
     private const double WindowRowHeight = 44;
     // На macOS строка совпадает с системным тулбаром unified, и светофор стоит по её центру.
     private const double MacOsWindowRowHeight = 52;
-    private const double WindowRowLeadingInset = 8;
-    private const double WindowRowTrailingInset = 10;
+    // Подложки кнопок и вкладок в 11 от краёв строки, иконки в 19 — на вертикали светофора.
+    private const double WindowRowLeadingInset = 11;
+    private const double WindowRowTrailingInset = 11;
     // Светофор macOS в строке окна: 19 до первой кнопки, 60 на три кнопки, 12 до содержимого.
     private const double MacOsTrafficLightsInset = 91;
     private const double OverlayCardTopInset = 6;
-    private const double OverlayCardTrailingInset = 12;
+    private const double OverlayCardTrailingInset = WindowRowTrailingInset;
     private const int WindowPlacementMarginPixels = 8;
 
     /// <summary>Класс области, за пустое место которой тянется окно: строка окна и шапка сайдбара.</summary>
