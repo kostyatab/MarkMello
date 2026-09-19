@@ -29,6 +29,27 @@
     <CustomLinkerArg Include="-ld_classic" />
   </ItemGroup>
 
+  <!-- Without the 26+ SDK stamp macOS draws the window with legacy traffic lights. -->
+  <PropertyGroup>
+    <MarkMelloStampSdkScript>$(MSBuildThisFileDirectory)../../packaging/macos/stamp-sdk-version.sh</MarkMelloStampSdkScript>
+    <MarkMelloTargetsMacOS>false</MarkMelloTargetsMacOS>
+    <MarkMelloTargetsMacOS Condition="$([MSBuild]::IsOSPlatform('OSX')) and ('$(RuntimeIdentifier)' == '' or $(RuntimeIdentifier.StartsWith('osx')))">true</MarkMelloTargetsMacOS>
+  </PropertyGroup>
+
+  <Target Name="StampMacOSSdkVersionAfterBuild"
+          AfterTargets="Build"
+          Condition="$(MarkMelloTargetsMacOS) and Exists('$(TargetDir)$(AssemblyName)')">
+    <Exec Command="bash &quot;$(MarkMelloStampSdkScript)&quot; &quot;$(TargetDir)$(AssemblyName)&quot;"
+          IgnoreStandardErrorWarningFormat="true" />
+  </Target>
+
+  <Target Name="StampMacOSSdkVersionAfterPublish"
+          AfterTargets="Publish"
+          Condition="$(MarkMelloTargetsMacOS) and Exists('$(PublishDir)$(AssemblyName)')">
+    <Exec Command="bash &quot;$(MarkMelloStampSdkScript)&quot; &quot;$(PublishDir)$(AssemblyName)&quot;"
+          IgnoreStandardErrorWarningFormat="true" />
+  </Target>
+
   <ItemGroup>
     <ProjectReference Include="..\MarkMello.Application\MarkMello.Application.csproj" />
     <ProjectReference Include="..\MarkMello.Domain\MarkMello.Domain.csproj" />

@@ -47,6 +47,7 @@ dotnet publish .\src\MarkMello.Desktop\MarkMello.Desktop.csproj `
 - `macos/MarkMello.icns` is the bundle icon generated from the shared master icon.
 - `macos/build-app-bundle.sh` assembles an unsigned `.app` bundle from a `dotnet publish` folder.
 - `macos/build-dmg.sh` wraps that bundle into an unsigned `.dmg` for GitHub Releases.
+- `macos/stamp-sdk-version.sh` runs after every macOS build and publish of `MarkMello.Desktop`: it stamps the executable as built against the macOS 26 SDK and re-signs it ad-hoc, so macOS 26+ draws the current window chrome instead of the legacy traffic lights it keeps for apps linked against older SDKs.
 - The template declares Markdown document handling through bundle metadata, not installer hacks.
 - Replace `$(MARKMELLO_BUNDLE_ID)`, `$(MARKMELLO_VERSION)`, and `$(MARKMELLO_BUILD_NUMBER)` in the release pipeline before building the DMG.
 - Without an Apple Developer account, the macOS release stays unsigned and non-notarized. Users should expect Gatekeeper to require an explicit first-run approval after download.
