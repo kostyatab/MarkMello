@@ -258,6 +258,25 @@ internal sealed class ManualEditorPreviewScheduler : IEditorPreviewScheduler
 }
 
 /// <summary>
+/// <see cref="IEditorPreviewScheduler"/> that only counts <see cref="Dispose"/>
+/// calls, so tests can see whether the owning editor session was disposed.
+/// </summary>
+internal sealed class DisposalRecordingPreviewScheduler : IEditorPreviewScheduler, IDisposable
+{
+    public int DisposeCount { get; private set; }
+
+    public void Schedule<T>(Func<T> render, Action<T> apply)
+    {
+    }
+
+    public void Cancel()
+    {
+    }
+
+    public void Dispose() => DisposeCount++;
+}
+
+/// <summary>
 /// In-memory <see cref="IDiagramRenderService"/> for tests. Defaults to a
 /// Mermaid renderer that echoes the source inside a fake SVG payload, which
 /// keeps the production composition rules satisfied (every supported dialect

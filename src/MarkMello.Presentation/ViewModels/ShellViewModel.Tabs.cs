@@ -179,15 +179,26 @@ public partial class ShellViewModel
     private async Task RemoveTabAsync(DocumentTabViewModel tab)
     {
         var wasActive = ReferenceEquals(OpenDocuments.ActiveTab, tab);
+        var session = tab.EditorSession;
 
-        if (wasActive && ReferenceEquals(EditorSession, tab.EditorSession))
+        if (wasActive && ReferenceEquals(EditorSession, session))
         {
             // Снимаем сессию с shell до удаления вкладки, иначе она останется подписанной.
+            // После Remove активной станет соседняя вкладка, и синхронизация записала бы в неё.
             IsEditMode = false;
             EditorSession = null;
         }
 
         OpenDocuments.Remove(tab);
+
+        // Shell не выбросил сессию — вкладка ещё была в списке, — а синхронизация отвязала её
+        // от активной вкладки, так что tab.Dispose() её уже не увидит. Фоновая вкладка держит
+        // сессию до конца и гасит её сама: в обоих случаях сессия гасится ровно один раз.
+        if (session is not null && !ReferenceEquals(tab.EditorSession, session))
+        {
+            session.Dispose();
+        }
+
         tab.Dispose();
 
         if (!wasActive)

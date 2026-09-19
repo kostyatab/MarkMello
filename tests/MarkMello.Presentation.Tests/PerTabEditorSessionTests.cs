@@ -155,6 +155,65 @@ public sealed class PerTabEditorSessionTests
         Assert.False(harness.ViewModel.TryQueueCloseRequest());
     }
 
+    /// <summary>
+    /// Раньше сессия активной вкладки при закрытии не гасилась: shell отвязывал её, пока
+    /// вкладка ещё была в списке, синхронизация снимала её с вкладки, и tab.Dispose()
+    /// оставалось нечего гасить — отложенный рендер preview жил дальше.
+    /// </summary>
+    [Fact]
+    public async Task ClosingTheActiveEditingTabDisposesItsSessionOnce()
+    {
+        var schedulers = new List<DisposalRecordingPreviewScheduler>();
+        var harness = CreateHarness(schedulers);
+        await harness.ViewModel.OpenPathAsync(@"C:\docs\first.md");
+        await harness.ViewModel.OpenPathAsync(@"C:\docs\second.md");
+        harness.ViewModel.ToggleEditModeCommand.Execute(null);
+        var scheduler = Assert.Single(schedulers);
+
+        await harness.ViewModel.CloseActiveTabCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, scheduler.DisposeCount);
+
+        // Активность перешла к соседу, и закрытая сессия в него не просочилась.
+        var first = Assert.Single(harness.ViewModel.OpenDocuments.Tabs);
+        Assert.Same(first, harness.ViewModel.OpenDocuments.ActiveTab);
+        Assert.Null(first.EditorSession);
+        Assert.Null(harness.ViewModel.EditorSession);
+        Assert.False(harness.ViewModel.IsEditMode);
+    }
+
+    [Fact]
+    public async Task ClosingTheOnlyDraftTabDisposesItsSessionOnce()
+    {
+        var schedulers = new List<DisposalRecordingPreviewScheduler>();
+        var harness = CreateHarness(schedulers);
+        await harness.ViewModel.CreateNewDocumentCommand.ExecuteAsync(null);
+        var scheduler = Assert.Single(schedulers);
+
+        await harness.ViewModel.CloseActiveTabCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, scheduler.DisposeCount);
+        Assert.Empty(harness.ViewModel.OpenDocuments.Tabs);
+        Assert.Null(harness.ViewModel.EditorSession);
+    }
+
+    [Fact]
+    public async Task ClosingABackgroundEditingTabDisposesItsSessionOnce()
+    {
+        var schedulers = new List<DisposalRecordingPreviewScheduler>();
+        var harness = CreateHarness(schedulers);
+        await harness.ViewModel.OpenPathAsync(@"C:\docs\first.md");
+        harness.ViewModel.ToggleEditModeCommand.Execute(null);
+        var scheduler = Assert.Single(schedulers);
+        var first = harness.ViewModel.OpenDocuments.Tabs[0];
+
+        await harness.ViewModel.OpenPathAsync(@"C:\docs\second.md");
+        await harness.ViewModel.OpenDocuments.CloseCommand.ExecuteAsync(first);
+
+        Assert.Equal(1, scheduler.DisposeCount);
+        Assert.Equal(@"C:\docs\second.md", harness.ViewModel.CurrentDocumentPath);
+    }
+
     private static async Task<EditorTestHarness> CreateHarnessWithTwoDirtyTabsAsync()
     {
         var harness = CreateHarness();
@@ -170,7 +229,7 @@ public sealed class PerTabEditorSessionTests
         return harness;
     }
 
-    private static EditorTestHarness CreateHarness()
+    private static EditorTestHarness CreateHarness(List<DisposalRecordingPreviewScheduler>? schedulers = null)
     {
         var loader = new StubDocumentLoader();
         loader.Sources[@"C:\docs\first.md"] = new MarkdownSource(@"C:\docs\first.md", "first.md", "# first");
@@ -195,7 +254,15 @@ public sealed class PerTabEditorSessionTests
             new WorkspaceFileOperationsUseCase(fileSystem, new FakePlatformServices()),
             new FakePlatformServices(),
             static () => new FakeWorkspaceWatcher(),
-            new RecordingWindowLauncher());
+            new RecordingWindowLauncher(),
+            previewSchedulerFactory: schedulers is null
+                ? null
+                : () =>
+                {
+                    var scheduler = new DisposalRecordingPreviewScheduler();
+                    schedulers.Add(scheduler);
+                    return scheduler;
+                });
 
         return new EditorTestHarness(loader, viewModel);
     }
