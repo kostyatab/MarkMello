@@ -920,8 +920,7 @@
 
   <Style Selector="Border.mm-md-table">
     <!--
-      Border-collapse model matching MarkMelloDesign/styles.css `.mm-table`:
-      no outer frame, no rounded corners. Visual structure is expressed
+      Border-collapse model: no outer frame, no rounded corners. Visual structure is expressed
       purely through per-cell bottom borders below.
     -->
     <Setter Property="BorderThickness" Value="0" />
