@@ -487,7 +487,6 @@ public partial class ShellViewModel
         DirtyPromptMessage = _dirtyPromptKind switch
         {
             PendingDirtyActionKind.OpenFile => _localization["DirtyPromptOpenFile"],
-            PendingDirtyActionKind.CreateNewDocument => _localization["DirtyPromptCreateNewDocument"],
             PendingDirtyActionKind.CloseFile => _localization["DirtyPromptCloseFile"],
             PendingDirtyActionKind.Reload => _localization["DirtyPromptReload"],
             PendingDirtyActionKind.LeaveEditMode => _localization["DirtyPromptLeaveEditMode"],

@@ -798,14 +798,22 @@ public partial class ShellViewModel : ObservableObject
         await RunWithDirtyCheckAsync(PendingDirtyActionKind.OpenFile, OpenFileCoreAsync).ConfigureAwait(true);
     }
 
+    /// <summary>
+    /// Черновик открывается в своей вкладке, а правки активной остаются в её сессии, поэтому
+    /// спрашивать о них нечего (ADR-0009 Rule 3): «Не сохранять» стёрло бы их зря. Под открытым
+    /// диалогом ⌘N не срабатывает — смена активной вкладки увела бы ответ на черновик.
+    /// </summary>
     [RelayCommand]
-    private async Task CreateNewDocumentAsync()
+    private Task CreateNewDocumentAsync()
     {
         CloseOverlayCore();
-        await RunWithDirtyCheckAsync(
-                PendingDirtyActionKind.CreateNewDocument,
-                CreateNewDocumentCoreAsync)
-            .ConfigureAwait(true);
+
+        if (!IsDirtyPromptOpen)
+        {
+            CreateNewDocumentCore();
+        }
+
+        return Task.CompletedTask;
     }
 
     [RelayCommand(CanExecute = nameof(CanCloseFile))]
@@ -1364,12 +1372,6 @@ public partial class ShellViewModel : ObservableObject
         }
 
         await LoadDocumentAsync(path, preserveEditModeAfterLoad: false).ConfigureAwait(true);
-    }
-
-    private Task CreateNewDocumentCoreAsync()
-    {
-        CreateNewDocumentCore();
-        return Task.CompletedTask;
     }
 
     private void CreateNewDocumentCore()
@@ -1937,7 +1939,6 @@ public partial class ShellViewModel : ObservableObject
     private enum PendingDirtyActionKind
     {
         OpenFile,
-        CreateNewDocument,
         CloseFile,
         Reload,
         LeaveEditMode,
