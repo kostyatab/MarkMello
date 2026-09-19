@@ -375,11 +375,6 @@
       <Setter Property="FontSize" Value="11" />
       <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
     </Style>
-
-    <!-- Удаление — единственное деструктивное действие в меню, поэтому оно акцентное -->
-    <Style Selector="MenuItem.mm-menu-destructive">
-      <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
-    </Style>
   </UserControl.Styles>
 
   <Border Classes="mm-sidebar">
@@ -411,7 +406,8 @@
                 Classes="mm-sidebar-folder"
                 ToolTip.Tip="{Binding Workspace.Folder.RootPath}">
           <Button.Flyout>
-            <MenuFlyout Placement="BottomEdgeAlignedLeft">
+            <MenuFlyout Placement="BottomEdgeAlignedLeft"
+                        VerticalOffset="6">
               <MenuItem Header="{Binding SidebarOpenAnotherFolder}"
                         Command="{Binding OpenFolderCommand}" />
               <MenuItem Header="{Binding TreeRevealInExplorer}"
@@ -445,7 +441,8 @@
                 Classes="mm-row-button"
                 ToolTip.Tip="{Binding SidebarCreateTooltip}">
           <Button.Flyout>
-            <MenuFlyout Placement="BottomEdgeAlignedRight">
+            <MenuFlyout Placement="BottomEdgeAlignedRight"
+                        VerticalOffset="6">
               <MenuItem Header="{Binding SidebarNewFile}"
                         Command="{Binding Workspace.StartNewFileCommand}" />
               <MenuItem Header="{Binding SidebarNewFolder}"

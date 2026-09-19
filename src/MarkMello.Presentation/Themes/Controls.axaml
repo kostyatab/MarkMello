@@ -401,6 +401,72 @@
   </Style>
 
   <!--
+    Выпадающие и контекстные меню (MenuFlyout, ContextMenu) — та же карточка, что ⋯:
+    поверхность и рамка палитры, радиус 12, отступ 6, пункты 26 px с радиусом 7,
+    наведение — заливка вкладки, разделитель — мягкая линия. Fluent красит части
+    шаблона своими кистями по состояниям, поэтому цвета заданы у частей явно.
+  -->
+  <Style Selector="MenuFlyoutPresenter, ContextMenu">
+    <!-- Отступ карточки и поле списка Fluent ставит в шаблоне из ресурсов —
+         стиль их не перебивает, поэтому переопределены сами ресурсы -->
+    <Style.Resources>
+      <Thickness x:Key="FlyoutBorderThemePadding">6</Thickness>
+      <Thickness x:Key="MenuFlyoutScrollerMargin">0</Thickness>
+    </Style.Resources>
+    <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Padding" Value="6" />
+    <Setter Property="MinWidth" Value="200" />
+    <Setter Property="MinHeight" Value="0" />
+  </Style>
+
+  <Style Selector="MenuItem">
+    <Setter Property="Height" Value="26" />
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="CornerRadius" Value="7" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <!-- При открытии Fluent выделяет первый пункт сам — подсветка только под мышью
+       и при навигации с клавиатуры, как у ⋯ -->
+  <Style Selector="MenuItem:selected /template/ Border#PART_LayoutRoot">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="MenuItem:pointerover /template/ Border#PART_LayoutRoot, MenuItem:focus-visible /template/ Border#PART_LayoutRoot, MenuItem:open /template/ Border#PART_LayoutRoot">
+    <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
+  </Style>
+  <Style Selector="MenuItem:disabled /template/ Border#PART_LayoutRoot">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="MenuItem /template/ ContentPresenter#PART_HeaderPresenter, MenuItem:selected /template/ ContentPresenter#PART_HeaderPresenter, MenuItem:pressed /template/ Border#PART_LayoutRoot:pointerover ContentPresenter#PART_HeaderPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+  </Style>
+  <!-- Удаление — деструктивное действие, поэтому акцентное -->
+  <Style Selector="MenuItem.mm-menu-destructive /template/ ContentPresenter#PART_HeaderPresenter, MenuItem.mm-menu-destructive:selected /template/ ContentPresenter#PART_HeaderPresenter, MenuItem.mm-menu-destructive:pressed /template/ Border#PART_LayoutRoot:pointerover ContentPresenter#PART_HeaderPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
+  </Style>
+  <Style Selector="MenuItem:disabled /template/ ContentPresenter#PART_HeaderPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
+  </Style>
+  <Style Selector="MenuItem /template/ TextBlock#PART_InputGestureText, MenuItem:selected /template/ TextBlock#PART_InputGestureText, MenuItem:pressed /template/ Border#PART_LayoutRoot:pointerover TextBlock#PART_InputGestureText">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+  </Style>
+  <Style Selector="MenuItem:disabled /template/ TextBlock#PART_InputGestureText">
+    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
+  </Style>
+
+  <Style Selector="MenuFlyoutPresenter Separator, ContextMenu Separator">
+    <Setter Property="Height" Value="1" />
+    <Setter Property="Margin" Value="10,5" />
+    <Setter Property="Background" Value="{DynamicResource MmBorderSoftBrush}" />
+  </Style>
+
+  <!--
     Карточка Aa (A-SetAa): подпись над контролом, сегменты на всю ширину,
     размер текста — «− N px +», внизу строка к настройкам приложения.
   -->
