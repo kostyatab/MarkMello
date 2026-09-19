@@ -346,7 +346,7 @@
   </Style>
 
   <!--
-    Меню ⋯ (A-Menu): пункты 24 px, как в системных меню macOS, с подписью сочетания справа, группы через линии.
+    Меню ⋯ (A-Menu): пункты 26 px — чуть свободнее системных 24, с подписью сочетания справа, группы через линии.
     Неприменимая команда гаснет — цвет задан у ContentPresenter, иначе Fluent
     перекрасит её своими кистями.
   -->
@@ -356,8 +356,8 @@
   </Style>
 
   <Style Selector="Button.mm-menu-command">
-    <Setter Property="Height" Value="24" />
-    <Setter Property="MinHeight" Value="24" />
+    <Setter Property="Height" Value="26" />
+    <Setter Property="MinHeight" Value="26" />
     <Setter Property="Padding" Value="10,0" />
     <Setter Property="CornerRadius" Value="7" />
     <Setter Property="Background" Value="Transparent" />

@@ -407,13 +407,13 @@
                 IsHitTestVisible="False" />
 
         <!-- Карточки поиска, Aa и меню ⋯ раскрываются под строкой у правого
-             края — одно правило на всю строку (ADR-0009 Rule 2). Правый отступ держит хост:
-             на Windows справа от кнопок строки стоят ещё кнопки окна, и его ставит
-             code-behind по их ширине. -->
+             края — одно правило на всю строку (ADR-0009 Rule 2). Отступы держит хост и ставит
+             code-behind: сверху он поднят в строку, чтобы карточка встала в 6 под кнопкой,
+             а справа на Windows отступает ещё на кнопки окна. -->
         <Panel Name="OverlayCardHost"
                HorizontalAlignment="Right"
                VerticalAlignment="Top"
-               Margin="0,6,11,0">
+               Margin="0,-1,11,0">
           <ContentControl Name="FindBarHost"
                           HorizontalAlignment="Right"
                           VerticalAlignment="Top"

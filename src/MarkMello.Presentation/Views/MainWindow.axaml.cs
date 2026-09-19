@@ -29,7 +29,10 @@ public partial class MainWindow : Window
     private const double WindowRowTrailingInset = 11;
     // Светофор macOS в строке окна: 19 до первой кнопки, 60 на три кнопки, 12 до содержимого.
     private const double MacOsTrafficLightsInset = 91;
-    private const double OverlayCardTopInset = 6;
+    // Кнопки строки (mm-row-button) высотой 30 стоят по центру строки.
+    private const double WindowRowButtonHeight = 30;
+    // Карточка открывается в 6 от низа своей кнопки, как поповеры macOS.
+    private const double OverlayCardGap = 6;
     private const double OverlayCardTrailingInset = WindowRowTrailingInset;
     private const int WindowPlacementMarginPixels = 8;
 
@@ -37,6 +40,7 @@ public partial class MainWindow : Window
     internal const string WindowDragClass = "mm-window-drag";
 
     private readonly ShellViewModel _viewModel = default!;
+    private double _windowButtonsWidth;
     private readonly StartupSmokeTestOptions _startupSmokeTestOptions = StartupSmokeTestOptions.Disabled;
     private readonly IStartupMetrics? _startupMetrics;
     private readonly ISettingsStore? _settings;
@@ -147,6 +151,8 @@ public partial class MainWindow : Window
             row.Height = CalculateWindowRowHeight(OperatingSystem.IsMacOS());
         }
 
+        ApplyOverlayCardInset();
+
         if (this.FindControl<Grid>("WindowRowContent") is { } rowContent)
         {
             rowContent.Margin = CalculateWindowRowPadding(
@@ -175,18 +181,29 @@ public partial class MainWindow : Window
     /// разметки, чтобы отступ не разъезжался с размерами кнопок.
     /// </summary>
     private void OnWindowButtonsSizeChanged(object? sender, SizeChangedEventArgs e)
-        => ApplyOverlayCardInset(e.NewSize.Width);
+    {
+        _windowButtonsWidth = e.NewSize.Width;
+        ApplyOverlayCardInset();
+    }
 
-    private void ApplyOverlayCardInset(double windowButtonsWidth)
+    private void ApplyOverlayCardInset()
     {
         if (this.FindControl<Panel>("OverlayCardHost") is { } host)
         {
-            host.Margin = CalculateOverlayCardMargin(windowButtonsWidth);
+            host.Margin = CalculateOverlayCardMargin(OperatingSystem.IsMacOS(), _windowButtonsWidth);
         }
     }
 
-    internal static Thickness CalculateOverlayCardMargin(double windowButtonsWidth)
-        => new(0, OverlayCardTopInset, OverlayCardTrailingInset + Math.Max(0, windowButtonsWidth), 0);
+    /// <summary>
+    /// Хост карточек лежит под строкой окна, а карточка должна встать в <see cref="OverlayCardGap"/>
+    /// от низа кнопки — поэтому он поднимается в строку на поле под кнопкой.
+    /// </summary>
+    internal static Thickness CalculateOverlayCardMargin(bool isMacOS, double windowButtonsWidth)
+        => new(
+            0,
+            OverlayCardGap - (CalculateWindowRowHeight(isMacOS) - WindowRowButtonHeight) / 2,
+            OverlayCardTrailingInset + Math.Max(0, windowButtonsWidth),
+            0);
 
     private async void OnWindowOpened(object? sender, EventArgs e)
     {

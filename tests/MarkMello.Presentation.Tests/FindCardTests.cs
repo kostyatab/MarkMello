@@ -64,7 +64,8 @@ public sealed class FindCardTests
 
             Assert.True(findButton.IsChecked);
             Assert.Equal(new Size(392, 42), card.Bounds.Size);
-            Assert.Equal(MainWindow.CalculateWindowRowHeight(OperatingSystem.IsMacOS()) + 6, cardOrigin.Y);
+            // Кнопки строки высотой 30 стоят по центру строки; карточка — в 6 под кнопкой.
+            Assert.Equal(MainWindow.CalculateWindowRowHeight(OperatingSystem.IsMacOS()) / 2 + 15 + 6, cardOrigin.Y);
             Assert.InRange(buttonOrigin.X, cardOrigin.X, cardOrigin.X + card.Bounds.Width - findButton.Bounds.Width);
 
             // Правый отступ, как у карточек Aa и меню ⋯, держит общий хост.

@@ -37,13 +37,14 @@ public sealed class MainWindowPlacementTests
     /// правее кнопок строки стоят кнопки окна, и карточки отступают на их ширину.
     /// </summary>
     [Theory]
-    [InlineData(0, 11)]
-    [InlineData(153, 164)]
-    public void OverlayCardsKeepClearOfTheWindowButtons(double windowButtonsWidth, double trailing)
+    [InlineData(false, 0, -1, 11)]
+    [InlineData(false, 153, -1, 164)]
+    [InlineData(true, 0, -5, 11)]
+    public void OverlayCardsOpenJustBelowTheirButton(bool isMacOS, double windowButtonsWidth, double top, double trailing)
     {
-        var margin = MainWindow.CalculateOverlayCardMargin(windowButtonsWidth);
+        var margin = MainWindow.CalculateOverlayCardMargin(isMacOS, windowButtonsWidth);
 
-        Assert.Equal(new Thickness(0, 6, trailing, 0), margin);
+        Assert.Equal(new Thickness(0, top, trailing, 0), margin);
     }
 
     [Theory]
