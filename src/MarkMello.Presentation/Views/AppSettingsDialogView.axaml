@@ -47,7 +47,7 @@
       <Border Classes="mm-app-settings-row">
         <Grid ColumnDefinitions="*,Auto"
               ColumnSpacing="16">
-          <StackPanel Spacing="2"
+          <StackPanel Spacing="4"
                       VerticalAlignment="Center">
             <TextBlock Classes="mm-app-settings-label"
                        Text="{Binding LanguageLabel}" />
@@ -70,7 +70,7 @@
       <Border Classes="mm-app-settings-row">
         <Grid ColumnDefinitions="*,Auto"
               ColumnSpacing="16">
-          <StackPanel Spacing="2"
+          <StackPanel Spacing="4"
                       VerticalAlignment="Center">
             <TextBlock Classes="mm-app-settings-label"
                        Text="{Binding WindowBorderLabel}" />
@@ -110,7 +110,7 @@
       <Border Classes="mm-app-settings-update">
         <Grid ColumnDefinitions="*,Auto"
               ColumnSpacing="14">
-          <StackPanel Spacing="1"
+          <StackPanel Spacing="4"
                       VerticalAlignment="Center">
             <TextBlock Classes="mm-app-settings-label"
                        TextWrapping="Wrap"

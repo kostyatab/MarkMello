@@ -590,7 +590,7 @@
   -->
   <Style Selector="ComboBox.mm-language-select /template/ Border#PopupBorder">
     <Setter Property="Margin" Value="0,4,0,0" />
-    <Setter Property="Padding" Value="4" />
+    <Setter Property="Padding" Value="4,3" />
     <Setter Property="CornerRadius" Value="10" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
@@ -611,7 +611,9 @@
       </ControlTemplate>
     </Setter>
   </Style>
+  <!-- Между пунктами 2 px: выбранный и наведённый не сливаются в одну плашку -->
   <Style Selector="ComboBoxItem">
+    <Setter Property="Margin" Value="0,1" />
     <Setter Property="MinHeight" Value="30" />
     <Setter Property="Height" Value="30" />
     <Setter Property="Padding" Value="10,0" />
