@@ -28,6 +28,7 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
         double maxWidth,
         IBrush foreground,
         TextDecorationCollection? linkDecorations,
+        MarkdownInlineImagePlaceholderBrushes imagePlaceholderBrushes,
         IBrush? footnoteReferenceForeground = null,
         FontFeatureCollection? baseFontFeatures = null)
     {
@@ -54,7 +55,7 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
             baseFontWeight,
             baseFontStyle,
             lineHeight,
-            foreground);
+            imagePlaceholderBrushes);
         // Метрики сносок нужны редкому абзацу — пробный layout только для него.
         _footnoteMetrics = styledText.FootnoteReferences.Count == 0
             ? null
@@ -701,12 +702,21 @@ internal readonly record struct MarkdownInlineCodePadMetrics(
     }
 }
 
+/// <summary>
+/// Цвета заглушки строчной картинки, пока та грузится или не загрузилась. Своих
+/// ресурсов у раскладки нет, поэтому кисти темы приносит фрагмент.
+/// </summary>
+internal readonly record struct MarkdownInlineImagePlaceholderBrushes(
+    IBrush Fill,
+    IBrush Border,
+    IBrush Foreground);
+
 internal readonly record struct MarkdownInlineImageMetrics(
     double MaxHeight,
     double Baseline,
     Typeface Typeface,
     double FontSize,
-    IBrush Foreground)
+    MarkdownInlineImagePlaceholderBrushes Placeholder)
 {
     public static MarkdownInlineImageMetrics Create(
         FontFamily fontFamily,
@@ -714,13 +724,13 @@ internal readonly record struct MarkdownInlineImageMetrics(
         FontWeight fontWeight,
         FontStyle fontStyle,
         double lineHeight,
-        IBrush foreground)
+        MarkdownInlineImagePlaceholderBrushes placeholder)
     {
         using var probe = new TextLayout(
             "M",
             new Typeface(fontFamily, fontStyle, fontWeight),
             fontSize,
-            foreground,
+            placeholder.Foreground,
             TextAlignment.Left,
             TextWrapping.NoWrap,
             textTrimming: null,
@@ -747,7 +757,7 @@ internal readonly record struct MarkdownInlineImageMetrics(
             baseline,
             new Typeface(fontFamily, fontStyle, fontWeight),
             Math.Max(10, fontSize * 0.75),
-            foreground);
+            placeholder);
     }
 }
 
@@ -825,15 +835,16 @@ internal sealed class MarkdownInlineImageTextRun : DrawableTextRun
             return;
         }
 
-        var fill = _failed ? Brushes.Transparent : Brushes.LightGray;
-        var pen = new Pen(Brushes.Gray, 1);
+        var placeholder = _metrics.Placeholder;
+        var fill = _failed ? Brushes.Transparent : placeholder.Fill;
+        var pen = new Pen(placeholder.Border, 1);
         drawingContext.DrawRectangle(fill, pen, rect, 3, 3);
 
         using var textLayout = new TextLayout(
             _failed ? "image" : _label,
             _metrics.Typeface,
             _metrics.FontSize,
-            _metrics.Foreground,
+            placeholder.Foreground,
             TextAlignment.Center,
             TextWrapping.NoWrap,
             textTrimming: null,

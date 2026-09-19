@@ -534,6 +534,7 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
             normalizedWidth,
             ResolveBaseTextBrush(),
             BuildLinkTextDecorations(),
+            ResolveImagePlaceholderBrushes(),
             ResolveOptionalBrush("MmAccentBrush"),
             BaseFontFeatures);
 
@@ -582,6 +583,20 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
             ?? (BaseForegroundResourceKey is { } resourceKey ? ResolveOptionalBrush(resourceKey) : null)
             ?? ResolveOptionalBrush("MmTextBrush")
             ?? Brushes.Black;
+
+    /// <summary>
+    /// Заглушка строчной картинки — цветами заглушки блочной: фон и рамка как
+    /// у кода, подпись приглушённым текстом. Без палитры остаётся рамка цветом
+    /// текста, чтобы подпись читалась на любом фоне.
+    /// </summary>
+    private MarkdownInlineImagePlaceholderBrushes ResolveImagePlaceholderBrushes()
+    {
+        var foreground = ResolveOptionalBrush("MmTextSoftBrush") ?? ResolveBaseTextBrush();
+        return new MarkdownInlineImagePlaceholderBrushes(
+            ResolveOptionalBrush("MmCodeBackgroundBrush") ?? Brushes.Transparent,
+            ResolveOptionalBrush("MmCodeBorderBrush") ?? foreground,
+            foreground);
+    }
 
     private void DrawInlineCodeBackgrounds(DrawingContext context, MarkdownFormattedTextLayout layout)
     {

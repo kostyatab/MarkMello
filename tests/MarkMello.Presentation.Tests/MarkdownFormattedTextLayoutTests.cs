@@ -207,7 +207,8 @@ public sealed class MarkdownFormattedTextLayoutTests
             textAlignment: TextAlignment.Left,
             maxWidth: maxWidth,
             foreground: Brushes.Black,
-            linkDecorations: null);
+            linkDecorations: null,
+            imagePlaceholderBrushes: new(Brushes.Transparent, Brushes.Black, Brushes.Black));
 
     private static MarkdownFormattedTextLayout CreateLayout(
         string text,
@@ -231,5 +232,6 @@ public sealed class MarkdownFormattedTextLayoutTests
             textAlignment: textAlignment,
             maxWidth: maxWidth,
             foreground: Brushes.Black,
-            linkDecorations: null);
+            linkDecorations: null,
+            imagePlaceholderBrushes: new(Brushes.Transparent, Brushes.Black, Brushes.Black));
 }
