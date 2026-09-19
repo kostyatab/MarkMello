@@ -331,7 +331,23 @@ public partial class ShellViewModel : ObservableObject
 
     public ReadingPreferences DocumentReadingPreferences => _documentReadingPreferences;
 
-    public bool ShowsEditToggle => State == ViewState.Viewing && Document is not null;
+    /// <summary>Карандаш — только при чтении: в правке на его месте «Готово».</summary>
+    public bool ShowsEditToggle => IsViewer && Document is not null && !IsEditMode;
+
+    /// <summary>
+    /// «Готово» возвращает к чтению (ADR-0009 Rule 2). У черновика ⌘N её нет: читать
+    /// документ без пути нельзя, пока он не сохранён через «Сохранить как».
+    /// </summary>
+    public bool ShowsDoneButton => IsViewer && IsEditMode && !IsUnsavedDraft;
+
+    /// <summary>
+    /// «Не сохранено ⌘S» рядом с «Готово» — пока есть несохранённые правки. Черновик
+    /// не сохранён, даже пока он пуст: у него это единственная подсказка, как выйти.
+    /// </summary>
+    public bool ShowsUnsavedIndicator => IsViewer && IsEditMode && (IsDirty || IsUnsavedDraft);
+
+    /// <summary>Черновик ⌘N: сессия правки без документа на диске.</summary>
+    private bool IsUnsavedDraft => EditorSession is not null && Document is null;
 
     public string AboutVersion => _aboutVersion;
 
@@ -1219,7 +1235,7 @@ public partial class ShellViewModel : ObservableObject
     partial void OnDocumentChanged(MarkdownSource? value)
     {
         RefreshDocumentSummary();
-        OnPropertyChanged(nameof(ShowsEditToggle));
+        RaiseEditActionsChanged();
         RefreshWindowTitle();
         UpdateCommandStates();
     }
@@ -1232,7 +1248,7 @@ public partial class ShellViewModel : ObservableObject
         }
 
         OnPropertyChanged(nameof(ShowsReadingStatus));
-        OnPropertyChanged(nameof(ShowsEditToggle));
+        RaiseEditActionsChanged();
         OnPropertyChanged(nameof(ShowsReadingSettingsToggle));
         OnPropertyChanged(nameof(ReadingSettingsOverlayContent));
 
@@ -1262,7 +1278,16 @@ public partial class ShellViewModel : ObservableObject
         OnPropertyChanged(nameof(ShowsReadingSettingsToggle));
         OnPropertyChanged(nameof(ReadingSettingsOverlayContent));
         OnPropertyChanged(nameof(ActiveDocumentContent));
+        RaiseEditActionsChanged();
         UpdateCommandStates();
+    }
+
+    /// <summary>Карандаш, «Готово» и «Не сохранено» зависят от режима, документа и правок.</summary>
+    private void RaiseEditActionsChanged()
+    {
+        OnPropertyChanged(nameof(ShowsEditToggle));
+        OnPropertyChanged(nameof(ShowsDoneButton));
+        OnPropertyChanged(nameof(ShowsUnsavedIndicator));
     }
 
     partial void OnEditorSessionChanging(EditorSessionViewModel? oldValue, EditorSessionViewModel? newValue)
@@ -1778,6 +1803,7 @@ public partial class ShellViewModel : ObservableObject
         OnPropertyChanged(nameof(WordCountStatusLabel));
         OnPropertyChanged(nameof(ReadTimeStatusLabel));
         OnPropertyChanged(nameof(IsDirty));
+        RaiseEditActionsChanged();
         SyncActiveTabDirtyState();
     }
 

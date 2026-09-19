@@ -57,8 +57,12 @@ public sealed class WindowRowTests
         });
     }
 
+    /// <summary>
+    /// В правке Aa нет, карандаш на том же месте становится «Готово», а «Не сохранено ⌘S»
+    /// появляется слева от кнопок с первой несохранённой правкой.
+    /// </summary>
     [Fact]
-    public Task EditModeDropsOnlyTheReadingCardButton()
+    public Task EditModeSwapsThePencilForDone()
     {
         return _fixture.RunAsync(async () =>
         {
@@ -67,11 +71,90 @@ public sealed class WindowRowTests
             await viewModel.ToggleEditModeCommand.ExecuteAsync(null);
             var window = Show(viewModel);
 
-            Assert.Equal(["FindTriggerButton", "EditTriggerButton", "AppMenuTriggerButton"], VisibleRowButtons(window));
-            Assert.True(window.GetControl<ToggleButton>("EditTriggerButton").IsChecked);
+            Assert.Equal(["FindTriggerButton", "DoneEditButton", "AppMenuTriggerButton"], VisibleRowButtons(window));
+
+            viewModel.EditorSession!.SourceText = "# changed";
+
+            Assert.Equal(
+                ["UnsavedIndicator", "FindTriggerButton", "DoneEditButton", "AppMenuTriggerButton"],
+                VisibleRowButtons(window));
+            Assert.Equal("Ctrl+S", UnsavedShortcut(window));
 
             window.Hide();
         });
+    }
+
+    /// <summary>
+    /// Черновик ⌘N: «Готово» нет — читать его без пути нельзя, — а «Не сохранено ⌘S» есть
+    /// сразу. После «Сохранить как» черновик становится документом и «Готово» появляется.
+    /// </summary>
+    [Fact]
+    public Task DraftShowsUnsavedButNoDoneUntilSavedAs()
+    {
+        return _fixture.RunAsync(async () =>
+        {
+            var filePicker = new StubFilePicker { SavePath = TestPaths.At("docs", "draft.md") };
+            var viewModel = CreateViewModel(filePicker);
+            await viewModel.CreateNewDocumentCommand.ExecuteAsync(null);
+            var window = Show(viewModel);
+
+            Assert.Equal(["UnsavedIndicator", "FindTriggerButton", "AppMenuTriggerButton"], VisibleRowButtons(window));
+
+            await viewModel.SaveAsCommand.ExecuteAsync(null);
+
+            Assert.Equal(["FindTriggerButton", "DoneEditButton", "AppMenuTriggerButton"], VisibleRowButtons(window));
+
+            window.Hide();
+        });
+    }
+
+    /// <summary>
+    /// «Готово» — единственная залитая кнопка строки: фон цвета текста, подпись и галочка
+    /// цвета фона, радиус 8, высота 30. Заливка держится и под курсором, в обеих темах.
+    /// </summary>
+    [Theory]
+    [InlineData("Light", "")]
+    [InlineData("Light", ":pointerover")]
+    [InlineData("Light", ":pressed")]
+    [InlineData("Dark", "")]
+    [InlineData("Dark", ":pointerover")]
+    [InlineData("Dark", ":pressed")]
+    public Task DoneButtonIsFilledWithTheTextColour(string theme, string state)
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var icon = new LucideIcon { Width = 14, Height = 14 };
+            var label = new TextBlock { Text = "Done" };
+            var button = new Button
+            {
+                Content = new StackPanel
+                {
+                    Orientation = Avalonia.Layout.Orientation.Horizontal,
+                    Children = { icon, label }
+                }
+            };
+            button.Classes.Add("mm-row-primary");
+            var window = ThemedTestWindow.Create(theme == "Dark" ? ThemeVariant.Dark : ThemeVariant.Light, button);
+            window.Show();
+            window.UpdateLayout();
+
+            if (state.Length > 0)
+            {
+                ((IPseudoClasses)button.Classes).Add(state);
+            }
+
+            Assert.True(window.TryFindResource("MmTextBrush", window.ActualThemeVariant, out var text));
+            Assert.True(window.TryFindResource("MmBackgroundBrush", window.ActualThemeVariant, out var background));
+
+            var presenter = button.GetVisualDescendants().OfType<ContentPresenter>().First();
+            Assert.Same(text, presenter.Background);
+            Assert.Same(background, icon.Foreground);
+            Assert.Same(background, label.Foreground);
+            Assert.Equal(new Avalonia.CornerRadius(8), presenter.CornerRadius);
+            Assert.Equal(30, button.Bounds.Height);
+
+            window.Close();
+        }, CancellationToken.None);
     }
 
     /// <summary>
@@ -304,13 +387,31 @@ public sealed class WindowRowTests
         Assert.False(MainWindow.IsWindowDragSource(new TextBlock()));
     }
 
+    /// <summary>Блок справа в строке окна слева направо.</summary>
     private static readonly string[] RowButtonNames =
-        ["FindTriggerButton", "SettingsTriggerButton", "EditTriggerButton", "AppMenuTriggerButton"];
+    [
+        "UnsavedIndicator",
+        "FindTriggerButton",
+        "SettingsTriggerButton",
+        "EditTriggerButton",
+        "DoneEditButton",
+        "AppMenuTriggerButton"
+    ];
 
     private static string[] VisibleRowButtons(MainWindow window)
         => RowButtonNames
-            .Where(name => window.GetControl<ToggleButton>(name).IsVisible)
+            .Where(name => window.GetControl<Control>(name).IsVisible)
             .ToArray();
+
+    private static string? UnsavedShortcut(MainWindow window)
+        => window.GetControl<StackPanel>("UnsavedIndicator")
+            .GetVisualDescendants()
+            .OfType<Border>()
+            .Single(border => border.Classes.Contains("kbd"))
+            .GetVisualDescendants()
+            .OfType<TextBlock>()
+            .Single()
+            .Text;
 
     /// <summary>
     /// Окно без composition root, как в <see cref="TextSizeShortcutTests"/>: закрыть его
@@ -323,7 +424,7 @@ public sealed class WindowRowTests
         return window;
     }
 
-    private static ShellViewModel CreateViewModel()
+    private static ShellViewModel CreateViewModel(StubFilePicker? filePicker = null)
     {
         var loader = new StubDocumentLoader();
         loader.Sources[DocumentPath] = new MarkdownSource(DocumentPath, "README.md", "# readme");
@@ -332,7 +433,7 @@ public sealed class WindowRowTests
         return new ShellViewModel(
             new OpenDocumentUseCase(loader),
             new SaveDocumentUseCase(new RecordingDocumentSaver()),
-            new StubFilePicker(),
+            filePicker ?? new StubFilePicker(),
             new StubCommandLineActivation(),
             new LocalizationService(AppLanguage.English),
             new InMemorySettingsStore(),

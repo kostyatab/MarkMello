@@ -122,31 +122,42 @@
                   PointerCaptureLost="OnSplitterPointerCaptureLost"
                   DragCompleted="OnSplitterDragCompleted" />
 
-    <ScrollViewer Name="PreviewScrollViewer"
-                  Grid.Column="2"
-                  MinWidth="280"
-                  HorizontalScrollBarVisibility="Disabled"
-                  VerticalScrollBarVisibility="Auto"
+    <!-- Предпросмотр подписан полосой той же высоты, что панель инструментов слева:
+         обе панели начинаются с подписи на одной линии, над текстом ничего не плавает. -->
+    <Grid Grid.Column="2"
+          MinWidth="280"
+          RowDefinitions="Auto,*">
+      <Border Grid.Row="0"
+              Classes="mm-editor-toolbar mm-editor-preview-toolbar">
+        <TextBlock Classes="mm-editor-toolbar-label"
+                   Text="{Binding EditorPreviewLabel}" />
+      </Border>
+
+      <ScrollViewer Name="PreviewScrollViewer"
+                    Grid.Row="1"
+                    HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto"
+                    UseLayoutRounding="True">
+        <Grid UseLayoutRounding="True">
+          <Border MaxWidth="{Binding DocumentColumnMaxWidth}"
+                  HorizontalAlignment="Center"
                   UseLayoutRounding="True">
-      <Grid UseLayoutRounding="True">
-        <Border MaxWidth="{Binding DocumentColumnMaxWidth}"
-                HorizontalAlignment="Center"
-                UseLayoutRounding="True">
-          <Border.Transitions>
-            <Transitions>
-              <DoubleTransition Property="MaxWidth"
-                                Duration="0:0:0.18" />
-            </Transitions>
-          </Border.Transitions>
-          <views:MarkdownDocumentView Name="PreviewDocumentView"
-                                      Document="{Binding RenderedPreview}"
-                                      DocumentPadding="72,96,72,160"
-                                      ReadingPreferences="{Binding ReadingPreferences}"
-                                      ImageSourceResolver="{Binding ImageSourceResolver}"
-                                      UseLayoutRounding="True" />
-        </Border>
-      </Grid>
-    </ScrollViewer>
+            <Border.Transitions>
+              <Transitions>
+                <DoubleTransition Property="MaxWidth"
+                                  Duration="0:0:0.18" />
+              </Transitions>
+            </Border.Transitions>
+            <views:MarkdownDocumentView Name="PreviewDocumentView"
+                                        Document="{Binding RenderedPreview}"
+                                        DocumentPadding="72,96,72,160"
+                                        ReadingPreferences="{Binding ReadingPreferences}"
+                                        ImageSourceResolver="{Binding ImageSourceResolver}"
+                                        UseLayoutRounding="True" />
+          </Border>
+        </Grid>
+      </ScrollViewer>
+    </Grid>
 
   </Grid>
 </UserControl>

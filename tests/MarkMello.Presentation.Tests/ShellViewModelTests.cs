@@ -372,6 +372,107 @@ public sealed class ShellViewModelTests
         Assert.DoesNotContain(StartupStage.ReadableDocument, harness.StartupMetrics.Marks);
     }
 
+    /// <summary>
+    /// Справа в строке окна при чтении — карандаш; в правке на его месте «Готово», а слева
+    /// от кнопок «Не сохранено ⌘S», пока есть несохранённые правки (ADR-0009 Rule 2).
+    /// </summary>
+    [Fact]
+    public async Task EditActionsFollowModeAndUnsavedChanges()
+    {
+        var harness = CreateHarness();
+        var viewModel = harness.ViewModel;
+        var path = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "one.md");
+        harness.Loader.Sources[path] = CreateSource(path, "first");
+
+        await viewModel.OpenPathAsync(path);
+
+        Assert.True(viewModel.ShowsEditToggle);
+        Assert.False(viewModel.ShowsDoneButton);
+        Assert.False(viewModel.ShowsUnsavedIndicator);
+
+        await viewModel.ToggleEditModeCommand.ExecuteAsync(null);
+
+        Assert.False(viewModel.ShowsEditToggle);
+        Assert.True(viewModel.ShowsDoneButton);
+        Assert.False(viewModel.ShowsUnsavedIndicator);
+
+        var names = new List<string?>();
+        viewModel.PropertyChanged += (_, e) => names.Add(e.PropertyName);
+        viewModel.EditorSession!.SourceText = "first updated";
+
+        Assert.True(viewModel.ShowsUnsavedIndicator);
+        Assert.True(viewModel.ShowsDoneButton);
+        Assert.Contains(nameof(ShellViewModel.ShowsUnsavedIndicator), names);
+
+        await viewModel.SaveCommand.ExecuteAsync(null);
+
+        Assert.False(viewModel.ShowsUnsavedIndicator);
+        Assert.True(viewModel.ShowsDoneButton);
+
+        names.Clear();
+        await viewModel.ToggleEditModeCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.ShowsEditToggle);
+        Assert.False(viewModel.ShowsDoneButton);
+        Assert.Contains(nameof(ShellViewModel.ShowsEditToggle), names);
+        Assert.Contains(nameof(ShellViewModel.ShowsDoneButton), names);
+    }
+
+    /// <summary>
+    /// «Готово» при грязной правке не бросает правки молча: выход в чтение идёт через
+    /// диалог несохранённых правок, как у ⌘E.
+    /// </summary>
+    [Fact]
+    public async Task DoneWithUnsavedChangesAsksBeforeLeavingEditMode()
+    {
+        var harness = CreateHarness();
+        var viewModel = harness.ViewModel;
+        var path = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "one.md");
+        harness.Loader.Sources[path] = CreateSource(path, "first");
+
+        await viewModel.OpenPathAsync(path);
+        await viewModel.ToggleEditModeCommand.ExecuteAsync(null);
+        viewModel.EditorSession!.SourceText = "first updated";
+
+        await viewModel.ToggleEditModeCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.IsDirtyPromptOpen);
+        Assert.True(viewModel.IsEditMode);
+        Assert.True(viewModel.ShowsDoneButton);
+        Assert.True(viewModel.ShowsUnsavedIndicator);
+    }
+
+    /// <summary>
+    /// Черновик ⌘N читать нельзя, пока у него нет пути: «Готово» нет, а «Не сохранено»
+    /// есть с самого начала, даже пока черновик пуст. После «Сохранить как» черновик
+    /// становится обычным документом и «Готово» появляется.
+    /// </summary>
+    [Fact]
+    public async Task DraftShowsUnsavedWithoutDoneUntilSavedAs()
+    {
+        var harness = CreateHarness();
+        var viewModel = harness.ViewModel;
+        harness.FilePicker.SavePath = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "draft.md");
+
+        await viewModel.CreateNewDocumentCommand.ExecuteAsync(null);
+
+        Assert.False(viewModel.ShowsEditToggle);
+        Assert.False(viewModel.ShowsDoneButton);
+        Assert.True(viewModel.ShowsUnsavedIndicator);
+
+        viewModel.EditorSession!.SourceText = "# Draft";
+
+        Assert.False(viewModel.ShowsDoneButton);
+        Assert.True(viewModel.ShowsUnsavedIndicator);
+
+        await viewModel.SaveAsCommand.ExecuteAsync(null);
+
+        Assert.True(viewModel.IsEditMode);
+        Assert.True(viewModel.ShowsDoneButton);
+        Assert.False(viewModel.ShowsUnsavedIndicator);
+        Assert.False(viewModel.ShowsEditToggle);
+    }
+
     [Fact]
     public async Task CloseFileCommandReturnsViewingDocumentToWelcome()
     {
@@ -720,6 +821,23 @@ public sealed class ShellViewModelTests
         Assert.Equal("Вид: тема, шрифт, размер", viewModel.ReadingSettingsTooltip);
         Assert.Equal("Меньше (⌘-)", viewModel.ReadingSizeDecreaseTooltip);
         Assert.Equal("Больше (⌘+)", viewModel.ReadingSizeIncreaseTooltip);
+        Assert.Equal("Готово", viewModel.EditDoneLabel);
+        Assert.Equal("Закончить правку (⌘E)", viewModel.EditDoneTooltip);
+        Assert.Equal("Не сохранено", viewModel.EditUnsavedLabel);
+    }
+
+    [Theory]
+    [InlineData("macOS", "Finish editing (⌘E)", "⌘S")]
+    [InlineData("Windows", "Finish editing (Ctrl+E)", "Ctrl+S")]
+    [InlineData("Linux", "Finish editing (Ctrl+E)", "Ctrl+S")]
+    public void EditActionShortcutLabelsFollowPlatform(string platformName, string doneTooltip, string saveShortcut)
+    {
+        var viewModel = CreateHarness(platformName: platformName).ViewModel;
+
+        Assert.Equal("Done", viewModel.EditDoneLabel);
+        Assert.Equal(doneTooltip, viewModel.EditDoneTooltip);
+        Assert.Equal("Unsaved", viewModel.EditUnsavedLabel);
+        Assert.Equal(saveShortcut, viewModel.SaveShortcut);
     }
 
     [Theory]

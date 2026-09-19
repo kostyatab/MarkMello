@@ -114,6 +114,48 @@
   </Style>
 
   <!--
+    «Готово» в правке — единственная залитая кнопка строки (ADR-0009 Rule 2): фон цвета
+    текста, текст цвета фона, радиус и высота как у кнопок-иконок. Отступ 2 по бокам —
+    с холста: залитой кнопке нужно чуть больше воздуха, чем прозрачным. Заливка держится во
+    всех состояниях, иначе Fluent перекрашивает её под курсором (и на миг, пока команда
+    выполняется, — как недоступную); наведение и нажатие чуть приглушают кнопку целиком.
+  -->
+  <Style Selector="Button.mm-row-primary">
+    <Setter Property="Background" Value="{DynamicResource MmTextBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmBackgroundBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="11,0,13,0" />
+    <Setter Property="Height" Value="30" />
+    <Setter Property="MinHeight" Value="30" />
+    <Setter Property="Margin" Value="2,0" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Button.mm-row-primary:pointerover /template/ ContentPresenter, Button.mm-row-primary:pressed /template/ ContentPresenter, Button.mm-row-primary:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTextBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmBackgroundBrush}" />
+  </Style>
+  <Style Selector="Button.mm-row-primary:pointerover">
+    <Setter Property="Opacity" Value="0.88" />
+  </Style>
+  <Style Selector="Button.mm-row-primary:pressed">
+    <Setter Property="Opacity" Value="0.8" />
+  </Style>
+
+  <!-- «Не сохранено» рядом с «Готово»: короткая подпись и плашка ⌘S -->
+  <Style Selector="TextBlock.mm-row-status">
+    <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <!--
     Кнопки окна Windows (свернуть / развернуть / закрыть) — системные глифы на всю
     высоту строки окна. Цвет глифа задан здесь, а не на самом Path: у крестика
     под курсором он белый на красном, как у системных кнопок.
@@ -752,12 +794,23 @@
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
 
+  <!-- Полоса над предпросмотром — та же панель, но на фоне документа -->
+  <Style Selector="Border.mm-editor-toolbar.mm-editor-preview-toolbar">
+    <Setter Property="Padding" Value="16,0" />
+    <Setter Property="Background" Value="{DynamicResource MmBackgroundBrush}" />
+  </Style>
+
+  <!-- Подпись панели правки — «Markdown» и «Предпросмотр» (A-EditDark) -->
   <Style Selector="TextBlock.mm-editor-toolbar-label">
-    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
-    <Setter Property="FontSize" Value="11" />
-    <Setter Property="LetterSpacing" Value="0.5" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+    <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
+    <Setter Property="FontSize" Value="11.5" />
+    <Setter Property="FontWeight" Value="Medium" />
     <Setter Property="VerticalAlignment" Value="Center" />
     <Setter Property="Margin" Value="0,0,6,0" />
+  </Style>
+  <Style Selector="Border.mm-editor-preview-toolbar TextBlock.mm-editor-toolbar-label">
+    <Setter Property="Margin" Value="0" />
   </Style>
 
   <Style Selector="Border.mm-editor-status-shell">

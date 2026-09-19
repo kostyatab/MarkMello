@@ -1,6 +1,7 @@
 using MarkMello.Application.UseCases;
 using MarkMello.Domain;
 using MarkMello.Presentation.Editing;
+using MarkMello.Presentation.Localization;
 using MarkMello.Presentation.ViewModels;
 
 namespace MarkMello.Presentation.Tests;
@@ -42,6 +43,23 @@ public sealed class EditorSessionViewModelTests
         Assert.Equal("alpha beta", session.LastPersistedSource);
         Assert.False(session.IsDirty);
         Assert.Null(session.RenderedPreview.BaseDirectory);
+    }
+
+    /// <summary>Левая панель правки подписана «Markdown», правая — «Предпросмотр».</summary>
+    [Theory]
+    [InlineData(AppLanguage.English, "Markdown", "Preview")]
+    [InlineData(AppLanguage.Russian, "Markdown", "Предпросмотр")]
+    public void PaneLabelsNameSourceAndPreview(AppLanguage language, string sourceLabel, string previewLabel)
+    {
+        var session = new EditorSessionViewModel(
+            new MarkdownSource(Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "one.md"), "one.md", "alpha"),
+            ReadingPreferences.Default,
+            new RenderMarkdownDocumentUseCase(new TestMarkdownRenderer(), new FakeDiagramRenderService()),
+            imageSourceResolver: null,
+            localization: new LocalizationService(language));
+
+        Assert.Equal(sourceLabel, session.EditorSourceLabel);
+        Assert.Equal(previewLabel, session.EditorPreviewLabel);
     }
 
     [Fact]

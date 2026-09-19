@@ -235,12 +235,29 @@
             </ContentControl>
 
             <!-- Кнопки видны всегда, без показа по наведению. Лишние для состояния
-                 прячутся: на стартовом экране остаётся одно меню ⋯, в правке нет Aa. -->
+                 прячутся: на стартовом экране остаётся одно меню ⋯; в правке нет Aa,
+                 а карандаш становится «Готово». -->
             <StackPanel Grid.Column="2"
                         Orientation="Horizontal"
                         Spacing="4"
                         Margin="8,0,0,0"
                         VerticalAlignment="Center">
+              <StackPanel Name="UnsavedIndicator"
+                          Orientation="Horizontal"
+                          Spacing="7"
+                          Margin="0,0,8,0"
+                          VerticalAlignment="Center"
+                          IsVisible="{Binding ShowsUnsavedIndicator}">
+                <TextBlock Classes="mm-row-status"
+                           Text="{Binding EditUnsavedLabel}" />
+                <Border Classes="kbd">
+                  <TextBlock Text="{Binding SaveShortcut}"
+                             FontFamily="{DynamicResource MmDocumentMonoFontFamily}"
+                             FontSize="10"
+                             Foreground="{DynamicResource MmTextSoftBrush}" />
+                </Border>
+              </StackPanel>
+
               <ToggleButton Name="FindTriggerButton"
                             Classes="mm-row-button"
                             IsVisible="{Binding ShowsFindToggle}"
@@ -263,16 +280,32 @@
                                   Height="14" />
               </ToggleButton>
 
-              <ToggleButton Name="EditTriggerButton"
-                            Classes="mm-row-button"
-                            IsVisible="{Binding ShowsEditToggle}"
-                            IsChecked="{Binding IsEditMode, Mode=OneWay}"
-                            Command="{Binding ToggleEditModeCommand}"
-                            ToolTip.Tip="{Binding EditToggleTooltip}">
+              <Button Name="EditTriggerButton"
+                      Classes="mm-row-button"
+                      IsVisible="{Binding ShowsEditToggle}"
+                      Command="{Binding ToggleEditModeCommand}"
+                      ToolTip.Tip="{Binding EditToggleTooltip}">
                 <views:LucideIcon Data="{DynamicResource LucidePenLineGeometry}"
                                   Width="14"
                                   Height="14" />
-              </ToggleButton>
+              </Button>
+
+              <!-- Грязная правка уходит в чтение через диалог несохранённых правок -->
+              <Button Name="DoneEditButton"
+                      Classes="mm-row-primary"
+                      IsVisible="{Binding ShowsDoneButton}"
+                      Command="{Binding ToggleEditModeCommand}"
+                      ToolTip.Tip="{Binding EditDoneTooltip}">
+                <StackPanel Orientation="Horizontal"
+                            Spacing="7">
+                  <views:LucideIcon Data="{DynamicResource LucideCheckGeometry}"
+                                    Width="14"
+                                    Height="14"
+                                    VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding EditDoneLabel}"
+                             VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
 
               <ToggleButton Name="AppMenuTriggerButton"
                             Classes="mm-row-button"

@@ -74,7 +74,10 @@ public partial class ShellViewModel
         nameof(DirtyPromptDiscard),
         nameof(DirtyPromptSave),
         nameof(DragDropHint),
+        nameof(EditDoneLabel),
+        nameof(EditDoneTooltip),
         nameof(EditToggleTooltip),
+        nameof(EditUnsavedLabel),
         nameof(FindCloseTooltip),
         nameof(FindNextTooltip),
         nameof(FindPlaceholder),
@@ -259,6 +262,11 @@ public partial class ShellViewModel
     public string DirtyPromptSave => _localization["DirtyPromptSave"];
     public string DragDropHint => _localization["DragDropHint"];
     public string EditToggleTooltip => _localization.Format("EditToggleTooltip", CommandShortcut(Key.E));
+
+    /// <summary>«Готово» — та же команда, что карандаш, поэтому и сочетание то же.</summary>
+    public string EditDoneLabel => _localization["EditDone"];
+    public string EditDoneTooltip => _localization.Format("EditDoneTooltip", CommandShortcut(Key.E));
+    public string EditUnsavedLabel => _localization["EditUnsaved"];
     public string FindCloseTooltip => _localization.Format("FindCloseTooltip", KeyShortcut(Key.Escape));
     public string FindNextTooltip => _localization.Format("FindNextTooltip", KeyShortcut(Key.Enter));
     public string FindPlaceholder => _localization["FindPlaceholder"];
@@ -329,6 +337,9 @@ public partial class ShellViewModel
     public string OpenFolderShortcut => CommandShortcut(Key.O, KeyModifiers.Shift);
 
     public string ToggleSidebarShortcut => CommandShortcut(Key.B);
+
+    /// <summary>Сочетание сохранения — плашка рядом с «Не сохранено» в строке окна.</summary>
+    public string SaveShortcut => CommandShortcut(Key.S);
 
     /// <summary>Сочетание настроек приложения — плашка в нижней строке карточки Aa.</summary>
     public string SettingsShortcut => CommandShortcut(Key.OemComma);
