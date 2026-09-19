@@ -29,6 +29,15 @@
   <FontFamily x:Key="MmDocumentSansFontFamily">avares://MarkMello.Presentation/Assets/Fonts/Inter#Inter, Segoe UI Variable, Segoe UI, system-ui, sans-serif</FontFamily>
   <FontFamily x:Key="MmDocumentMonoFontFamily">avares://MarkMello.Presentation/Assets/Fonts/JetBrainsMono#JetBrains Mono, Cascadia Code, Consolas, Menlo, monospace</FontFamily>
 
+  <!--
+    Шрифт интерфейса по умолчанию. Fluent берёт его из этого ключа, а сам
+    ссылается на незарегистрированный fonts:Inter и падает в системный шрифт:
+    интерфейс набирался двумя гарнитурами, а системная стоит в строке не по
+    центру. Подменяем ключ нашим Inter — весь интерфейс одной гарнитурой.
+  -->
+  <StaticResource x:Key="ContentControlThemeFontFamily"
+                  ResourceKey="MmDocumentSansFontFamily" />
+
   <sys:Double x:Key="MmDocumentFontSize">17</sys:Double>
   <sys:Double x:Key="MmDocumentLineHeight">1.7</sys:Double>
   <sys:Double x:Key="MmDocumentMaxWidth">820</sys:Double>
