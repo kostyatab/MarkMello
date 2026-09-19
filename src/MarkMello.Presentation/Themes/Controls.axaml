@@ -346,27 +346,56 @@
   </Style>
 
   <!--
-    Меню ⋯ (A-Menu): пункты 26 px — чуть свободнее системных 24, с подписью сочетания справа, группы через линии.
-    Неприменимая команда гаснет — цвет задан у ContentPresenter, иначе Fluent
-    перекрасит её своими кистями.
+    Меню приложения — ⋯ (A-Menu) и выпадающие/контекстные меню сайдбара (MenuFlyout,
+    ContextMenu) — одна карточка: отступ 6, радиус 12, пункты 26 px — чуть свободнее
+    системных 24, с подписью сочетания справа, группы через линии. Размеры заданы
+    общими стилями, чтобы меню не расходились; поверхность ⋯ — у mm-settings-panel.
+    Цвета по состояниям Fluent ставит у частей шаблона, а шаблоны у кнопки и пункта
+    меню разные, поэтому раскраска задана у каждого вида отдельно — теми же кистями.
+    Где в селекторе Border и шаблонный контрол, свойство названо через Border:
+    у них общий предок — Control, а Padding, CornerRadius и Background шаблонного
+    контрола — те же свойства Border (AddOwner).
   -->
+  <Style Selector="Border.mm-app-menu-panel, MenuFlyoutPresenter, ContextMenu">
+    <Setter Property="Border.Padding" Value="6" />
+    <Setter Property="Border.CornerRadius" Value="12" />
+  </Style>
+
+  <Style Selector="Button.mm-menu-command, MenuItem">
+    <Setter Property="Height" Value="26" />
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="CornerRadius" Value="7" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+
+  <Style Selector="TextBlock.mm-menu-shortcut, MenuItem /template/ TextBlock#PART_InputGestureText, MenuItem:selected /template/ TextBlock#PART_InputGestureText, MenuItem:pressed /template/ Border#PART_LayoutRoot:pointerover TextBlock#PART_InputGestureText">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+  </Style>
+  <Style Selector="Button.mm-menu-command:disabled TextBlock.mm-menu-shortcut, MenuItem:disabled /template/ TextBlock#PART_InputGestureText">
+    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
+  </Style>
+
+  <Style Selector="Border.mm-menu-separator, MenuFlyoutPresenter Separator, ContextMenu Separator">
+    <Setter Property="Height" Value="1" />
+    <Setter Property="Margin" Value="10,5" />
+    <Setter Property="Border.Background" Value="{DynamicResource MmBorderSoftBrush}" />
+  </Style>
+
+  <!-- ⋯: неприменимая команда гаснет — цвет задан у ContentPresenter, иначе Fluent
+       перекрасит её своими кистями -->
   <Style Selector="Border.mm-app-menu-panel">
     <Setter Property="Width" Value="288" />
-    <Setter Property="Padding" Value="6" />
   </Style>
 
   <Style Selector="Button.mm-menu-command">
-    <Setter Property="Height" Value="26" />
     <Setter Property="MinHeight" Value="26" />
-    <Setter Property="Padding" Value="10,0" />
-    <Setter Property="CornerRadius" Value="7" />
-    <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
-    <Setter Property="FontSize" Value="13" />
-    <Setter Property="Cursor" Value="Hand" />
   </Style>
   <Style Selector="Button.mm-menu-command /template/ ContentPresenter">
     <Setter Property="Background" Value="Transparent" />
@@ -384,28 +413,11 @@
   <Style Selector="Button.mm-menu-command TextBlock">
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
-
   <Style Selector="TextBlock.mm-menu-shortcut">
-    <Setter Property="FontSize" Value="12" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
-  <Style Selector="Button.mm-menu-command:disabled TextBlock.mm-menu-shortcut">
-    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
-  </Style>
 
-  <Style Selector="Border.mm-menu-separator">
-    <Setter Property="Height" Value="1" />
-    <Setter Property="Margin" Value="10,5" />
-    <Setter Property="Background" Value="{DynamicResource MmBorderSoftBrush}" />
-  </Style>
-
-  <!--
-    Выпадающие и контекстные меню (MenuFlyout, ContextMenu) — та же карточка, что ⋯:
-    поверхность и рамка палитры, радиус 12, отступ 6, пункты 26 px с радиусом 7,
-    наведение — заливка вкладки, разделитель — мягкая линия. Fluent красит части
-    шаблона своими кистями по состояниям, поэтому цвета заданы у частей явно.
-  -->
+  <!-- MenuFlyout и ContextMenu: карточка в поверхности палитры, как у ⋯ -->
   <Style Selector="MenuFlyoutPresenter, ContextMenu">
     <!-- Отступ карточки и поле списка Fluent ставит в шаблоне из ресурсов —
          стиль их не перебивает, поэтому переопределены сами ресурсы -->
@@ -416,20 +428,12 @@
     <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="12" />
-    <Setter Property="Padding" Value="6" />
     <Setter Property="MinWidth" Value="200" />
     <Setter Property="MinHeight" Value="0" />
   </Style>
 
   <Style Selector="MenuItem">
-    <Setter Property="Height" Value="26" />
-    <Setter Property="Padding" Value="10,0" />
-    <Setter Property="CornerRadius" Value="7" />
-    <Setter Property="FontSize" Value="13" />
-    <Setter Property="Background" Value="Transparent" />
     <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
-    <Setter Property="Cursor" Value="Hand" />
   </Style>
   <!-- При открытии Fluent выделяет первый пункт сам — подсветка только под мышью
        и при навигации с клавиатуры, как у ⋯ -->
@@ -451,19 +455,6 @@
   </Style>
   <Style Selector="MenuItem:disabled /template/ ContentPresenter#PART_HeaderPresenter">
     <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
-  </Style>
-  <Style Selector="MenuItem /template/ TextBlock#PART_InputGestureText, MenuItem:selected /template/ TextBlock#PART_InputGestureText, MenuItem:pressed /template/ Border#PART_LayoutRoot:pointerover TextBlock#PART_InputGestureText">
-    <Setter Property="FontSize" Value="12" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-  </Style>
-  <Style Selector="MenuItem:disabled /template/ TextBlock#PART_InputGestureText">
-    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
-  </Style>
-
-  <Style Selector="MenuFlyoutPresenter Separator, ContextMenu Separator">
-    <Setter Property="Height" Value="1" />
-    <Setter Property="Margin" Value="10,5" />
-    <Setter Property="Background" Value="{DynamicResource MmBorderSoftBrush}" />
   </Style>
 
   <!--
