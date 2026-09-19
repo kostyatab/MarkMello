@@ -260,6 +260,58 @@ public sealed class DocumentTabsShellTests
         Assert.True(harness.ViewModel.OpenDocuments.Tabs.Single(tab => tab.Title == "first.md").IsDirty);
     }
 
+    /// <summary>
+    /// Файл из папки открыт и правится до того, как открыли саму папку, а её сессия
+    /// помнит этот файл. Раньше восстановление перечитывало его с диска поверх вкладки
+    /// и молча сбрасывало несохранённые правки.
+    /// </summary>
+    [Fact]
+    public async Task OpeningFolderKeepsEditsOfATabItsSessionRestores()
+    {
+        var first = TestPaths.At("docs", "first.md");
+        var harness = CreateHarness(new WorkspaceSessionState(Root, [first], first, []));
+        await harness.ViewModel.OpenPathAsync(first);
+        EditActiveTab(harness, "# first edited");
+
+        await harness.ViewModel.OpenFolderPathAsync(Root);
+
+        Assert.NotNull(harness.ViewModel.Workspace);
+        var tab = Assert.Single(harness.ViewModel.OpenDocuments.Tabs);
+        Assert.Same(tab, harness.ViewModel.OpenDocuments.ActiveTab);
+        Assert.True(tab.IsDirty);
+        Assert.True(harness.ViewModel.IsDirty);
+        Assert.True(harness.ViewModel.IsEditMode);
+        Assert.Equal("# first edited", harness.ViewModel.EditorSession!.SourceText);
+        Assert.Equal(1, harness.Loader.LoadCount);
+    }
+
+    /// <summary>
+    /// То же, когда активной по сессии становится другая вкладка: правки остаются
+    /// в своей вкладке и возвращаются при переключении на неё.
+    /// </summary>
+    [Fact]
+    public async Task OpeningFolderKeepsEditsOfATabThatEndsUpInTheBackground()
+    {
+        var readme = TestPaths.At("docs", "README.md");
+        var first = TestPaths.At("docs", "first.md");
+        var harness = CreateHarness(new WorkspaceSessionState(Root, [readme, first], readme, []));
+        await harness.ViewModel.OpenPathAsync(first);
+        EditActiveTab(harness, "# first edited");
+
+        await harness.ViewModel.OpenFolderPathAsync(Root);
+
+        Assert.Equal(["first.md", "README.md"], harness.ViewModel.OpenDocuments.Tabs.Select(tab => tab.Title));
+        Assert.Equal(readme, harness.ViewModel.CurrentDocumentPath);
+
+        var firstTab = harness.ViewModel.OpenDocuments.FindByPath(first)!;
+        Assert.True(firstTab.IsDirty);
+
+        await harness.ViewModel.OpenDocuments.ActivateCommand.ExecuteAsync(firstTab);
+
+        Assert.True(harness.ViewModel.IsDirty);
+        Assert.Equal("# first edited", harness.ViewModel.EditorSession!.SourceText);
+    }
+
     /// <summary>Две грязные вкладки папки и одна грязная вкладка вне её.</summary>
     private static async Task<TabsTestHarness> CreateHarnessWithDirtyFolderTabsAsync()
     {
@@ -282,7 +334,7 @@ public sealed class DocumentTabsShellTests
         harness.ViewModel.EditorSession!.SourceText = text;
     }
 
-    private static TabsTestHarness CreateHarness()
+    private static TabsTestHarness CreateHarness(WorkspaceSessionState? session = null)
     {
         var fileSystem = new FakeWorkspaceFileSystem();
         fileSystem.AddDirectory(
@@ -302,7 +354,7 @@ public sealed class DocumentTabsShellTests
             new StubFilePicker(),
             new StubCommandLineActivation(),
             new LocalizationService(AppLanguage.English),
-            new InMemorySettingsStore(),
+            new InMemorySettingsStore { Session = session ?? WorkspaceSessionState.Empty },
             new RecordingThemeService(),
             new RecordingStartupMetrics(),
             new RenderMarkdownDocumentUseCase(new TestMarkdownRenderer(), new FakeDiagramRenderService()),
@@ -313,7 +365,8 @@ public sealed class DocumentTabsShellTests
             new WorkspaceFileOperationsUseCase(fileSystem, new FakePlatformServices()),
             new FakePlatformServices(),
             static () => new FakeWorkspaceWatcher(),
-            new RecordingWindowLauncher());
+            new RecordingWindowLauncher(),
+            fileExists: path => fileSystem.Exists(path));
 
         return new TabsTestHarness(loader, viewModel);
     }

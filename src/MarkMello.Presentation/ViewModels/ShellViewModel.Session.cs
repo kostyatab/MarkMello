@@ -90,6 +90,13 @@ public partial class ShellViewModel
 
             foreach (var path in session.OpenDocumentPaths)
             {
+                // Файл мог быть открыт и до папки: повторная загрузка перечитала бы его
+                // с диска поверх вкладки и молча выбросила бы несохранённые правки.
+                if (OpenDocuments.FindByPath(path) is not null)
+                {
+                    continue;
+                }
+
                 await LoadDocumentAsync(path, preserveEditModeAfterLoad: false).ConfigureAwait(true);
             }
 
