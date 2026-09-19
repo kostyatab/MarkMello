@@ -334,7 +334,7 @@
   </Style>
 
   <!--
-    Меню ⋯ (A-Menu): пункты 30 px с подписью сочетания справа, группы через линии.
+    Меню ⋯ (A-Menu): пункты 24 px, как в системных меню macOS, с подписью сочетания справа, группы через линии.
     Неприменимая команда гаснет — цвет задан у ContentPresenter, иначе Fluent
     перекрасит её своими кистями.
   -->
@@ -344,8 +344,8 @@
   </Style>
 
   <Style Selector="Button.mm-menu-command">
-    <Setter Property="Height" Value="30" />
-    <Setter Property="MinHeight" Value="30" />
+    <Setter Property="Height" Value="24" />
+    <Setter Property="MinHeight" Value="24" />
     <Setter Property="Padding" Value="10,0" />
     <Setter Property="CornerRadius" Value="7" />
     <Setter Property="Background" Value="Transparent" />
@@ -384,7 +384,7 @@
 
   <Style Selector="Border.mm-menu-separator">
     <Setter Property="Height" Value="1" />
-    <Setter Property="Margin" Value="8,5" />
+    <Setter Property="Margin" Value="10,5" />
     <Setter Property="Background" Value="{DynamicResource MmBorderSoftBrush}" />
   </Style>
 
