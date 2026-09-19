@@ -541,31 +541,64 @@
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
 
+  <!--
+    Селект языка (A-AppSettings): 30 px, от 160 px, радиус 8, заливка наведения вкладки,
+    без рамки. Fluent красит подложку шаблона по состояниям своими кистями, поэтому
+    состояния заданы у Border#Background явно.
+  -->
   <Style Selector="ComboBox.mm-language-select">
-    <Setter Property="Width" Value="132" />
-    <Setter Property="Height" Value="32" />
-    <Setter Property="MinHeight" Value="32" />
-    <Setter Property="Padding" Value="10,4" />
-    <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Width" Value="160" />
+    <Setter Property="Height" Value="30" />
+    <Setter Property="MinHeight" Value="30" />
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="8" />
     <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
-    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontSize" Value="12.5" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner">
+      <FocusAdornerTemplate>
+        <Border Margin="-3"
+                BorderThickness="2"
+                CornerRadius="11"
+                BorderBrush="{DynamicResource MmAccentBrush}"
+                AdornerLayer.IsClipEnabled="False" />
+      </FocusAdornerTemplate>
+    </Setter>
   </Style>
-  <Style Selector="ComboBox.mm-language-select:pointerover">
-    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
+  <Style Selector="ComboBox.mm-language-select /template/ Border#Background">
+    <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
   </Style>
-  <Style Selector="ComboBox.mm-language-select:focus">
-    <Setter Property="BorderBrush" Value="{DynamicResource MmAccentBrush}" />
+  <Style Selector="ComboBox.mm-language-select:pointerover /template/ Border#Background, ComboBox.mm-language-select:pressed /template/ Border#Background, ComboBox.mm-language-select:dropdownopen /template/ Border#Background">
+    <Setter Property="Background" Value="{DynamicResource MmTabActiveBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
   </Style>
   <Style Selector="ComboBox.mm-language-select TextBlock">
     <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
-    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontSize" Value="12.5" />
   </Style>
+
+  <!--
+    Список языков — карточка, как меню ⋯: поверхность и рамка палитры, радиус 10,
+    отступ 4, пункты 30 px с радиусом 7. Выбранный пункт — заливка активной вкладки,
+    а не системная синяя Fluent.
+  -->
+  <Style Selector="ComboBox.mm-language-select /template/ Border#PopupBorder">
+    <Setter Property="Margin" Value="0,4,0,0" />
+    <Setter Property="Padding" Value="4" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
+  </Style>
+  <Style Selector="ComboBox.mm-language-select /template/ ItemsPresenter#PART_ItemsPresenter">
+    <Setter Property="Margin" Value="0" />
+  </Style>
+
   <!-- Шеврон Fluent — залитый PathIcon. Шаблонная часть та же (12×12, цвет по
        состояниям Fluent), а рисует её LucideIcon: цвет он наследует от PathIcon. -->
   <Style Selector="ComboBox.mm-language-select /template/ PathIcon#DropDownGlyph">
@@ -579,12 +612,29 @@
   </Style>
   <Style Selector="ComboBoxItem">
     <Setter Property="MinHeight" Value="30" />
-    <Setter Property="Padding" Value="10,5" />
+    <Setter Property="Height" Value="30" />
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="CornerRadius" Value="7" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Background" Value="Transparent" />
     <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
-    <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
+    <Setter Property="Cursor" Value="Hand" />
   </Style>
-  <Style Selector="ComboBoxItem:pointerover">
-    <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
+  <Style Selector="ComboBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+  </Style>
+  <Style Selector="ComboBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter, ComboBoxItem:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+  </Style>
+  <Style Selector="ComboBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter, ComboBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter, ComboBoxItem:selected:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTabActiveBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+  </Style>
+  <Style Selector="ComboBoxItem:selected">
+    <Setter Property="FontWeight" Value="Medium" />
   </Style>
 
   <Style Selector="Slider.mm-settings-slider">
