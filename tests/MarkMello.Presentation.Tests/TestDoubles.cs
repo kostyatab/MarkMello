@@ -310,8 +310,14 @@ internal sealed class StubUpdateService : IUpdateService
     public UpdatePrepareResult NextPrepareResult { get; set; }
         = new UpdatePrepareResult.Failed("No native handoff configured for this test.");
 
+    /// <summary>Сколько раз приложение сходило за обновлениями — то есть в сеть.</summary>
+    public int CheckCount { get; private set; }
+
     public Task<UpdateCheckResult> CheckForUpdatesAsync(CancellationToken cancellationToken = default)
-        => Task.FromResult(NextCheckResult);
+    {
+        CheckCount++;
+        return Task.FromResult(NextCheckResult);
+    }
 
     public Task<UpdateDownloadResult> DownloadUpdateAsync(
         AppUpdatePackage package,

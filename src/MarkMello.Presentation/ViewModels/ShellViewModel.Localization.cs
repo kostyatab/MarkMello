@@ -47,29 +47,21 @@ public partial class ShellViewModel
 
     private static readonly string[] LocalizedBindingPropertyNames =
     [
-        nameof(AboutCreatedByPrefix),
-        nameof(AboutCreditsLabel),
-        nameof(AboutCreditsPeriod),
-        nameof(AboutHeader),
-        nameof(AboutHint),
-        nameof(AboutLabel),
-        nameof(AboutLicenseHint),
-        nameof(AboutLicenseLabel),
-        nameof(AboutVersionHint),
-        nameof(AboutVersionLabel),
-        nameof(AppMenuCloseFileHint),
-        nameof(AppMenuCloseFileLabel),
-        nameof(AppMenuHeader),
-        nameof(AppMenuCloseFolderHint),
         nameof(AppMenuCloseFolderLabel),
-        nameof(AppMenuOpenFileHint),
-        nameof(AppMenuOpenFileLabel),
-        nameof(AppMenuOpenFolderHint),
-        nameof(AppMenuOpenFolderLabel),
-        nameof(AppMenuSettingsHint),
-        nameof(AppMenuSettingsLabel),
+        nameof(AppMenuCloseTab),
+        nameof(AppMenuFilesPanel),
+        nameof(AppMenuNewDocument),
+        nameof(AppMenuOpenFile),
+        nameof(AppMenuOpenFolder),
+        nameof(AppMenuReload),
+        nameof(AppMenuSave),
+        nameof(AppMenuSaveAs),
+        nameof(AppMenuSettings),
         nameof(AppMenuTooltip),
         nameof(AppSettingsHeader),
+        nameof(AppSettingsReadingHintPrefix),
+        nameof(AppSettingsReadingHintSuffix),
+        nameof(AppSettingsWebsite),
         nameof(DirtyPromptCancel),
         nameof(DirtyPromptDiscard),
         nameof(DirtyPromptSave),
@@ -88,13 +80,7 @@ public partial class ShellViewModel
         nameof(LoadErrorOpenAnotherFile),
         nameof(LoadErrorDismiss),
         nameof(LoadErrorTryAgain),
-        nameof(MetaCurrent),
-        nameof(MetaOpen),
         nameof(NewDocumentTooltip),
-        nameof(OverlayBackToMenu),
-        nameof(OverlayBackToSettings),
-        nameof(OverlayCloseAbout),
-        nameof(OverlayCloseMenu),
         nameof(OverlayCloseSettings),
         nameof(ReadingFontLabel),
         nameof(ReadingFontMono),
@@ -128,8 +114,7 @@ public partial class ShellViewModel
         nameof(TitleBarMaximize),
         nameof(TitleBarMinimize),
         nameof(TitleBarRestore),
-        nameof(UpdatesHint),
-        nameof(UpdatesLabel),
+        nameof(UpdatesSectionTitle),
         nameof(WelcomeCreateMd),
         nameof(EmptySurfaceHint),
         nameof(EmptySurfaceTitle),
@@ -138,8 +123,6 @@ public partial class ShellViewModel
         nameof(ExternalChangeReload),
         nameof(ExternalChangeReloadTooltip),
         nameof(ExternalChangeTitle),
-        nameof(AppMenuToggleSidebarHint),
-        nameof(AppMenuToggleSidebarLabel),
         nameof(SidebarCreateTooltip),
         nameof(SidebarFooterLabel),
         nameof(SidebarNewFile),
@@ -167,29 +150,7 @@ public partial class ShellViewModel
         nameof(WelcomeTagline),
     ];
 
-    public string AboutCreatedByPrefix => _localization["AboutCreatedByPrefix"];
-    public string AboutCreditsLabel => _localization["AboutCreditsLabel"];
-    public string AboutCreditsPeriod => _localization["AboutCreditsPeriod"];
-    public string AboutHeader => _localization["AboutHeader"];
-    public string AboutHint => _localization["AboutHint"];
-    public string AboutLabel => _localization["AboutLabel"];
-    public string AboutLicenseHint => _localization["AboutLicenseHint"];
-    public string AboutLicenseLabel => _localization["AboutLicenseLabel"];
-    public string AboutVersionHint => _localization["AboutVersionHint"];
-    public string AboutVersionLabel => _localization["AboutVersionLabel"];
-    public string AppMenuCloseFileHint => _localization["AppMenuCloseFileHint"];
-    public string AppMenuCloseFileLabel => _localization["AppMenuCloseFileLabel"];
-    public string AppMenuHeader => _localization["AppMenuHeader"];
-    public string AppMenuCloseFolderHint => _localization["AppMenuCloseFolderHint"];
     public string AppMenuCloseFolderLabel => _localization["AppMenuCloseFolderLabel"];
-    public string AppMenuOpenFileHint => _localization["AppMenuOpenFileHint"];
-    public string AppMenuOpenFolderHint => _localization["AppMenuOpenFolderHint"];
-    public string AppMenuOpenFolderLabel => _localization["AppMenuOpenFolderLabel"];
-    public string AppMenuToggleSidebarLabel => _localization["AppMenuToggleSidebarLabel"];
-
-    public string AppMenuToggleSidebarHint => _localization[IsSidebarCollapsed
-        ? "AppMenuToggleSidebarHintShow"
-        : "AppMenuToggleSidebarHintHide"];
 
     /// <summary>
     /// Подвал сайдбара. Формулировка без согласования числительных: множественные формы
@@ -253,11 +214,25 @@ public partial class ShellViewModel
 
     /// <summary>«ещё N» — счётчик приходит из состава вкладок, поэтому свойство пересчитывается.</summary>
     public string TabsOverflowLabel => _localization.Format("TabsOverflow", OpenDocuments.OverflowTabs.Count);
-    public string AppMenuOpenFileLabel => _localization["AppMenuOpenFileLabel"];
-    public string AppMenuSettingsHint => _localization["AppMenuSettingsHint"];
-    public string AppMenuSettingsLabel => _localization["AppMenuSettingsLabel"];
+    public string AppMenuNewDocument => _localization["AppMenuNewDocument"];
+    public string AppMenuOpenFile => _localization["AppMenuOpenFile"];
+    public string AppMenuOpenFolder => _localization["AppMenuOpenFolder"];
+    public string AppMenuSave => _localization["AppMenuSave"];
+    public string AppMenuSaveAs => _localization["AppMenuSaveAs"];
+    public string AppMenuReload => _localization["AppMenuReload"];
+    public string AppMenuFilesPanel => _localization["AppMenuFilesPanel"];
+    public string AppMenuCloseTab => _localization["AppMenuCloseTab"];
+    public string AppMenuSettings => _localization["AppMenuSettings"];
     public string AppMenuTooltip => _localization["AppMenuTooltip"];
     public string AppSettingsHeader => _localization["AppSettingsHeader"];
+
+    /// <summary>
+    /// Подсказка вверху окна «Настройки»: между частями стоит значок Aa — та самая кнопка
+    /// над документом, поэтому фраза разрезана на две.
+    /// </summary>
+    public string AppSettingsReadingHintPrefix => _localization["AppSettingsReadingHintPrefix"];
+    public string AppSettingsReadingHintSuffix => _localization["AppSettingsReadingHintSuffix"];
+    public string AppSettingsWebsite => _localization["AppSettingsWebsite"];
     public string DirtyPromptCancel => _localization["DirtyPromptCancel"];
     public string DirtyPromptDiscard => _localization["DirtyPromptDiscard"];
     public string DirtyPromptSave => _localization["DirtyPromptSave"];
@@ -296,12 +271,6 @@ public partial class ShellViewModel
     public string LoadErrorOpenAnotherFile => _localization["LoadErrorOpenAnotherFile"];
     public string LoadErrorDismiss => _localization["LoadErrorDismiss"];
     public string LoadErrorTryAgain => _localization["LoadErrorTryAgain"];
-    public string MetaCurrent => _localization["MetaCurrent"];
-    public string MetaOpen => _localization["MetaOpen"];
-    public string OverlayBackToMenu => _localization["OverlayBackToMenu"];
-    public string OverlayBackToSettings => _localization["OverlayBackToSettings"];
-    public string OverlayCloseAbout => _localization["OverlayCloseAbout"];
-    public string OverlayCloseMenu => _localization["OverlayCloseMenu"];
     public string OverlayCloseSettings => _localization["OverlayCloseSettings"];
     public string ReadingFontLabel => _localization["ReadingFontLabel"];
     public string ReadingFontMono => _localization["ReadingFontMono"];
@@ -335,8 +304,9 @@ public partial class ShellViewModel
     public string TitleBarMaximize => _localization["TitleBarMaximize"];
     public string TitleBarMinimize => _localization["TitleBarMinimize"];
     public string TitleBarRestore => _localization["TitleBarRestore"];
-    public string UpdatesHint => _localization["UpdatesHint"];
-    public string UpdatesLabel => _localization["UpdatesLabel"];
+
+    /// <summary>Подзаголовок блока обновлений в окне «Настройки» — капителью, как на холсте.</summary>
+    public string UpdatesSectionTitle => _localization["UpdatesLabel"].ToUpper(_localization.Culture);
     public string WelcomeCreateMd => _localization["WelcomeCreateMd"];
     public string WelcomeDropHint => _localization["WelcomeDropHint"];
     public string WelcomeOpenFile => _localization["WelcomeOpenFile"];
@@ -353,8 +323,16 @@ public partial class ShellViewModel
 
     public string ToggleSidebarShortcut => CommandShortcut(Key.B);
 
+    public string NewDocumentShortcut => CommandShortcut(Key.N);
+
     /// <summary>Сочетание сохранения — плашка рядом с «Не сохранено» в строке окна.</summary>
     public string SaveShortcut => CommandShortcut(Key.S);
+
+    public string SaveAsShortcut => CommandShortcut(Key.S, KeyModifiers.Shift);
+
+    public string ReloadShortcut => CommandShortcut(Key.R);
+
+    public string CloseTabShortcut => CommandShortcut(Key.W);
 
     /// <summary>Сочетание настроек приложения — плашка в нижней строке карточки Aa.</summary>
     public string SettingsShortcut => CommandShortcut(Key.OemComma);
@@ -455,10 +433,7 @@ public partial class ShellViewModel
         EditorSession?.RefreshLocalizedProperties();
 
         OnPropertyChanged(nameof(FindResultLabel));
-        OnPropertyChanged(nameof(CheckForUpdatesLabel));
-        OnPropertyChanged(nameof(DownloadUpdateLabel));
-        OnPropertyChanged(nameof(DownloadedUpdateActionLabel));
-        OnPropertyChanged(nameof(UpdateStateBadge));
+        OnPropertyChanged(nameof(UpdateActionLabel));
         OnPropertyChanged(nameof(IsSystemLanguageSelected));
         OnPropertyChanged(nameof(IsEnglishLanguageSelected));
         OnPropertyChanged(nameof(IsRussianLanguageSelected));

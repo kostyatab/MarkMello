@@ -299,7 +299,7 @@
 
               <ToggleButton Name="AppMenuTriggerButton"
                             Classes="mm-row-button"
-                            IsChecked="{Binding IsAppOverlayOpen, Mode=OneWay}"
+                            IsChecked="{Binding IsAppMenuOpen, Mode=OneWay}"
                             Command="{Binding ToggleAppMenuCommand}"
                             ToolTip.Tip="{Binding AppMenuTooltip}">
                 <views:LucideIcon Data="{DynamicResource LucideEllipsisGeometry}"
@@ -406,7 +406,7 @@
                 Background="{DynamicResource MmAccentBrush}"
                 IsHitTestVisible="False" />
 
-        <!-- Карточки поиска, Aa, меню ⋯ и настройки раскрываются под строкой у правого
+        <!-- Карточки поиска, Aa и меню ⋯ раскрываются под строкой у правого
              края — одно правило на всю строку (ADR-0009 Rule 2). Правый отступ держит хост:
              на Windows справа от кнопок строки стоят ещё кнопки окна, и его ставит
              code-behind по их ширине. -->
@@ -432,28 +432,6 @@
             <ContentControl.ContentTemplate>
               <DataTemplate x:DataType="vm:ShellViewModel">
                 <views:AppMenuPanelView />
-              </DataTemplate>
-            </ContentControl.ContentTemplate>
-          </ContentControl>
-
-          <ContentControl Name="AppSettingsPanel"
-                          HorizontalAlignment="Right"
-                          VerticalAlignment="Top"
-                          Content="{Binding AppSettingsOverlayContent}">
-            <ContentControl.ContentTemplate>
-              <DataTemplate x:DataType="vm:ShellViewModel">
-                <views:AppSettingsPanelView />
-              </DataTemplate>
-            </ContentControl.ContentTemplate>
-          </ContentControl>
-
-          <ContentControl Name="AppAboutPanel"
-                          HorizontalAlignment="Right"
-                          VerticalAlignment="Top"
-                          Content="{Binding AppAboutOverlayContent}">
-            <ContentControl.ContentTemplate>
-              <DataTemplate x:DataType="vm:ShellViewModel">
-                <views:AppAboutPanelView />
               </DataTemplate>
             </ContentControl.ContentTemplate>
           </ContentControl>
@@ -557,6 +535,19 @@
 
       <!-- Модальные диалоги (ADR-0009 Rule 10): один скрим на всё окно — сайдбар,
            вкладки и строку. Карточки создаются в момент вопроса, а не на старте. -->
+      <!-- Окно «Настройки» лежит под вопросами: диалог о правках, поднятый при закрытии
+           окна, встаёт поверх него. -->
+      <ContentControl Name="AppSettingsDialogHost"
+                      Grid.Column="0"
+                      Grid.ColumnSpan="3"
+                      Content="{Binding AppSettingsContent}">
+        <ContentControl.ContentTemplate>
+          <DataTemplate x:DataType="vm:ShellViewModel">
+            <views:AppSettingsDialogView />
+          </DataTemplate>
+        </ContentControl.ContentTemplate>
+      </ContentControl>
+
       <ContentControl Grid.Column="0"
                       Grid.ColumnSpan="3"
                       Content="{Binding DeletePromptContent}">

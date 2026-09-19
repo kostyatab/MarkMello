@@ -47,7 +47,7 @@ public sealed class IconStateColoursTests
             ("welcome-secondary", false, "", Soft),
             ("welcome-secondary", false, ":pointerover", Text),
             ("welcome-secondary", false, ":pointerover :pressed", Text),
-            // Назад и закрыть в оверлеях.
+            // ✕ в шапке окна «Настройки».
             ("mm-settings-close", false, "", Faint),
             ("mm-settings-close", false, ":pointerover", Text),
             ("mm-settings-close", false, ":pointerover :pressed", Text),

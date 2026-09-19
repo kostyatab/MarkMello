@@ -3,166 +3,125 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:MarkMello.Presentation.ViewModels"
-             xmlns:views="using:MarkMello.Presentation.Views"
              mc:Ignorable="d"
              x:Class="MarkMello.Presentation.Views.AppMenuPanelView"
              x:DataType="vm:ShellViewModel">
-      <Border
-              Classes="mm-settings-panel mm-popover-right mm-app-menu-panel"
-              Width="320">
-        <StackPanel>
-          <Border Classes="mm-settings-head-shell">
-            <Grid ColumnDefinitions="*,Auto"
-                  ColumnSpacing="12">
-              <TextBlock Classes="mm-settings-title"
-                         Grid.Column="0"
-                         Text="{Binding AppMenuHeader}" />
-              <Button Grid.Column="1"
-                      Classes="mm-settings-close"
-                      Command="{Binding CloseOverlayCommand}"
-                      ToolTip.Tip="{Binding OverlayCloseMenu}">
-                <views:LucideIcon Data="{DynamicResource LucideXGeometry}"
-                                  Width="14"
-                                  Height="14" />
-              </Button>
-            </Grid>
-          </Border>
-
-          <Border Classes="mm-settings-body-shell">
-            <StackPanel Spacing="0">
-              <Button Classes="mm-menu-item"
-                      Command="{Binding OpenFileCommand}">
-                <Grid ColumnDefinitions="*,Auto"
-                      ColumnSpacing="12">
-                  <StackPanel Grid.Column="0"
-                              Spacing="2"
-                              HorizontalAlignment="Left">
-                    <TextBlock Classes="mm-setting-label"
-                               Text="{Binding AppMenuOpenFileLabel}" />
-                    <TextBlock Classes="mm-setting-hint"
-                               Text="{Binding AppMenuOpenFileHint}" />
-                  </StackPanel>
-                  <TextBlock Grid.Column="1"
-                             Classes="mm-setting-meta"
-                             Text="{Binding OpenFileShortcut}" />
-                </Grid>
-              </Button>
-
-              <Line Classes="mm-setting-divider"
-                    StartPoint="0,0.5"
-                    EndPoint="1,0.5" />
-
-              <Button Classes="mm-menu-item"
-                      Command="{Binding OpenFolderCommand}">
-                <Grid ColumnDefinitions="*,Auto"
-                      ColumnSpacing="12">
-                  <StackPanel Grid.Column="0"
-                              Spacing="2"
-                              HorizontalAlignment="Left">
-                    <TextBlock Classes="mm-setting-label"
-                               Text="{Binding AppMenuOpenFolderLabel}" />
-                    <TextBlock Classes="mm-setting-hint"
-                               Text="{Binding AppMenuOpenFolderHint}" />
-                  </StackPanel>
-                  <TextBlock Grid.Column="1"
-                             Classes="mm-setting-meta"
-                             Text="{Binding OpenFolderShortcut}" />
-                </Grid>
-              </Button>
-
-              <Line Classes="mm-setting-divider"
-                    StartPoint="0,0.5"
-                    EndPoint="1,0.5" />
-
-              <Button Classes="mm-menu-item"
-                      Command="{Binding CloseFileCommand}">
-                <Grid ColumnDefinitions="*,Auto"
-                      ColumnSpacing="12">
-                  <StackPanel Grid.Column="0"
-                              Spacing="2"
-                              HorizontalAlignment="Left">
-                    <TextBlock Classes="mm-setting-label"
-                               Text="{Binding AppMenuCloseFileLabel}" />
-                    <TextBlock Classes="mm-setting-hint"
-                               Text="{Binding AppMenuCloseFileHint}" />
-                  </StackPanel>
-                  <TextBlock Grid.Column="1"
-                             Classes="mm-setting-meta"
-                             Text="{Binding MetaCurrent}" />
-                </Grid>
-              </Button>
-
-              <Line Classes="mm-setting-divider"
-                    StartPoint="0,0.5"
-                    EndPoint="1,0.5" />
-
-              <Button Classes="mm-menu-item"
-                      IsVisible="{Binding CanToggleSidebar}"
-                      Command="{Binding ToggleSidebarCommand}">
-                <Grid ColumnDefinitions="*,Auto"
-                      ColumnSpacing="12">
-                  <StackPanel Grid.Column="0"
-                              Spacing="2"
-                              HorizontalAlignment="Left">
-                    <TextBlock Classes="mm-setting-label"
-                               Text="{Binding AppMenuToggleSidebarLabel}" />
-                    <TextBlock Classes="mm-setting-hint"
-                               Text="{Binding AppMenuToggleSidebarHint}" />
-                  </StackPanel>
-                  <TextBlock Grid.Column="1"
-                             Classes="mm-setting-meta"
-                             Text="{Binding ToggleSidebarShortcut}" />
-                </Grid>
-              </Button>
-
-              <Line Classes="mm-setting-divider"
-                    IsVisible="{Binding CanToggleSidebar}"
-                    StartPoint="0,0.5"
-                    EndPoint="1,0.5" />
-
-              <Button Classes="mm-menu-item"
-                      IsVisible="{Binding CanCloseFolder}"
-                      Command="{Binding CloseFolderCommand}">
-                <Grid ColumnDefinitions="*,Auto"
-                      ColumnSpacing="12">
-                  <StackPanel Grid.Column="0"
-                              Spacing="2"
-                              HorizontalAlignment="Left">
-                    <TextBlock Classes="mm-setting-label"
-                               Text="{Binding AppMenuCloseFolderLabel}" />
-                    <TextBlock Classes="mm-setting-hint"
-                               Text="{Binding AppMenuCloseFolderHint}" />
-                  </StackPanel>
-                  <TextBlock Grid.Column="1"
-                             Classes="mm-setting-meta"
-                             Text="{Binding MetaCurrent}" />
-                </Grid>
-              </Button>
-
-              <Line Classes="mm-setting-divider"
-                    IsVisible="{Binding CanCloseFolder}"
-                    StartPoint="0,0.5"
-                    EndPoint="1,0.5" />
-
-              <Button Classes="mm-menu-item"
-                      Command="{Binding OpenAppSettingsCommand}">
-                <Grid ColumnDefinitions="*,Auto"
-                      ColumnSpacing="12">
-                  <StackPanel Grid.Column="0"
-                              Spacing="2"
-                              HorizontalAlignment="Left">
-                    <TextBlock Classes="mm-setting-label"
-                               Text="{Binding AppMenuSettingsLabel}" />
-                    <TextBlock Classes="mm-setting-hint"
-                               Text="{Binding AppMenuSettingsHint}" />
-                  </StackPanel>
-                  <TextBlock Grid.Column="1"
-                             Classes="mm-setting-meta"
-                             Text="{Binding MetaOpen}" />
-                </Grid>
-              </Button>
-            </StackPanel>
-          </Border>
-        </StackPanel>
-      </Border>
+  <!-- Меню ⋯ по A-Menu (ADR-0009 Rule 4): только команды с сочетаниями и вход в настройки.
+       Без папки её пункты скрыты, неприменимые команды гаснут по CanExecute. -->
+  <Border Classes="mm-settings-panel mm-popover-right mm-app-menu-panel">
+    <StackPanel>
+      <Button Name="MenuNewDocument"
+              Classes="mm-menu-command"
+              Command="{Binding CreateNewDocumentCommand}">
+        <Grid ColumnDefinitions="*,Auto"
+              ColumnSpacing="12">
+          <TextBlock Text="{Binding AppMenuNewDocument}" />
+          <TextBlock Grid.Column="1"
+                     Classes="mm-menu-shortcut"
+                     Text="{Binding NewDocumentShortcut}" />
+        </Grid>
+      </Button>
+      <Button Name="MenuOpenFile"
+              Classes="mm-menu-command"
+              Command="{Binding OpenFileCommand}">
+        <Grid ColumnDefinitions="*,Auto"
+              ColumnSpacing="12">
+          <TextBlock Text="{Binding AppMenuOpenFile}" />
+          <TextBlock Grid.Column="1"
+                     Classes="mm-menu-shortcut"
+                     Text="{Binding OpenFileShortcut}" />
+        </Grid>
+      </Button>
+      <Button Name="MenuOpenFolder"
+              Classes="mm-menu-command"
+              Command="{Binding OpenFolderCommand}">
+        <Grid ColumnDefinitions="*,Auto"
+              ColumnSpacing="12">
+          <TextBlock Text="{Binding AppMenuOpenFolder}" />
+          <TextBlock Grid.Column="1"
+                     Classes="mm-menu-shortcut"
+                     Text="{Binding OpenFolderShortcut}" />
+        </Grid>
+      </Button>
+      <Border Classes="mm-menu-separator" />
+      <Button Name="MenuSave"
+              Classes="mm-menu-command"
+              Command="{Binding SaveCommand}">
+        <Grid ColumnDefinitions="*,Auto"
+              ColumnSpacing="12">
+          <TextBlock Text="{Binding AppMenuSave}" />
+          <TextBlock Grid.Column="1"
+                     Classes="mm-menu-shortcut"
+                     Text="{Binding SaveShortcut}" />
+        </Grid>
+      </Button>
+      <Button Name="MenuSaveAs"
+              Classes="mm-menu-command"
+              Command="{Binding SaveAsCommand}">
+        <Grid ColumnDefinitions="*,Auto"
+              ColumnSpacing="12">
+          <TextBlock Text="{Binding AppMenuSaveAs}" />
+          <TextBlock Grid.Column="1"
+                     Classes="mm-menu-shortcut"
+                     Text="{Binding SaveAsShortcut}" />
+        </Grid>
+      </Button>
+      <Button Name="MenuReload"
+              Classes="mm-menu-command"
+              Command="{Binding ReloadCommand}">
+        <Grid ColumnDefinitions="*,Auto"
+              ColumnSpacing="12">
+          <TextBlock Text="{Binding AppMenuReload}" />
+          <TextBlock Grid.Column="1"
+                     Classes="mm-menu-shortcut"
+                     Text="{Binding ReloadShortcut}" />
+        </Grid>
+      </Button>
+      <Border Classes="mm-menu-separator" />
+      <Button Name="MenuFilesPanel"
+              Classes="mm-menu-command"
+              IsVisible="{Binding CanToggleSidebar}"
+              Command="{Binding ToggleSidebarCommand}">
+        <Grid ColumnDefinitions="*,Auto"
+              ColumnSpacing="12">
+          <TextBlock Text="{Binding AppMenuFilesPanel}" />
+          <TextBlock Grid.Column="1"
+                     Classes="mm-menu-shortcut"
+                     Text="{Binding ToggleSidebarShortcut}" />
+        </Grid>
+      </Button>
+      <Button Name="MenuCloseTab"
+              Classes="mm-menu-command"
+              Command="{Binding CloseActiveTabCommand}">
+        <Grid ColumnDefinitions="*,Auto"
+              ColumnSpacing="12">
+          <TextBlock Text="{Binding AppMenuCloseTab}" />
+          <TextBlock Grid.Column="1"
+                     Classes="mm-menu-shortcut"
+                     Text="{Binding CloseTabShortcut}" />
+        </Grid>
+      </Button>
+      <Button Name="MenuCloseFolder"
+              Classes="mm-menu-command"
+              IsVisible="{Binding CanCloseFolder}"
+              Command="{Binding CloseFolderCommand}">
+        <Grid ColumnDefinitions="*,Auto"
+              ColumnSpacing="12">
+          <TextBlock Text="{Binding AppMenuCloseFolderLabel}" />
+        </Grid>
+      </Button>
+      <Border Classes="mm-menu-separator" />
+      <Button Name="MenuSettings"
+              Classes="mm-menu-command"
+              Command="{Binding OpenAppSettingsCommand}">
+        <Grid ColumnDefinitions="*,Auto"
+              ColumnSpacing="12">
+          <TextBlock Text="{Binding AppMenuSettings}" />
+          <TextBlock Grid.Column="1"
+                     Classes="mm-menu-shortcut"
+                     Text="{Binding SettingsShortcut}" />
+        </Grid>
+      </Button>
+    </StackPanel>
+  </Border>
 </UserControl>

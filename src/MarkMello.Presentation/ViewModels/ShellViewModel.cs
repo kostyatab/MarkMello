@@ -10,6 +10,7 @@ using MarkMello.Presentation.Localization;
 using MarkMello.Presentation.Services;
 using System.Reflection;
 using System.ComponentModel;
+using System.Windows.Input;
 
 namespace MarkMello.Presentation.ViewModels;
 
@@ -212,12 +213,9 @@ public partial class ShellViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsSettingsOpen))]
     [NotifyPropertyChangedFor(nameof(IsAppMenuOpen))]
     [NotifyPropertyChangedFor(nameof(IsAppSettingsOpen))]
-    [NotifyPropertyChangedFor(nameof(IsAppAboutOpen))]
-    [NotifyPropertyChangedFor(nameof(IsAppOverlayOpen))]
     [NotifyPropertyChangedFor(nameof(HasOpenOverlay))]
     [NotifyPropertyChangedFor(nameof(AppMenuOverlayContent))]
-    [NotifyPropertyChangedFor(nameof(AppSettingsOverlayContent))]
-    [NotifyPropertyChangedFor(nameof(AppAboutOverlayContent))]
+    [NotifyPropertyChangedFor(nameof(AppSettingsContent))]
     [NotifyPropertyChangedFor(nameof(ReadingSettingsOverlayContent))]
     private ShellOverlayKind _shellOverlay = ShellOverlayKind.None;
 
@@ -359,20 +357,19 @@ public partial class ShellViewModel : ObservableObject
     // Меню ⋯ в строке окна есть всегда — и в правке, и на стартовом экране (ADR-0009 Rule 2).
     public bool IsAppMenuOpen => ShellOverlay == ShellOverlayKind.AppMenu;
 
-    public bool IsAppSettingsOpen => ShellOverlay == ShellOverlayKind.AppSettings;
+    /// <summary>
+    /// Окно «Настройки» — модальная карточка на общей рамке диалогов (ADR-0009 Rule 7).
+    /// Это слой оверлея, а не вопрос: его закрывают Esc, ✕ и любая команда, которая
+    /// закрывает карточки, поэтому в <see cref="IsModalDialogOpen"/> оно не входит.
+    /// </summary>
+    public bool IsAppSettingsOpen => ShellOverlay == ShellOverlayKind.Settings;
 
-    public bool IsAppAboutOpen => ShellOverlay == ShellOverlayKind.AppAbout;
-
-    public bool IsAppOverlayOpen
-        => ShellOverlay is ShellOverlayKind.AppMenu or ShellOverlayKind.AppSettings or ShellOverlayKind.AppAbout;
-
-    public bool HasOpenOverlay => IsSettingsOpen || IsAppOverlayOpen;
+    public bool HasOpenOverlay => IsSettingsOpen || IsAppMenuOpen || IsAppSettingsOpen;
 
     public object? AppMenuOverlayContent => IsAppMenuOpen ? this : null;
 
-    public object? AppSettingsOverlayContent => IsAppSettingsOpen ? this : null;
-
-    public object? AppAboutOverlayContent => IsAppAboutOpen ? this : null;
+    /// <summary>Карточка «Настройки» строится по первому открытию, а не на старте (ADR-0009 Rule 12).</summary>
+    public object? AppSettingsContent => IsAppSettingsOpen ? this : null;
 
     /// <summary>
     /// Кнопка Aa и её карточка есть только при чтении: в правке блок справа
@@ -439,9 +436,11 @@ public partial class ShellViewModel : ObservableObject
     /// <summary>Черновик ⌘N: сессия правки без документа на диске.</summary>
     private bool IsUnsavedDraft => EditorSession is not null && Document is null;
 
-    public string AboutVersion => _aboutVersion;
-
-    public string AboutLicense => _aboutLicense;
+    /// <summary>
+    /// Нижняя строка окна «Настройки»: продукт, версия сборки и лицензия; имя автора
+    /// идёт за ней ссылкой. Слов для перевода здесь нет.
+    /// </summary>
+    public string AppSettingsVersionLine => $"MarkMello {_aboutVersion} · {_aboutLicense} ·";
 
     public bool HasDirtyPromptError => !string.IsNullOrWhiteSpace(DirtyPromptErrorMessage);
 
@@ -469,29 +468,48 @@ public partial class ShellViewModel : ObservableObject
            && !IsCheckingForUpdates
            && !IsDownloadingUpdate;
 
-    public string CheckForUpdatesLabel => IsCheckingForUpdates ? _localization["UpdateChecking"] : _localization["UpdateCheckNow"];
-
-    public string DownloadUpdateLabel => IsDownloadingUpdate ? _localization["UpdateDownloading"] : _localization["UpdateDownload"];
-
-    public string DownloadedUpdateActionLabel
-        => _availableUpdatePackage?.InstallAction switch
+    /// <summary>
+    /// Блок «Обновления» окна «Настройки» — один шаблон на все состояния: заголовок,
+    /// пояснение и одна кнопка справа. Кнопка — следующий шаг: проверить, скачать,
+    /// открыть скачанное. Пока идёт проверка или скачивание, она гаснет с подписью
+    /// процесса; после ошибки проверки «Проверить» служит повтором, после ошибки
+    /// скачивания — «Скачать». В сеть ходит только по нажатию (ADR-0003 §5).
+    /// </summary>
+    public string UpdateActionLabel => GetUpdateAction() switch
+    {
+        UpdateAction.Checking => _localization["UpdateChecking"],
+        UpdateAction.Downloading => _localization["UpdateDownloading"],
+        UpdateAction.OpenDownloaded => _availableUpdatePackage?.InstallAction switch
         {
             AppUpdateInstallAction.LaunchInstaller => _localization["UpdateLaunchInstaller"],
             AppUpdateInstallAction.OpenDiskImage => _localization["UpdateOpenDmg"],
             AppUpdateInstallAction.RevealFile => _localization["UpdateRevealAppImage"],
             _ => _localization["UpdateOpenDownloaded"]
-        };
+        },
+        UpdateAction.Download => _localization["UpdateDownload"],
+        _ => _localization["UpdateCheckNow"]
+    };
 
-    public string UpdateStateBadge
+    public ICommand UpdateActionCommand => GetUpdateAction() switch
+    {
+        UpdateAction.Downloading or UpdateAction.Download => DownloadUpdateCommand,
+        UpdateAction.OpenDownloaded => OpenDownloadedUpdateCommand,
+        _ => CheckForUpdatesCommand
+    };
+
+    /// <summary>Основная кнопка — когда есть что скачать или открыть; проверка — обычная.</summary>
+    public bool IsUpdateActionPrimary => GetUpdateAction() is UpdateAction.Download or UpdateAction.OpenDownloaded;
+
+    private UpdateAction GetUpdateAction()
         => IsCheckingForUpdates
-            ? _localization["UpdateBadgeChecking"]
+            ? UpdateAction.Checking
             : IsDownloadingUpdate
-                ? _localization["UpdateBadgeDownloading"]
+                ? UpdateAction.Downloading
                 : CanOpenDownloadedUpdate
-                    ? _localization["UpdateBadgeReady"]
+                    ? UpdateAction.OpenDownloaded
                     : CanDownloadAvailableUpdate
-                        ? _localization["UpdateBadgeAvailable"]
-                        : _localization["UpdateBadgeManual"];
+                        ? UpdateAction.Download
+                        : UpdateAction.Check;
 
     public FontFamilyMode SelectedFontFamilyMode
     {
@@ -932,19 +950,11 @@ public partial class ShellViewModel : ObservableObject
         return Task.CompletedTask;
     }
 
-    [RelayCommand(CanExecute = nameof(CanCloseFile))]
-    private async Task CloseFileAsync()
-    {
-        CloseOverlayCore();
-        await RunWithDirtyCheckAsync(
-                PendingDirtyActionKind.CloseFile,
-                CloseFileCoreAsync)
-            .ConfigureAwait(true);
-    }
-
     [RelayCommand(CanExecute = nameof(CanReload))]
     private async Task ReloadAsync()
     {
+        CloseAppSettingsWindow();
+
         var path = CurrentDocumentPath;
         if (string.IsNullOrEmpty(path))
         {
@@ -960,11 +970,11 @@ public partial class ShellViewModel : ObservableObject
 
     private bool CanReload() => !string.IsNullOrEmpty(CurrentDocumentPath);
 
-    private bool CanCloseFile() => Document is not null || EditorSession is not null;
-
     [RelayCommand(CanExecute = nameof(CanToggleEditMode))]
     private async Task ToggleEditModeAsync()
     {
+        CloseAppSettingsWindow();
+
         if (IsEditMode)
         {
             await RunWithDirtyCheckAsync(
@@ -1148,24 +1158,33 @@ public partial class ShellViewModel : ObservableObject
         MarkSecondaryFeaturesReady();
 
         IsFindBarOpen = false;
-        ShellOverlay = IsAppOverlayOpen
+        ShellOverlay = IsAppMenuOpen
             ? ShellOverlayKind.None
             : ShellOverlayKind.AppMenu;
     }
 
+    /// <summary>
+    /// Окно «Настройки» — из меню ⋯, из карточки Aa и по ⌘, — везде одно и то же:
+    /// открытая карточка под ним закрывается. Под вопросом о правках или удалении окно
+    /// не открывается: оно встало бы под скрим вопроса и забрало бы у него фокус.
+    /// </summary>
     [RelayCommand]
     private void OpenAppSettings()
     {
+        if (IsModalDialogOpen)
+        {
+            return;
+        }
+
         MarkSecondaryFeaturesReady();
 
         IsFindBarOpen = false;
-        ShellOverlay = ShellOverlayKind.AppSettings;
+        ShellOverlay = ShellOverlayKind.Settings;
     }
 
     /// <summary>
-    /// ⌘, (Ctrl+, на Windows и Linux) — настройки приложения, как обещает нижняя строка
-    /// карточки Aa (ADR-0009 Rule 7). Повторное нажатие закрывает их. До окна «Настройки»
-    /// открываются нынешние — из-под меню ⋯, в чтении и в правке одинаково.
+    /// ⌘, (Ctrl+, на Windows и Linux) открывает окно «Настройки» везде, включая стартовый
+    /// экран и правку (ADR-0009 Rule 7); повторное нажатие его закрывает.
     /// </summary>
     [RelayCommand]
     private void ToggleAppSettings()
@@ -1177,31 +1196,6 @@ public partial class ShellViewModel : ObservableObject
         }
 
         OpenAppSettings();
-    }
-
-    [RelayCommand]
-    private void OpenAbout()
-    {
-        MarkSecondaryFeaturesReady();
-
-        IsFindBarOpen = false;
-        ShellOverlay = ShellOverlayKind.AppAbout;
-    }
-
-    [RelayCommand]
-    private void ReturnToAppMenu()
-    {
-        MarkSecondaryFeaturesReady();
-
-        ShellOverlay = ShellOverlayKind.AppMenu;
-    }
-
-    [RelayCommand]
-    private void ReturnToAppSettings()
-    {
-        MarkSecondaryFeaturesReady();
-
-        ShellOverlay = ShellOverlayKind.AppSettings;
     }
 
     [RelayCommand]
@@ -1610,19 +1604,6 @@ public partial class ShellViewModel : ObservableObject
         IsEditMode = true;
         RefreshWindowTitle();
         UpdateCommandStates();
-    }
-
-    private async Task CloseFileCoreAsync()
-    {
-        CloseOverlayCore();
-
-        if (OpenDocuments.ActiveTab is { } tab)
-        {
-            await RemoveTabAsync(tab).ConfigureAwait(true);
-            return;
-        }
-
-        CloseFileCore();
     }
 
     /// <summary>
@@ -2110,7 +2091,6 @@ public partial class ShellViewModel : ObservableObject
     private void UpdateCommandStates()
     {
         ReloadCommand.NotifyCanExecuteChanged();
-        CloseFileCommand.NotifyCanExecuteChanged();
         ToggleEditModeCommand.NotifyCanExecuteChanged();
         SaveCommand.NotifyCanExecuteChanged();
         SaveAsCommand.NotifyCanExecuteChanged();
@@ -2122,10 +2102,9 @@ public partial class ShellViewModel : ObservableObject
         OnPropertyChanged(nameof(CanCheckForUpdates));
         OnPropertyChanged(nameof(CanDownloadAvailableUpdate));
         OnPropertyChanged(nameof(CanOpenDownloadedUpdate));
-        OnPropertyChanged(nameof(CheckForUpdatesLabel));
-        OnPropertyChanged(nameof(DownloadUpdateLabel));
-        OnPropertyChanged(nameof(DownloadedUpdateActionLabel));
-        OnPropertyChanged(nameof(UpdateStateBadge));
+        OnPropertyChanged(nameof(UpdateActionLabel));
+        OnPropertyChanged(nameof(UpdateActionCommand));
+        OnPropertyChanged(nameof(IsUpdateActionPrimary));
     }
 
     private static string GetProductVersion()
@@ -2155,9 +2134,22 @@ public partial class ShellViewModel : ObservableObject
         ShellOverlay = ShellOverlayKind.None;
     }
 
+    /// <summary>
+    /// Команда, которая меняет документ за окном «Настройки» (⌘W, ⌘E, ⌘R, Ctrl+Tab),
+    /// сначала закрывает окно: модальная карточка не остаётся поверх другого содержимого
+    /// (ADR-0009 Rule 10). Карточки Aa и поиска эти команды не трогают, как и раньше.
+    /// </summary>
+    private void CloseAppSettingsWindow()
+    {
+        if (IsAppSettingsOpen)
+        {
+            CloseOverlayCore();
+        }
+    }
+
     private void CloseAppOverlayCore()
     {
-        if (ShellOverlay is ShellOverlayKind.AppMenu or ShellOverlayKind.AppSettings or ShellOverlayKind.AppAbout)
+        if (ShellOverlay is ShellOverlayKind.AppMenu or ShellOverlayKind.Settings)
         {
             ShellOverlay = ShellOverlayKind.None;
         }
@@ -2212,6 +2204,15 @@ public partial class ShellViewModel : ObservableObject
         {
             return null;
         }
+    }
+
+    private enum UpdateAction
+    {
+        Check,
+        Checking,
+        Download,
+        Downloading,
+        OpenDownloaded
     }
 
     private enum PendingDirtyActionKind

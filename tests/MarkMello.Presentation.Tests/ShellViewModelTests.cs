@@ -102,7 +102,6 @@ public sealed class ShellViewModelTests
         harness.ViewModel.ToggleAppMenuCommand.Execute(null);
 
         Assert.True(harness.ViewModel.IsAppMenuOpen);
-        Assert.True(harness.ViewModel.IsAppOverlayOpen);
         Assert.True(harness.ViewModel.HasOpenOverlay);
 
         harness.ViewModel.ClearErrorCommand.Execute(null);
@@ -270,7 +269,6 @@ public sealed class ShellViewModelTests
 
         Assert.False(harness.ViewModel.IsAppMenuOpen);
         Assert.True(harness.ViewModel.IsSettingsOpen);
-        Assert.False(harness.ViewModel.IsAppOverlayOpen);
     }
 
     [Fact]
@@ -323,8 +321,12 @@ public sealed class ShellViewModelTests
         return tcs.Task.WaitAsync(TimeSpan.FromSeconds(5));
     }
 
+    /// <summary>
+    /// «Настройки…» из меню ⋯ и строка карточки Aa ведут в одно окно; меню под ним
+    /// закрывается, а кнопка ⋯ не остаётся нажатой — окно модальное, не карточка меню.
+    /// </summary>
     [Fact]
-    public void OpenAppSettingsCommandSwitchesFromMenuToAppSettings()
+    public void OpenAppSettingsCommandReplacesTheMenuWithTheSettingsWindow()
     {
         var harness = CreateHarness();
 
@@ -333,31 +335,164 @@ public sealed class ShellViewModelTests
 
         Assert.False(harness.ViewModel.IsAppMenuOpen);
         Assert.True(harness.ViewModel.IsAppSettingsOpen);
-        Assert.True(harness.ViewModel.IsAppOverlayOpen);
+        Assert.Equal(ShellOverlayKind.Settings, harness.ViewModel.ShellOverlay);
+        Assert.NotNull(harness.ViewModel.AppSettingsContent);
+        Assert.Null(harness.ViewModel.AppMenuOverlayContent);
 
-        harness.ViewModel.ReturnToAppMenuCommand.Execute(null);
+        harness.ViewModel.ClearErrorCommand.Execute(null);
 
-        Assert.True(harness.ViewModel.IsAppMenuOpen);
         Assert.False(harness.ViewModel.IsAppSettingsOpen);
+        Assert.Null(harness.ViewModel.AppSettingsContent);
     }
 
+    /// <summary>
+    /// Под вопросом о правках ⌘, окно «Настройки» не открывает: оно встало бы под скрим
+    /// вопроса и увело бы с него фокус.
+    /// </summary>
     [Fact]
-    public void OpenAboutCommandSwitchesFromSettingsToAboutAndBack()
+    public async Task SettingsShortcutDoesNothingWhileADialogAsks()
+    {
+        var harness = CreateHarness();
+        await harness.ViewModel.CreateNewDocumentCommand.ExecuteAsync(null);
+        harness.ViewModel.EditorSession!.SourceText = "# Draft";
+        await harness.ViewModel.CloseActiveTabCommand.ExecuteAsync(null);
+        Assert.True(harness.ViewModel.IsDirtyPromptOpen);
+
+        harness.ViewModel.ToggleAppSettingsCommand.Execute(null);
+        harness.ViewModel.OpenAppSettingsCommand.Execute(null);
+
+        Assert.False(harness.ViewModel.IsAppSettingsOpen);
+        Assert.Null(harness.ViewModel.AppSettingsContent);
+        Assert.True(harness.ViewModel.IsDirtyPromptOpen);
+    }
+
+    /// <summary>
+    /// Сочетания, которые меняют документ за окном «Настройки», сначала закрывают его:
+    /// модальная карточка не остаётся поверх другой вкладки или режима.
+    /// </summary>
+    [Theory]
+    [InlineData("close-tab")]
+    [InlineData("edit")]
+    [InlineData("reload")]
+    [InlineData("next-tab")]
+    [InlineData("previous-tab")]
+    public async Task DocumentShortcutsCloseTheSettingsWindow(string shortcut)
+    {
+        var harness = CreateHarness();
+        var first = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "one.md");
+        var second = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "two.md");
+        harness.Loader.Sources[first] = CreateSource(first, "alpha");
+        harness.Loader.Sources[second] = CreateSource(second, "beta");
+        await harness.ViewModel.OpenPathAsync(first);
+        await harness.ViewModel.OpenPathAsync(second);
+
+        harness.ViewModel.OpenAppSettingsCommand.Execute(null);
+        Assert.True(harness.ViewModel.IsAppSettingsOpen);
+
+        switch (shortcut)
+        {
+            case "close-tab":
+                await harness.ViewModel.CloseActiveTabCommand.ExecuteAsync(null);
+                break;
+            case "edit":
+                await harness.ViewModel.ToggleEditModeCommand.ExecuteAsync(null);
+                break;
+            case "reload":
+                await harness.ViewModel.ReloadCommand.ExecuteAsync(null);
+                break;
+            case "next-tab":
+                await harness.ViewModel.ActivateNextTabCommand.ExecuteAsync(null);
+                break;
+            case "previous-tab":
+                await harness.ViewModel.ActivatePreviousTabCommand.ExecuteAsync(null);
+                break;
+        }
+
+        Assert.False(harness.ViewModel.IsAppSettingsOpen);
+        Assert.Null(harness.ViewModel.AppSettingsContent);
+    }
+
+    /// <summary>Быстрый путь: окна «Настройки» нет, пока его не открыли (ADR-0009 Rule 12).</summary>
+    [Fact]
+    public void SettingsWindowIsNotBuiltAtStartup()
     {
         var harness = CreateHarness();
 
-        harness.ViewModel.ToggleAppMenuCommand.Execute(null);
-        harness.ViewModel.OpenAppSettingsCommand.Execute(null);
-        harness.ViewModel.OpenAboutCommand.Execute(null);
+        Assert.Null(harness.ViewModel.AppSettingsContent);
+        Assert.Null(harness.ViewModel.AppMenuOverlayContent);
+    }
 
-        Assert.True(harness.ViewModel.IsAppAboutOpen);
-        Assert.True(harness.ViewModel.IsAppOverlayOpen);
-        Assert.False(harness.ViewModel.IsAppSettingsOpen);
+    /// <summary>
+    /// Состав меню ⋯ (ADR-0009 Rule 4): «Панель файлов» и «Закрыть папку» есть только
+    /// при открытой папке; сохранение — только в правке; перечитать и закрыть вкладку —
+    /// когда есть вкладка с файлом. Открыть, создать и настройки доступны всегда.
+    /// </summary>
+    [Fact]
+    public async Task AppMenuItemsFollowTheFolderTheTabAndEditMode()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "notes");
+        var readmePath = Path.Combine(root, "README.md");
+        var fileSystem = new FakeWorkspaceFileSystem();
+        fileSystem.AddDirectory(root, WorkspaceEntry.ForFile(readmePath, "README.md"));
+        var harness = CreateHarness(fileSystem);
+        harness.Loader.Sources[readmePath] = CreateSource(readmePath, "# readme");
+        var viewModel = harness.ViewModel;
 
-        harness.ViewModel.ReturnToAppSettingsCommand.Execute(null);
+        // Стартовый экран: ни папки, ни документа.
+        Assert.False(viewModel.CanToggleSidebar);
+        Assert.False(viewModel.CanCloseFolder);
+        Assert.False(viewModel.SaveCommand.CanExecute(null));
+        Assert.False(viewModel.SaveAsCommand.CanExecute(null));
+        Assert.False(viewModel.ReloadCommand.CanExecute(null));
+        Assert.False(viewModel.CloseActiveTabCommand.CanExecute(null));
+        AssertAlwaysAvailable(viewModel);
 
-        Assert.False(harness.ViewModel.IsAppAboutOpen);
-        Assert.True(harness.ViewModel.IsAppSettingsOpen);
+        // Папка с открытым README: пункты папки появились, файл можно перечитать и закрыть.
+        await viewModel.OpenFolderPathAsync(root);
+        Assert.True(viewModel.CanToggleSidebar);
+        Assert.True(viewModel.CanCloseFolder);
+        Assert.False(viewModel.SaveCommand.CanExecute(null));
+        Assert.False(viewModel.SaveAsCommand.CanExecute(null));
+        Assert.True(viewModel.ReloadCommand.CanExecute(null));
+        Assert.True(viewModel.CloseActiveTabCommand.CanExecute(null));
+        AssertAlwaysAvailable(viewModel);
+
+        // Правка: сохранить и сохранить как — доступны.
+        await viewModel.ToggleEditModeCommand.ExecuteAsync(null);
+        Assert.True(viewModel.SaveCommand.CanExecute(null));
+        Assert.True(viewModel.SaveAsCommand.CanExecute(null));
+        Assert.True(viewModel.ReloadCommand.CanExecute(null));
+        Assert.True(viewModel.CloseActiveTabCommand.CanExecute(null));
+        AssertAlwaysAvailable(viewModel);
+
+        static void AssertAlwaysAvailable(ShellViewModel viewModel)
+        {
+            Assert.True(viewModel.CreateNewDocumentCommand.CanExecute(null));
+            Assert.True(viewModel.OpenFileCommand.CanExecute(null));
+            Assert.True(viewModel.OpenFolderCommand.CanExecute(null));
+            Assert.True(viewModel.OpenAppSettingsCommand.CanExecute(null));
+        }
+    }
+
+    /// <summary>Подписи сочетаний меню — по платформе (MM-25): ⌘ и порядок ⇧⌘ на macOS.</summary>
+    [Theory]
+    [InlineData("macOS", "⌘N", "⇧⌘S", "⌘R", "⌘W", "⌘,")]
+    [InlineData("Windows", "Ctrl+N", "Ctrl+Shift+S", "Ctrl+R", "Ctrl+W", "Ctrl+,")]
+    public void AppMenuShortcutsAreLabelledForThePlatform(
+        string platformName,
+        string newDocument,
+        string saveAs,
+        string reload,
+        string closeTab,
+        string settings)
+    {
+        var harness = CreateHarness(platformName: platformName);
+
+        Assert.Equal(newDocument, harness.ViewModel.NewDocumentShortcut);
+        Assert.Equal(saveAs, harness.ViewModel.SaveAsShortcut);
+        Assert.Equal(reload, harness.ViewModel.ReloadShortcut);
+        Assert.Equal(closeTab, harness.ViewModel.CloseTabShortcut);
+        Assert.Equal(settings, harness.ViewModel.SettingsShortcut);
     }
 
     [Fact]
@@ -480,7 +615,7 @@ public sealed class ShellViewModelTests
     }
 
     [Fact]
-    public async Task CloseFileCommandReturnsViewingDocumentToWelcome()
+    public async Task CloseActiveTabCommandReturnsTheOnlyDocumentToWelcome()
     {
         var harness = CreateHarness();
         var path = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "one.md");
@@ -488,25 +623,25 @@ public sealed class ShellViewModelTests
 
         await harness.ViewModel.OpenPathAsync(path);
 
-        await harness.ViewModel.CloseFileCommand.ExecuteAsync(null);
+        await harness.ViewModel.CloseActiveTabCommand.ExecuteAsync(null);
 
         Assert.True(harness.ViewModel.IsWelcome);
         Assert.False(harness.ViewModel.IsViewer);
         Assert.Null(harness.ViewModel.Document);
         Assert.Null(harness.ViewModel.EditorSession);
         Assert.Equal("MarkMello", harness.ViewModel.WindowTitle);
-        Assert.False(harness.ViewModel.CloseFileCommand.CanExecute(null));
+        Assert.False(harness.ViewModel.CloseActiveTabCommand.CanExecute(null));
     }
 
     [Fact]
-    public async Task CloseFileCommandWhenDirtyDraftPromptsAndDiscardReturnsToWelcome()
+    public async Task CloseActiveTabCommandWhenDirtyDraftPromptsAndDiscardReturnsToWelcome()
     {
         var harness = CreateHarness();
 
         await harness.ViewModel.CreateNewDocumentCommand.ExecuteAsync(null);
         harness.ViewModel.EditorSession!.SourceText = "# Draft";
 
-        await harness.ViewModel.CloseFileCommand.ExecuteAsync(null);
+        await harness.ViewModel.CloseActiveTabCommand.ExecuteAsync(null);
 
         Assert.True(harness.ViewModel.IsDirtyPromptOpen);
         Assert.Equal("Save changes to \"Untitled.md\"?", harness.ViewModel.DirtyPromptTitle);
@@ -702,7 +837,7 @@ public sealed class ShellViewModelTests
     }
 
     [Fact]
-    public async Task CloseFileCommandWhenDirtyAndSavedPersistsThenReturnsToWelcome()
+    public async Task CloseActiveTabCommandWhenDirtyAndSavedPersistsThenReturnsToWelcome()
     {
         var harness = CreateHarness();
         var savedPath = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "close-after-save.md");
@@ -711,7 +846,7 @@ public sealed class ShellViewModelTests
         await harness.ViewModel.CreateNewDocumentCommand.ExecuteAsync(null);
         harness.ViewModel.EditorSession!.SourceText = "first draft";
 
-        await harness.ViewModel.CloseFileCommand.ExecuteAsync(null);
+        await harness.ViewModel.CloseActiveTabCommand.ExecuteAsync(null);
         await harness.ViewModel.ConfirmDirtySaveCommand.ExecuteAsync(null);
 
         Assert.Equal(["Untitled.md"], harness.FilePicker.SuggestedSaveFileNames);
@@ -827,7 +962,49 @@ public sealed class ShellViewModelTests
         Assert.Contains(package.AssetName, harness.ViewModel.UpdateStatusMessage, StringComparison.Ordinal);
         Assert.True(harness.ViewModel.CanDownloadAvailableUpdate);
         Assert.False(harness.ViewModel.CanOpenDownloadedUpdate);
-        Assert.Equal("Available", harness.ViewModel.UpdateStateBadge);
+        Assert.Equal("Download", harness.ViewModel.UpdateActionLabel);
+        Assert.Same(harness.ViewModel.DownloadUpdateCommand, harness.ViewModel.UpdateActionCommand);
+        Assert.True(harness.ViewModel.IsUpdateActionPrimary);
+    }
+
+    /// <summary>
+    /// Блок обновлений — одна кнопка следующего шага. До проверки и после неудачной
+    /// проверки это «Проверить» (повтор), после неудачного скачивания — снова «Скачать».
+    /// </summary>
+    [Fact]
+    public async Task UpdateActionIsTheNextStepAndRetriesAfterFailures()
+    {
+        var harness = CreateHarness();
+        var viewModel = harness.ViewModel;
+
+        Assert.Equal("Manual checks", viewModel.UpdateStatusTitle);
+        Assert.Equal("Check now", viewModel.UpdateActionLabel);
+        Assert.Same(viewModel.CheckForUpdatesCommand, viewModel.UpdateActionCommand);
+        Assert.False(viewModel.IsUpdateActionPrimary);
+
+        // Окно «Настройки» само в сеть не ходит — только по «Проверить» (ADR-0003 §5).
+        viewModel.ToggleAppSettingsCommand.Execute(null);
+        Assert.True(viewModel.IsAppSettingsOpen);
+        Assert.Equal(0, harness.UpdateService.CheckCount);
+
+        harness.UpdateService.NextCheckResult = new UpdateCheckResult.Failed("offline");
+        await viewModel.CheckForUpdatesCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, harness.UpdateService.CheckCount);
+        Assert.Equal("offline", viewModel.UpdateStatusMessage);
+        Assert.Equal("Check now", viewModel.UpdateActionLabel);
+        Assert.Same(viewModel.CheckForUpdatesCommand, viewModel.UpdateActionCommand);
+        Assert.True(viewModel.UpdateActionCommand.CanExecute(null));
+
+        harness.UpdateService.NextCheckResult = new UpdateCheckResult.UpdateAvailable(CreateUpdatePackage());
+        harness.UpdateService.NextDownloadResult = new UpdateDownloadResult.Failed("disk full");
+        await viewModel.CheckForUpdatesCommand.ExecuteAsync(null);
+        await viewModel.DownloadUpdateCommand.ExecuteAsync(null);
+
+        Assert.Equal("disk full", viewModel.UpdateStatusMessage);
+        Assert.Equal("Download", viewModel.UpdateActionLabel);
+        Assert.Same(viewModel.DownloadUpdateCommand, viewModel.UpdateActionCommand);
+        Assert.True(viewModel.UpdateActionCommand.CanExecute(null));
     }
 
     [Fact]
@@ -846,9 +1023,10 @@ public sealed class ShellViewModelTests
         Assert.Contains(package.AssetName, harness.ViewModel.UpdateStatusMessage, StringComparison.Ordinal);
         Assert.False(harness.ViewModel.CanDownloadAvailableUpdate);
         Assert.True(harness.ViewModel.CanOpenDownloadedUpdate);
-        Assert.Equal("Launch installer", harness.ViewModel.DownloadedUpdateActionLabel);
+        Assert.Equal("Launch installer", harness.ViewModel.UpdateActionLabel);
+        Assert.Same(harness.ViewModel.OpenDownloadedUpdateCommand, harness.ViewModel.UpdateActionCommand);
+        Assert.True(harness.ViewModel.IsUpdateActionPrimary);
         Assert.Equal(downloadedPath, harness.ViewModel.DownloadedUpdatePath);
-        Assert.Equal("Ready", harness.ViewModel.UpdateStateBadge);
     }
 
     [Fact]
@@ -882,8 +1060,8 @@ public sealed class ShellViewModelTests
 
         Assert.True(harness.ViewModel.IsRussianLanguageSelected);
         Assert.Equal("Переключить режим редактирования (Ctrl+E)", harness.ViewModel.EditToggleTooltip);
-        Assert.Equal("Проверить", harness.ViewModel.CheckForUpdatesLabel);
-        Assert.Equal("Обновления", harness.ViewModel.UpdateStatusTitle);
+        Assert.Equal("Проверить", harness.ViewModel.UpdateActionLabel);
+        Assert.Equal("Проверка вручную", harness.ViewModel.UpdateStatusTitle);
     }
 
     [Fact]
@@ -895,7 +1073,7 @@ public sealed class ShellViewModelTests
 
         Assert.Equal(AppLanguage.Russian, harness.Settings.Language);
         Assert.True(harness.ViewModel.IsRussianLanguageSelected);
-        Assert.Equal("Проверить", harness.ViewModel.CheckForUpdatesLabel);
+        Assert.Equal("Проверить", harness.ViewModel.UpdateActionLabel);
         Assert.Equal("Слов: 0", harness.ViewModel.WordCountStatusLabel);
     }
 
@@ -932,13 +1110,16 @@ public sealed class ShellViewModelTests
         harness.ViewModel.SelectedLanguageOption = russianOption;
 
         Assert.Contains(nameof(ShellViewModel.WelcomeTagline), names);
-        Assert.Contains(nameof(ShellViewModel.AppMenuHeader), names);
+        Assert.Contains(nameof(ShellViewModel.AppMenuSettings), names);
+        Assert.Contains(nameof(ShellViewModel.UpdateActionLabel), names);
         Assert.Contains(nameof(ShellViewModel.LanguageOptions), names);
         Assert.Contains(nameof(ShellViewModel.SelectedLanguageOption), names);
         Assert.DoesNotContain("Item", names);
         Assert.DoesNotContain("Item[]", names);
         Assert.Equal("Тихое место для чтения Markdown.", harness.ViewModel.WelcomeTagline);
-        Assert.Equal("МЕНЮ", harness.ViewModel.AppMenuHeader);
+        Assert.Equal("Настройки…", harness.ViewModel.AppMenuSettings);
+        Assert.Equal("ОБНОВЛЕНИЯ", harness.ViewModel.UpdatesSectionTitle);
+        Assert.Equal("Проверить", harness.ViewModel.UpdateActionLabel);
     }
 
     [Fact]
@@ -1142,7 +1323,7 @@ public sealed class ShellViewModelTests
     }
 
     [Fact]
-    public async Task SettingsShortcutTogglesAppSettingsEverywhere()
+    public async Task SettingsShortcutTogglesTheSettingsWindowEverywhere()
     {
         var harness = CreateHarness();
         var viewModel = harness.ViewModel;

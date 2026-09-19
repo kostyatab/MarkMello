@@ -1,0 +1,165 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MarkMello.Presentation.ViewModels"
+             xmlns:views="using:MarkMello.Presentation.Views"
+             mc:Ignorable="d"
+             x:Class="MarkMello.Presentation.Views.AppSettingsDialogView"
+             x:DataType="vm:ShellViewModel">
+  <!-- Окно «Настройки» по A-AppSettings (ADR-0009 Rule 7): одна страница на общей рамке
+       диалогов. Тема, шрифт и размер живут в карточке Aa, здесь — редкие настройки. -->
+  <views:ModalDialogFrame Classes="mm-app-settings">
+    <StackPanel>
+      <Grid Classes="mm-app-settings-head"
+            ColumnDefinitions="*,Auto">
+        <TextBlock Classes="mm-dialog-title"
+                   VerticalAlignment="Center"
+                   Text="{Binding AppSettingsHeader}" />
+        <Button Name="CloseSettingsButton"
+                Grid.Column="1"
+                Classes="mm-settings-close"
+                Width="28"
+                Height="28"
+                views:ModalDialogFrame.IsInitialFocus="True"
+                Command="{Binding CloseOverlayCommand}"
+                ToolTip.Tip="{Binding OverlayCloseSettings}">
+          <views:LucideIcon Data="{DynamicResource LucideXGeometry}"
+                            Width="14"
+                            Height="14" />
+        </Button>
+      </Grid>
+
+      <!-- Значок Aa между частями фразы — та самая кнопка над документом -->
+      <StackPanel Classes="mm-app-settings-hint"
+                  Orientation="Horizontal"
+                  Spacing="6">
+        <TextBlock Text="{Binding AppSettingsReadingHintPrefix}" />
+        <Border Classes="mm-app-settings-aa">
+          <views:LucideIcon Data="{DynamicResource LucideALargeSmallGeometry}"
+                            Width="14"
+                            Height="14" />
+        </Border>
+        <TextBlock Text="{Binding AppSettingsReadingHintSuffix}" />
+      </StackPanel>
+
+      <Border Classes="mm-app-settings-row">
+        <Grid ColumnDefinitions="*,Auto"
+              ColumnSpacing="16">
+          <StackPanel Spacing="2"
+                      VerticalAlignment="Center">
+            <TextBlock Classes="mm-app-settings-label"
+                       Text="{Binding LanguageLabel}" />
+            <TextBlock Classes="mm-app-settings-caption"
+                       Text="{Binding LanguageHint}" />
+          </StackPanel>
+          <ComboBox Grid.Column="1"
+                    Classes="mm-language-select"
+                    ItemsSource="{Binding LanguageOptions}"
+                    SelectedItem="{Binding SelectedLanguageOption, Mode=TwoWay}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:LanguageSelectionItem">
+                <TextBlock Text="{Binding Label}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+        </Grid>
+      </Border>
+
+      <Border Classes="mm-app-settings-row">
+        <Grid ColumnDefinitions="*,Auto"
+              ColumnSpacing="16">
+          <StackPanel Spacing="2"
+                      VerticalAlignment="Center">
+            <TextBlock Classes="mm-app-settings-label"
+                       Text="{Binding WindowBorderLabel}" />
+            <TextBlock Classes="mm-app-settings-caption"
+                       Text="{Binding WindowBorderHint}" />
+          </StackPanel>
+          <Border Grid.Column="1"
+                  Classes="mm-card-segments"
+                  Width="200"
+                  VerticalAlignment="Center">
+            <Grid ColumnDefinitions="*,*,*"
+                  ColumnSpacing="2">
+              <ToggleButton Grid.Column="0"
+                            Classes="mm-card-segment"
+                            IsChecked="{Binding IsWindowBorderAutoSelected}">
+                <TextBlock Text="{Binding WindowBorderAuto}" />
+              </ToggleButton>
+              <ToggleButton Grid.Column="1"
+                            Classes="mm-card-segment"
+                            IsChecked="{Binding IsWindowBorderOnSelected}">
+                <TextBlock Text="{Binding WindowBorderOn}" />
+              </ToggleButton>
+              <ToggleButton Grid.Column="2"
+                            Classes="mm-card-segment"
+                            IsChecked="{Binding IsWindowBorderOffSelected}">
+                <TextBlock Text="{Binding WindowBorderOff}" />
+              </ToggleButton>
+            </Grid>
+          </Border>
+        </Grid>
+      </Border>
+
+      <TextBlock Classes="mm-app-settings-section"
+                 Text="{Binding UpdatesSectionTitle}" />
+
+      <!-- Все состояния обновлений — один шаблон: заголовок, пояснение, одна кнопка -->
+      <Border Classes="mm-app-settings-update">
+        <Grid ColumnDefinitions="*,Auto"
+              ColumnSpacing="14">
+          <StackPanel Spacing="1"
+                      VerticalAlignment="Center">
+            <TextBlock Classes="mm-app-settings-label"
+                       TextWrapping="Wrap"
+                       Text="{Binding UpdateStatusTitle}" />
+            <TextBlock Classes="mm-app-settings-caption"
+                       TextWrapping="Wrap"
+                       Text="{Binding UpdateStatusMessage}" />
+          </StackPanel>
+          <Button Name="UpdateActionButton"
+                  Grid.Column="1"
+                  VerticalAlignment="Center"
+                  Classes.mm-dialog-primary="{Binding IsUpdateActionPrimary}"
+                  Classes.mm-dialog-secondary="{Binding !IsUpdateActionPrimary}"
+                  Content="{Binding UpdateActionLabel}"
+                  Command="{Binding UpdateActionCommand}" />
+        </Grid>
+      </Border>
+
+      <Border Classes="mm-app-settings-footer">
+        <Grid ColumnDefinitions="*,Auto"
+              ColumnSpacing="12">
+          <!-- Длинная версия (1.0.0-preview.12) переносит имя автора, а не наезжает на ссылки -->
+          <WrapPanel Orientation="Horizontal"
+                     ItemSpacing="4">
+            <TextBlock Classes="mm-app-settings-caption"
+                       VerticalAlignment="Center"
+                       Text="{Binding AppSettingsVersionLine}" />
+            <Button Classes="mm-inline-link"
+                    Tag="https://ermolaev.tech"
+                    Click="OnLinkClick"
+                    Content="Andrey Ermolaev" />
+          </WrapPanel>
+          <StackPanel Grid.Column="1"
+                      Orientation="Horizontal"
+                      Spacing="12">
+            <Button Classes="mm-inline-link"
+                    Tag="https://markmello.ru"
+                    Click="OnLinkClick"
+                    Content="{Binding AppSettingsWebsite}" />
+            <Button Classes="mm-inline-link"
+                    Tag="https://t.me/mark_mello"
+                    Click="OnLinkClick"
+                    Content="Telegram" />
+            <Button Classes="mm-inline-link"
+                    Tag="https://github.com/dartdavros/MarkMello"
+                    Click="OnLinkClick"
+                    Content="GitHub" />
+          </StackPanel>
+        </Grid>
+      </Border>
+    </StackPanel>
+  </views:ModalDialogFrame>
+</UserControl>

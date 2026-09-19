@@ -4,7 +4,6 @@ public enum ShellOverlayKind
 {
     None,
     AppMenu,
-    AppSettings,
-    AppAbout,
+    Settings,
     ReadingSettings
 }

@@ -668,8 +668,6 @@ public partial class MainWindow : Window
         if (e.PropertyName is nameof(ShellViewModel.ShellOverlay)
             or nameof(ShellViewModel.IsSettingsOpen)
             or nameof(ShellViewModel.IsAppMenuOpen)
-            or nameof(ShellViewModel.IsAppSettingsOpen)
-            or nameof(ShellViewModel.IsAppAboutOpen)
             or nameof(ShellViewModel.HasOpenOverlay))
         {
             SyncOverlayWindowClasses();
@@ -1718,6 +1716,13 @@ public partial class MainWindow : Window
 
     private bool IsPointerWithinOpenOverlay(Visual source)
     {
+        // «Настройки» — модальная карточка: скрим накрывает всё окно, и клик по нему
+        // окно не закрывает, как и у остальных диалогов. Закрывают Esc и ✕.
+        if (_viewModel.IsAppSettingsOpen)
+        {
+            return true;
+        }
+
         if (_viewModel.IsSettingsOpen)
         {
             var settingsPanel = this.FindControl<Control>("SettingsPanel");
@@ -1739,24 +1744,6 @@ public partial class MainWindow : Window
             }
         }
 
-        if (_viewModel.IsAppSettingsOpen)
-        {
-            var appSettingsPanel = this.FindControl<Control>("AppSettingsPanel");
-            if (appSettingsPanel is not null && IsWithinVisual(source, appSettingsPanel))
-            {
-                return true;
-            }
-        }
-
-        if (_viewModel.IsAppAboutOpen)
-        {
-            var appAboutPanel = this.FindControl<Control>("AppAboutPanel");
-            if (appAboutPanel is not null && IsWithinVisual(source, appAboutPanel))
-            {
-                return true;
-            }
-        }
-
         var appMenuTrigger = this.FindControl<ToggleButton>("AppMenuTriggerButton");
         return appMenuTrigger is not null && IsWithinVisual(source, appMenuTrigger);
     }
@@ -1765,8 +1752,6 @@ public partial class MainWindow : Window
     {
         Classes.Set("mm-reading-settings-open", _viewModel.IsSettingsOpen);
         Classes.Set("mm-app-menu-open", _viewModel.IsAppMenuOpen);
-        Classes.Set("mm-app-settings-open", _viewModel.IsAppSettingsOpen);
-        Classes.Set("mm-app-about-open", _viewModel.IsAppAboutOpen);
     }
 
     private void OnViewModelCloseRequested(object? sender, EventArgs e)

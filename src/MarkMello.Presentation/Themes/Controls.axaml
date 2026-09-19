@@ -281,31 +281,8 @@
     <Setter Property="IsHitTestVisible" Value="True" />
     <Setter Property="RenderTransform" Value="translate(0px,0px) scale(1)" />
   </Style>
-  <Style Selector="Window.mm-app-settings-open Border.mm-settings-panel.mm-app-settings-panel">
-    <Setter Property="Opacity" Value="1" />
-    <Setter Property="IsHitTestVisible" Value="True" />
-    <Setter Property="RenderTransform" Value="translate(0px,0px) scale(1)" />
-  </Style>
-  <Style Selector="Window.mm-app-about-open Border.mm-settings-panel.mm-app-about-panel">
-    <Setter Property="Opacity" Value="1" />
-    <Setter Property="IsHitTestVisible" Value="True" />
-    <Setter Property="RenderTransform" Value="translate(0px,0px) scale(1)" />
-  </Style>
 
-  <Style Selector="Border.mm-settings-head-shell">
-    <Setter Property="Padding" Value="18,14,18,10" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
-    <Setter Property="BorderThickness" Value="0,0,0,1" />
-  </Style>
-
-  <Style Selector="TextBlock.mm-settings-title">
-    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
-    <Setter Property="FontSize" Value="12" />
-    <Setter Property="FontWeight" Value="Medium" />
-    <Setter Property="LetterSpacing" Value="1" />
-  </Style>
-
-  <!-- Назад и закрыть в шапке оверлеев -->
+  <!-- ✕ в шапке окна «Настройки» -->
   <Style Selector="Button.mm-settings-close">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
@@ -325,13 +302,6 @@
     <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
   </Style>
 
-  <Style Selector="Border.mm-settings-body-shell">
-    <Setter Property="Padding" Value="12,8,12,14" />
-  </Style>
-
-  <Style Selector="Border.mm-setting-row">
-    <Setter Property="Padding" Value="6,10" />
-  </Style>
   <Style Selector="Line.mm-setting-divider">
     <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="Height" Value="1" />
@@ -339,48 +309,6 @@
     <Setter Property="Stroke" Value="{DynamicResource MmBorderSoftBrush}" />
     <Setter Property="StrokeThickness" Value="1" />
     <Setter Property="StrokeDashArray" Value="2,2" />
-  </Style>
-
-  <Style Selector="TextBlock.mm-setting-label">
-    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
-    <Setter Property="FontSize" Value="13" />
-  </Style>
-
-  <Style Selector="TextBlock.mm-setting-hint">
-    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
-    <Setter Property="FontSize" Value="11" />
-  </Style>
-
-  <Style Selector="TextBlock.mm-setting-body">
-    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-    <Setter Property="FontSize" Value="12" />
-    <Setter Property="VerticalAlignment" Value="Center" />
-  </Style>
-
-  <Style Selector="TextBlock.mm-setting-meta">
-    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
-    <Setter Property="FontFamily" Value="{DynamicResource MmDocumentMonoFontFamily}" />
-    <Setter Property="FontSize" Value="11" />
-    <Setter Property="VerticalAlignment" Value="Center" />
-  </Style>
-
-  <Style Selector="Button.mm-menu-item">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="Padding" Value="6,10" />
-    <Setter Property="HorizontalAlignment" Value="Stretch" />
-    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-    <Setter Property="VerticalContentAlignment" Value="Center" />
-    <Setter Property="Cursor" Value="Hand" />
-  </Style>
-  <Style Selector="Button.mm-menu-item /template/ ContentPresenter">
-    <Setter Property="HorizontalAlignment" Value="Stretch" />
-  </Style>
-  <Style Selector="Button.mm-menu-item:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
-  </Style>
-  <Style Selector="Button.mm-menu-item:disabled">
-    <Setter Property="Opacity" Value="0.55" />
   </Style>
 
   <Style Selector="Button.mm-inline-link">
@@ -394,74 +322,70 @@
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
+  <!-- Ссылки внизу окна «Настройки»: акцентом, подчёркивание — по наведению -->
   <Style Selector="Button.mm-inline-link /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
+  </Style>
+  <Style Selector="Button.mm-inline-link:pointerover /template/ ContentPresenter, Button.mm-inline-link:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
     <Setter Property="TextBlock.TextDecorations" Value="Underline" />
   </Style>
-  <Style Selector="Button.mm-inline-link:pointerover /template/ ContentPresenter">
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource MmTextBrush}" />
+
+  <!--
+    Меню ⋯ (A-Menu): пункты 30 px с подписью сочетания справа, группы через линии.
+    Неприменимая команда гаснет — цвет задан у ContentPresenter, иначе Fluent
+    перекрасит её своими кистями.
+  -->
+  <Style Selector="Border.mm-app-menu-panel">
+    <Setter Property="Width" Value="288" />
+    <Setter Property="Padding" Value="6" />
   </Style>
 
-    <Style Selector="Border.mm-segmented">
-      <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="6" />
-      <Setter Property="Padding" Value="2" />
-      <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
-
-  <Style Selector="ToggleButton.mm-segmented-item">
+  <Style Selector="Button.mm-menu-command">
+    <Setter Property="Height" Value="30" />
+    <Setter Property="MinHeight" Value="30" />
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="CornerRadius" Value="7" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="CornerRadius" Value="4" />
-    <Setter Property="Padding" Value="10,4" />
-    <Setter Property="MinWidth" Value="0" />
-    <Setter Property="MinHeight" Value="0" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-    <Setter Property="FontSize" Value="12" />
-    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="FontSize" Value="13" />
     <Setter Property="Cursor" Value="Hand" />
-    <Setter Property="Transitions">
-      <Transitions>
-        <BrushTransition Property="Foreground"
-                         Duration="0:0:0.12" />
-      </Transitions>
-    </Setter>
   </Style>
-  <Style Selector="ToggleButton.mm-segmented-item /template/ ContentPresenter">
-    <Setter Property="BoxShadow" Value="0 0 0 0 Transparent" />
-    <Setter Property="Transitions">
-      <Transitions>
-        <BrushTransition Property="Background"
-                         Duration="0:0:0.12" />
-        <BoxShadowsTransition Property="BoxShadow"
-                              Duration="0:0:0.12" />
-      </Transitions>
-    </Setter>
-  </Style>
-  <Style Selector="ToggleButton.mm-segmented-item:pointerover">
-    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
-  </Style>
-  <Style Selector="ToggleButton.mm-segmented-item:pointerover /template/ ContentPresenter">
+  <Style Selector="Button.mm-menu-command /template/ ContentPresenter">
     <Setter Property="Background" Value="Transparent" />
-  </Style>
-  <Style Selector="ToggleButton.mm-segmented-item:checked">
     <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
   </Style>
-  <Style Selector="ToggleButton.mm-segmented-item:checked TextBlock">
+  <Style Selector="Button.mm-menu-command:pointerover /template/ ContentPresenter, Button.mm-menu-command:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
   </Style>
-  <Style Selector="ToggleButton.mm-segmented-item:checked /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
-    <Setter Property="BoxShadow" Value="0 1 2 0 #0D000000" />
+  <Style Selector="Button.mm-menu-command:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
   </Style>
-  <Style Selector="ToggleButton.mm-segmented-item:checked:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
-    <Setter Property="BoxShadow" Value="0 1 2 0 #0D000000" />
+
+  <Style Selector="Button.mm-menu-command TextBlock">
+    <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
-  <Style Selector="ToggleButton.mm-segmented-item:checked:pointerover TextBlock">
-    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+
+  <Style Selector="TextBlock.mm-menu-shortcut">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.mm-menu-command:disabled TextBlock.mm-menu-shortcut">
+    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
+  </Style>
+
+  <Style Selector="Border.mm-menu-separator">
+    <Setter Property="Height" Value="1" />
+    <Setter Property="Margin" Value="8,5" />
+    <Setter Property="Background" Value="{DynamicResource MmBorderSoftBrush}" />
   </Style>
 
   <!--
@@ -919,6 +843,82 @@
     <Setter Property="BoxShadow" Value="0 16 48 -10 #25000033" />
   </Style>
 
+  <!--
+    Окно «Настройки» (A-AppSettings) — на той же рамке, карточка шире: 480 px,
+    шапка 52 px, строки настроек 52 px с линией снизу, блок обновлений на заливке
+    вкладки и строка версии со ссылками внизу.
+  -->
+  <Style Selector="views|ModalDialogFrame.mm-app-settings /template/ Border#PART_Card">
+    <Setter Property="Width" Value="480" />
+    <Setter Property="Padding" Value="22,0,22,18" />
+    <Setter Property="CornerRadius" Value="14" />
+  </Style>
+
+  <Style Selector="Grid.mm-app-settings-head">
+    <Setter Property="Height" Value="52" />
+    <Setter Property="Margin" Value="0,0,-10,0" />
+  </Style>
+
+  <Style Selector="StackPanel.mm-app-settings-hint">
+    <Setter Property="Margin" Value="0,0,0,6" />
+  </Style>
+  <Style Selector="StackPanel.mm-app-settings-hint > TextBlock">
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+  </Style>
+
+  <Style Selector="Border.mm-app-settings-aa">
+    <Setter Property="Width" Value="22" />
+    <Setter Property="Height" Value="20" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource MmTextBrush}" />
+  </Style>
+  <Style Selector="Border.mm-app-settings-aa > views|LucideIcon">
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="Border.mm-app-settings-row">
+    <Setter Property="MinHeight" Value="52" />
+    <Setter Property="Padding" Value="0,8" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
+  </Style>
+
+  <Style Selector="TextBlock.mm-app-settings-label">
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+  </Style>
+
+  <Style Selector="TextBlock.mm-app-settings-caption">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+  </Style>
+
+  <Style Selector="TextBlock.mm-app-settings-section">
+    <Setter Property="Margin" Value="0,18,0,8" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="LetterSpacing" Value="0.5" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+  </Style>
+
+  <Style Selector="Border.mm-app-settings-update">
+    <Setter Property="Padding" Value="14,12,12,12" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Background" Value="{DynamicResource MmTabBrush}" />
+  </Style>
+
+  <Style Selector="Border.mm-app-settings-footer">
+    <Setter Property="Margin" Value="0,18,0,0" />
+    <Setter Property="Padding" Value="0,14,0,0" />
+    <Setter Property="BorderThickness" Value="0,1,0,0" />
+    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
+  </Style>
+
   <Style Selector="TextBlock.mm-dialog-title">
     <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
     <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
@@ -1052,6 +1052,18 @@
     <Setter Property="Background" Value="{DynamicResource MmAccentBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource MmElevatedBackgroundBrush}" />
     <Setter Property="Opacity" Value="0.88" />
+  </Style>
+
+  <!-- Кнопка блока обновлений в окне «Настройки» сидит на заливке вкладки — обычная
+       кнопка берёт заливку наведения. Стоит после общих: из равных побеждает поздний. -->
+  <Style Selector="Border.mm-app-settings-update Button.mm-dialog-secondary">
+    <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
+  </Style>
+  <Style Selector="Border.mm-app-settings-update Button.mm-dialog-secondary:pointerover /template/ ContentPresenter, Border.mm-app-settings-update Button.mm-dialog-secondary:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTabActiveBrush}" />
+  </Style>
+  <Style Selector="Border.mm-app-settings-update Button:disabled">
+    <Setter Property="Opacity" Value="0.6" />
   </Style>
 
   <Style Selector="TextBlock.mm-md-heading">

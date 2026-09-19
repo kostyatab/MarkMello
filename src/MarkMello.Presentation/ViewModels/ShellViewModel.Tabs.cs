@@ -74,14 +74,25 @@ public partial class ShellViewModel
     }
 
     [RelayCommand]
-    private Task ActivateNextTabAsync() => ActivateNeighbourAsync(1);
+    private Task ActivateNextTabAsync()
+    {
+        CloseAppSettingsWindow();
+        return ActivateNeighbourAsync(1);
+    }
 
     [RelayCommand]
-    private Task ActivatePreviousTabAsync() => ActivateNeighbourAsync(-1);
+    private Task ActivatePreviousTabAsync()
+    {
+        CloseAppSettingsWindow();
+        return ActivateNeighbourAsync(-1);
+    }
 
     [RelayCommand(CanExecute = nameof(CanCloseActiveTab))]
     private Task CloseActiveTabAsync()
-        => OpenDocuments.ActiveTab is { } tab ? CloseTabAsync(tab) : Task.CompletedTask;
+    {
+        CloseAppSettingsWindow();
+        return OpenDocuments.ActiveTab is { } tab ? CloseTabAsync(tab) : Task.CompletedTask;
+    }
 
     private bool CanCloseActiveTab() => OpenDocuments.ActiveTab is not null;
 

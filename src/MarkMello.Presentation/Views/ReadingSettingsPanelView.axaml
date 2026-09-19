@@ -182,7 +182,7 @@
             </Border>
           </StackPanel>
 
-          <!-- До окна «Настройки» строка ведёт в нынешние настройки приложения -->
+          <!-- Строка ведёт в окно «Настройки» (ADR-0009 Rule 5) -->
           <Button Classes="mm-card-footer"
                   Command="{Binding OpenAppSettingsCommand}">
             <Grid ColumnDefinitions="*,Auto,Auto"

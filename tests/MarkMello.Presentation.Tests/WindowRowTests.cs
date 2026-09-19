@@ -192,8 +192,6 @@ public sealed class WindowRowTests
     /// <summary>Меню ⋯ и карточка Aa раскрываются у правого края, под своими кнопками.</summary>
     [Theory]
     [InlineData("AppMenuPanel")]
-    [InlineData("AppSettingsPanel")]
-    [InlineData("AppAboutPanel")]
     [InlineData("SettingsPanel")]
     public Task CardsOpenUnderTheRowAtTheRightEdge(string panelName)
     {
