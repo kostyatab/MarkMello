@@ -199,7 +199,6 @@ public partial class ShellViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ActiveDocumentContent))]
     [NotifyPropertyChangedFor(nameof(EditToggleLabel))]
-    [NotifyPropertyChangedFor(nameof(EditShortcutLabel))]
     [NotifyPropertyChangedFor(nameof(ShowsEditPencilIcon))]
     [NotifyPropertyChangedFor(nameof(ShowsReadEyeIcon))]
     [NotifyPropertyChangedFor(nameof(ShowsAppMenuControl))]
@@ -325,8 +324,6 @@ public partial class ShellViewModel : ObservableObject
     public bool ShowsEditToggle => State == ViewState.Viewing && Document is not null;
 
     public string EditToggleLabel => IsEditMode ? _localization["ModeReading"] : _localization["ModeEdit"];
-
-    public string EditShortcutLabel => IsEditMode ? _localization["ModeReadShortcut"] : _localization["ModeEditShortcut"];
 
     public string AboutVersion => _aboutVersion;
 
@@ -1204,7 +1201,6 @@ public partial class ShellViewModel : ObservableObject
         }
 
         OnPropertyChanged(nameof(EditToggleLabel));
-        OnPropertyChanged(nameof(EditShortcutLabel));
         OnPropertyChanged(nameof(ShowsEditPencilIcon));
         OnPropertyChanged(nameof(ShowsReadEyeIcon));
         OnPropertyChanged(nameof(ShowsReadingStatus));

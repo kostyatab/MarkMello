@@ -457,107 +457,19 @@
                 VerticalAlignment="Bottom"
                 Padding="20,0,20,14"
                 IsHitTestVisible="False">
-          <Grid ColumnDefinitions="*,Auto">
-            <!-- В узком окне счётчики обрезаются, а не наезжают на подсказки справа. -->
-            <StackPanel Grid.Column="0"
-                        Orientation="Horizontal"
-                        Spacing="18"
-                        VerticalAlignment="Bottom"
-                        ClipToBounds="True"
-                        IsVisible="{Binding ShowsReadingStatus}">
-              <TextBlock Text="{Binding WordCountStatusLabel}"
-                          FontSize="11"
-                          Foreground="{DynamicResource MmTextFaintBrush}"
-                         IsVisible="{Binding ShowsReadingStatus}" />
-              <TextBlock Text="{Binding ReadTimeStatusLabel}"
-                          FontSize="11"
-                          Foreground="{DynamicResource MmTextFaintBrush}"
-                         IsVisible="{Binding ShowsReadingStatus}" />
-            </StackPanel>
-
-            <StackPanel Grid.Column="1"
-                        Orientation="Horizontal"
-                        Spacing="14"
-                        VerticalAlignment="Bottom">
-              <StackPanel Orientation="Horizontal"
-                          Spacing="4">
-                <Border Classes="kbd">
-                  <TextBlock Text="Ctrl"
-                             FontFamily="{DynamicResource MmDocumentMonoFontFamily}"
-                             FontSize="10" />
-                </Border>
-                <Border Classes="kbd">
-                  <TextBlock Text="O"
-                             FontFamily="{DynamicResource MmDocumentMonoFontFamily}"
-                             FontSize="10" />
-                </Border>
-                <TextBlock Text="{Binding StatusOpen}"
-                           FontSize="11"
-                           Foreground="{DynamicResource MmTextFaintBrush}"
-                           VerticalAlignment="Center"
-                           Margin="2,0,0,0" />
-              </StackPanel>
-
-              <!-- Подсказка про вкладки появляется только когда они есть -->
-              <StackPanel Orientation="Horizontal"
-                          Spacing="4"
-                          IsVisible="{Binding ShowsTabStrip}">
-                <Border Classes="kbd">
-                  <TextBlock Text="Ctrl"
-                             FontFamily="{DynamicResource MmDocumentMonoFontFamily}"
-                             FontSize="10" />
-                </Border>
-                <Border Classes="kbd">
-                  <TextBlock Text="W"
-                             FontFamily="{DynamicResource MmDocumentMonoFontFamily}"
-                             FontSize="10" />
-                </Border>
-                <TextBlock Text="{Binding StatusCloseTab}"
-                           FontSize="11"
-                           Foreground="{DynamicResource MmTextFaintBrush}"
-                           VerticalAlignment="Center"
-                           Margin="2,0,0,0" />
-              </StackPanel>
-
-              <StackPanel Orientation="Horizontal"
-                          Spacing="4">
-                <Border Classes="kbd">
-                  <TextBlock Text="Ctrl"
-                             FontFamily="{DynamicResource MmDocumentMonoFontFamily}"
-                             FontSize="10" />
-                </Border>
-                <Border Classes="kbd">
-                  <TextBlock Text="E"
-                             FontFamily="{DynamicResource MmDocumentMonoFontFamily}"
-                             FontSize="10" />
-                </Border>
-                <TextBlock Text="{Binding EditShortcutLabel}"
-                           FontSize="11"
-                           Foreground="{DynamicResource MmTextFaintBrush}"
-                           VerticalAlignment="Center"
-                           Margin="2,0,0,0" />
-              </StackPanel>
-
-              <StackPanel Orientation="Horizontal"
-                          Spacing="4">
-                <Border Classes="kbd">
-                  <TextBlock Text="Ctrl"
-                             FontFamily="{DynamicResource MmDocumentMonoFontFamily}"
-                             FontSize="10" />
-                </Border>
-                <Border Classes="kbd">
-                  <TextBlock Text=","
-                             FontFamily="{DynamicResource MmDocumentMonoFontFamily}"
-                             FontSize="10" />
-                </Border>
-                <TextBlock Text="{Binding StatusPrefs}"
-                           FontSize="11"
-                           Foreground="{DynamicResource MmTextFaintBrush}"
-                           VerticalAlignment="Center"
-                           Margin="2,0,0,0" />
-              </StackPanel>
-            </StackPanel>
-          </Grid>
+          <!-- В узком окне счётчики обрезаются по отступу, а не вылезают за край окна. -->
+          <StackPanel Orientation="Horizontal"
+                      Spacing="18"
+                      VerticalAlignment="Bottom"
+                      ClipToBounds="True"
+                      IsVisible="{Binding ShowsReadingStatus}">
+            <TextBlock Text="{Binding WordCountStatusLabel}"
+                       FontSize="11"
+                       Foreground="{DynamicResource MmTextFaintBrush}" />
+            <TextBlock Text="{Binding ReadTimeStatusLabel}"
+                       FontSize="11"
+                       Foreground="{DynamicResource MmTextFaintBrush}" />
+          </StackPanel>
         </Border>
 
         <Border IsVisible="{Binding IsDragHovering}"

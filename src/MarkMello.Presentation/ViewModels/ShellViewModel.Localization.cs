@@ -118,8 +118,6 @@ public partial class ShellViewModel
         nameof(ReadingWidthMedium),
         nameof(ReadingWidthNarrow),
         nameof(ReadingWidthWide),
-        nameof(StatusOpen),
-        nameof(StatusPrefs),
         nameof(TitleBarClose),
         nameof(TitleBarMaximize),
         nameof(TitleBarMinimize),
@@ -144,8 +142,6 @@ public partial class ShellViewModel
         nameof(SidebarSearchReset),
         nameof(SidebarSearchTruncated),
         nameof(SidebarTooltip),
-        nameof(StatusCloseTab),
-        nameof(StatusSwitchTabs),
         nameof(TabClose),
         nameof(TreeDelete),
         nameof(TreeDuplicate),
@@ -230,8 +226,6 @@ public partial class ShellViewModel
     public string SidebarSearchReset => _localization["SidebarSearchReset"];
     public string SidebarSearchTruncated => _localization["SidebarSearchTruncated"];
     public string SidebarTooltip => _localization["SidebarTooltip"];
-    public string StatusCloseTab => _localization["StatusCloseTab"];
-    public string StatusSwitchTabs => _localization["StatusSwitchTabs"];
     public string TabClose => _localization["TabClose"];
     public string TabsCloseOthers => _localization["TabsCloseOthers"];
     public string TabsOverflowHeader => _localization["TabsOverflowHeader"];
@@ -293,8 +287,6 @@ public partial class ShellViewModel
     public string ReadingWidthMedium => _localization["ReadingWidthMedium"];
     public string ReadingWidthNarrow => _localization["ReadingWidthNarrow"];
     public string ReadingWidthWide => _localization["ReadingWidthWide"];
-    public string StatusOpen => _localization["StatusOpen"];
-    public string StatusPrefs => _localization["StatusPrefs"];
     public string TitleBarClose => _localization["TitleBarClose"];
     public string TitleBarMaximize => _localization["TitleBarMaximize"];
     public string TitleBarMinimize => _localization["TitleBarMinimize"];
@@ -399,7 +391,6 @@ public partial class ShellViewModel
         EditorSession?.RefreshLocalizedProperties();
 
         OnPropertyChanged(nameof(EditToggleLabel));
-        OnPropertyChanged(nameof(EditShortcutLabel));
         OnPropertyChanged(nameof(NextThemeHint));
         OnPropertyChanged(nameof(FindResultLabel));
         OnPropertyChanged(nameof(CheckForUpdatesLabel));
