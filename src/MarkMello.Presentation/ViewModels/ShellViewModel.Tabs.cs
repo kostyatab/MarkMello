@@ -49,6 +49,10 @@ public partial class ShellViewModel
     /// </summary>
     public void ReportScrollOffset(double offset)
     {
+        // Линия под строкой окна идёт за тем, что видно, в том числе пока вкладка
+        // восстанавливает свою позицию.
+        IsReaderScrolled = offset > 0;
+
         if (_isRestoringTab || OpenDocuments.ActiveTab is not { } tab)
         {
             return;

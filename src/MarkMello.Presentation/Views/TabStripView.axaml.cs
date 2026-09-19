@@ -44,6 +44,9 @@ public partial class TabStripView : UserControl
         if (point.Properties.IsLeftButtonPressed)
         {
             viewModel.OpenDocuments.ActivateCommand.Execute(tab);
+
+            // Вкладка стоит в строке окна: необработанное нажатие ушло бы в перетаскивание окна.
+            e.Handled = true;
         }
     }
 }

@@ -53,21 +53,6 @@
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="Cursor" Value="Hand" />
   </Style>
-  <Style Selector="ToggleButton.topbar-ghost">
-    <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="6" />
-    <Setter Property="Padding" Value="0" />
-    <Setter Property="Width" Value="28" />
-    <Setter Property="Height" Value="28" />
-    <Setter Property="MinWidth" Value="28" />
-    <Setter Property="MinHeight" Value="28" />
-    <Setter Property="HorizontalContentAlignment" Value="Center" />
-    <Setter Property="VerticalContentAlignment" Value="Center" />
-    <Setter Property="Cursor" Value="Hand" />
-  </Style>
   <!--
     Иконки (Views/LucideIcon) берут цвет из Foreground, как текст. Fluent сам
     перекрашивает Foreground у ContentPresenter кнопки в :pointerover, :pressed,
@@ -89,74 +74,76 @@
     <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
   </Style>
 
-  <Style Selector="ToggleButton.topbar-ghost:pressed /template/ ContentPresenter, ToggleButton.topbar-ghost:disabled /template/ ContentPresenter">
+  <!--
+    Кнопки строки окна и шапки сайдбара (ADR-0009 Rule 2): иконка 30×30 без рамки
+    и фона, радиус 8. Наведение — MmTabHoverBrush; кнопка нажата или её карточка
+    открыта (:checked у ToggleButton) — MmTabActiveBrush. Иконка в этих состояниях
+    темнеет до цвета текста; :checked стоит ниже :pointerover, чтобы открытая
+    карточка держала заливку и под курсором.
+  -->
+  <Style Selector="Button.mm-row-button, ToggleButton.mm-row-button">
+    <Setter Property="Background" Value="Transparent" />
     <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-  </Style>
-  <Style Selector="ToggleButton.topbar-ghost:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
-  </Style>
-  <Style Selector="ToggleButton.topbar-ghost:checked /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmAccentSoftBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmAccentBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
-  </Style>
-
-  <Style Selector="ToggleButton.topbar-action">
-    <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="6" />
-    <Setter Property="Padding" Value="10,0" />
-    <Setter Property="Height" Value="28" />
-    <Setter Property="MinHeight" Value="28" />
-    <Setter Property="MinWidth" Value="74" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Width" Value="30" />
+    <Setter Property="Height" Value="30" />
+    <Setter Property="MinWidth" Value="30" />
+    <Setter Property="MinHeight" Value="30" />
+    <Setter Property="VerticalAlignment" Value="Center" />
     <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="Cursor" Value="Hand" />
   </Style>
-  <!-- У тумблера есть подпись, и в :pressed/:disabled иконка идёт за ней -->
-  <Style Selector="ToggleButton.topbar-action:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
+  <Style Selector="Button.mm-row-button:disabled /template/ ContentPresenter, ToggleButton.mm-row-button:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
+  </Style>
+  <Style Selector="Button.mm-row-button:pointerover /template/ ContentPresenter, ToggleButton.mm-row-button:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
   </Style>
-  <Style Selector="ToggleButton.topbar-action:pointerover TextBlock">
+  <Style Selector="Button.mm-row-button:pressed /template/ ContentPresenter, ToggleButton.mm-row-button:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTabActiveBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
   </Style>
-  <Style Selector="ToggleButton.topbar-action:checked /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmAccentSoftBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmAccentBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
-  </Style>
-  <Style Selector="ToggleButton.topbar-action:checked TextBlock">
-    <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
-  </Style>
-  <Style Selector="ToggleButton.topbar-action:disabled">
-    <Setter Property="Opacity" Value="0.55" />
+  <Style Selector="ToggleButton.mm-row-button:checked /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTabActiveBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
   </Style>
 
-  <!-- Title bar buttons (Win-style: Min / Max / Close) -->
+  <!--
+    Кнопки окна Windows (свернуть / развернуть / закрыть) — системные глифы на всю
+    высоту строки окна. Цвет глифа задан здесь, а не на самом Path: у крестика
+    под курсором он белый на красном, как у системных кнопок.
+  -->
   <Style Selector="Button.titlebar">
     <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTitleBarTextBrush}" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="CornerRadius" Value="0" />
     <Setter Property="Width" Value="46" />
-    <Setter Property="Height" Value="36" />
+    <Setter Property="Height" Value="44" />
     <Setter Property="Padding" Value="0" />
     <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="Focusable" Value="False" />
   </Style>
+  <Style Selector="Button.titlebar Path">
+    <Setter Property="Stroke" Value="{DynamicResource MmTextSoftBrush}" />
+    <Setter Property="StrokeThickness" Value="1" />
+  </Style>
   <Style Selector="Button.titlebar:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmSurfaceHoverBrush}" />
+    <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
+  </Style>
+  <Style Selector="Button.titlebar:pointerover Path">
+    <Setter Property="Stroke" Value="{DynamicResource MmTextBrush}" />
   </Style>
   <Style Selector="Button.titlebar.close:pointerover /template/ ContentPresenter">
     <Setter Property="Background" Value="#E81123" />
-    <Setter Property="TextElement.Foreground" Value="White" />
+  </Style>
+  <Style Selector="Button.titlebar.close:pointerover Path">
+    <Setter Property="Stroke" Value="White" />
   </Style>
 
   <!-- Welcome primary / secondary buttons -->
@@ -225,9 +212,6 @@
         <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22" />
       </Transitions>
     </Setter>
-  </Style>
-  <Style Selector="Border.mm-settings-panel.mm-popover-left">
-    <Setter Property="RenderTransformOrigin" Value="0%,0%" />
   </Style>
   <Style Selector="Border.mm-settings-panel.mm-popover-right">
     <Setter Property="RenderTransformOrigin" Value="100%,0%" />

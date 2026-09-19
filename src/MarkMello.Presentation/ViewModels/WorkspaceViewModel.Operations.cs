@@ -271,6 +271,10 @@ public sealed partial class WorkspaceViewModel
         return target is null ? Task.CompletedTask : _fileOperations.RevealAsync(target.Path).AsTask();
     }
 
+    /// <summary>Сама папка в файловом менеджере — пункт меню «имя папки ▾» в сайдбаре.</summary>
+    [RelayCommand]
+    private Task RevealRootAsync() => _fileOperations.RevealAsync(Folder.RootPath).AsTask();
+
     [RelayCommand]
     private Task RequestDeleteAsync(FileTreeNodeViewModel? node)
     {

@@ -138,6 +138,8 @@ public partial class ShellViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsWelcome))]
     [NotifyPropertyChangedFor(nameof(IsViewer))]
     [NotifyPropertyChangedFor(nameof(IsError))]
+    [NotifyPropertyChangedFor(nameof(ShowsFindToggle))]
+    [NotifyPropertyChangedFor(nameof(IsDocumentScrolled))]
     private ViewState _state = ViewState.NoDocument;
 
     [ObservableProperty]
@@ -195,24 +197,19 @@ public partial class ShellViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ActiveDocumentContent))]
-    [NotifyPropertyChangedFor(nameof(EditToggleLabel))]
-    [NotifyPropertyChangedFor(nameof(ShowsEditPencilIcon))]
-    [NotifyPropertyChangedFor(nameof(ShowsReadEyeIcon))]
-    [NotifyPropertyChangedFor(nameof(ShowsAppMenuControl))]
-    [NotifyPropertyChangedFor(nameof(IsAppMenuOpen))]
-    [NotifyPropertyChangedFor(nameof(IsAppSettingsOpen))]
-    [NotifyPropertyChangedFor(nameof(IsAppAboutOpen))]
-    [NotifyPropertyChangedFor(nameof(IsAppOverlayOpen))]
-    [NotifyPropertyChangedFor(nameof(HasOpenOverlay))]
-    [NotifyPropertyChangedFor(nameof(AppMenuOverlayContent))]
-    [NotifyPropertyChangedFor(nameof(AppSettingsOverlayContent))]
-    [NotifyPropertyChangedFor(nameof(AppAboutOverlayContent))]
+    [NotifyPropertyChangedFor(nameof(IsDocumentScrolled))]
     private bool _isEditMode;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ActiveDocumentContent))]
     [NotifyPropertyChangedFor(nameof(IsDirty))]
+    [NotifyPropertyChangedFor(nameof(IsDocumentScrolled))]
     private EditorSessionViewModel? _editorSession;
+
+    /// <summary>Вьюер прокручен вниз от начала документа — последнее, что он сообщил.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsDocumentScrolled))]
+    private bool _isReaderScrolled;
 
     [ObservableProperty]
     private bool _isDirtyPromptOpen;
@@ -256,8 +253,6 @@ public partial class ShellViewModel : ObservableObject
         ? string.Empty
         : FileName + (IsDirty ? " •" : string.Empty);
 
-    public bool HasDocumentTitle => State == ViewState.Viewing && !string.IsNullOrWhiteSpace(FileName);
-
     public bool IsWelcome => State == ViewState.NoDocument && !ShowsSidebar;
 
     public bool IsViewer => State == ViewState.Viewing;
@@ -270,16 +265,15 @@ public partial class ShellViewModel : ObservableObject
 
     public bool IsSettingsOpen => ShellOverlay == ShellOverlayKind.ReadingSettings;
 
-    public bool ShowsAppMenuControl => !IsEditMode;
+    // Меню ⋯ в строке окна есть всегда — и в правке, и на стартовом экране (ADR-0009 Rule 2).
+    public bool IsAppMenuOpen => ShellOverlay == ShellOverlayKind.AppMenu;
 
-    public bool IsAppMenuOpen => ShowsAppMenuControl && ShellOverlay == ShellOverlayKind.AppMenu;
+    public bool IsAppSettingsOpen => ShellOverlay == ShellOverlayKind.AppSettings;
 
-    public bool IsAppSettingsOpen => ShowsAppMenuControl && ShellOverlay == ShellOverlayKind.AppSettings;
+    public bool IsAppAboutOpen => ShellOverlay == ShellOverlayKind.AppAbout;
 
-    public bool IsAppAboutOpen => ShowsAppMenuControl && ShellOverlay == ShellOverlayKind.AppAbout;
-
-    public bool IsAppOverlayOpen => ShowsAppMenuControl
-        && ShellOverlay is ShellOverlayKind.AppMenu or ShellOverlayKind.AppSettings or ShellOverlayKind.AppAbout;
+    public bool IsAppOverlayOpen
+        => ShellOverlay is ShellOverlayKind.AppMenu or ShellOverlayKind.AppSettings or ShellOverlayKind.AppAbout;
 
     public bool HasOpenOverlay => IsSettingsOpen || IsAppOverlayOpen;
 
@@ -299,6 +293,20 @@ public partial class ShellViewModel : ObservableObject
 
     public bool ShowsReadingStatus => IsViewer && !IsEditMode;
 
+    /// <summary>
+    /// Кнопка поиска в строке окна: искать есть в чём только в открытом документе.
+    /// На стартовом экране, в пустой папке и на ошибке справа остаётся одно меню ⋯.
+    /// </summary>
+    public bool ShowsFindToggle => IsViewer;
+
+    /// <summary>
+    /// Активный документ прокручен вниз от начала — под строкой окна появляется линия
+    /// (ADR-0009 Rule 1). В чтении это позиция вьюера, в правке — редактора, за которым
+    /// идёт предпросмотр.
+    /// </summary>
+    public bool IsDocumentScrolled => IsViewer
+        && (IsEditMode ? EditorSession?.IsEditorScrolled == true : IsReaderScrolled);
+
     public string FindResultLabel
     {
         get
@@ -316,13 +324,7 @@ public partial class ShellViewModel : ObservableObject
 
     public ReadingPreferences DocumentReadingPreferences => _documentReadingPreferences;
 
-    public bool ShowsEditPencilIcon => !IsEditMode;
-
-    public bool ShowsReadEyeIcon => IsEditMode;
-
     public bool ShowsEditToggle => State == ViewState.Viewing && Document is not null;
-
-    public string EditToggleLabel => IsEditMode ? _localization["ModeReading"] : _localization["ModeEdit"];
 
     public string AboutVersion => _aboutVersion;
 
@@ -957,12 +959,6 @@ public partial class ShellViewModel : ObservableObject
     [RelayCommand]
     private void ToggleAppMenu()
     {
-        if (!ShowsAppMenuControl)
-        {
-            CloseAppOverlayCore();
-            return;
-        }
-
         MarkSecondaryFeaturesReady();
 
         IsFindBarOpen = false;
@@ -974,12 +970,6 @@ public partial class ShellViewModel : ObservableObject
     [RelayCommand]
     private void OpenAppSettings()
     {
-        if (!ShowsAppMenuControl)
-        {
-            CloseAppOverlayCore();
-            return;
-        }
-
         MarkSecondaryFeaturesReady();
 
         IsFindBarOpen = false;
@@ -989,7 +979,7 @@ public partial class ShellViewModel : ObservableObject
     /// <summary>
     /// ⌘, (Ctrl+, на Windows и Linux) — настройки приложения, как обещает нижняя строка
     /// карточки Aa (ADR-0009 Rule 7). Повторное нажатие закрывает их. До окна «Настройки»
-    /// открываются нынешние, поэтому в правке, где меню приложения нет, сочетание молчит.
+    /// открываются нынешние — из-под меню ⋯, в чтении и в правке одинаково.
     /// </summary>
     [RelayCommand]
     private void ToggleAppSettings()
@@ -1006,12 +996,6 @@ public partial class ShellViewModel : ObservableObject
     [RelayCommand]
     private void OpenAbout()
     {
-        if (!ShowsAppMenuControl)
-        {
-            CloseAppOverlayCore();
-            return;
-        }
-
         MarkSecondaryFeaturesReady();
 
         IsFindBarOpen = false;
@@ -1021,12 +1005,6 @@ public partial class ShellViewModel : ObservableObject
     [RelayCommand]
     private void ReturnToAppMenu()
     {
-        if (!ShowsAppMenuControl)
-        {
-            CloseAppOverlayCore();
-            return;
-        }
-
         MarkSecondaryFeaturesReady();
 
         ShellOverlay = ShellOverlayKind.AppMenu;
@@ -1035,12 +1013,6 @@ public partial class ShellViewModel : ObservableObject
     [RelayCommand]
     private void ReturnToAppSettings()
     {
-        if (!ShowsAppMenuControl)
-        {
-            CloseAppOverlayCore();
-            return;
-        }
-
         MarkSecondaryFeaturesReady();
 
         ShellOverlay = ShellOverlayKind.AppSettings;
@@ -1245,7 +1217,6 @@ public partial class ShellViewModel : ObservableObject
             IsFindBarOpen = false;
         }
 
-        OnPropertyChanged(nameof(HasDocumentTitle));
         OnPropertyChanged(nameof(ShowsReadingStatus));
         OnPropertyChanged(nameof(ShowsEditToggle));
         OnPropertyChanged(nameof(ShowsReadingSettingsToggle));
@@ -1266,28 +1237,16 @@ public partial class ShellViewModel : ObservableObject
 
         IsFindBarOpen = false;
 
+        // Смена режима меняет содержимое окна под открытыми карточками — закрываем их.
         if (value)
         {
             CloseAppOverlayCore();
             CloseSettings();
         }
 
-        OnPropertyChanged(nameof(EditToggleLabel));
-        OnPropertyChanged(nameof(ShowsEditPencilIcon));
-        OnPropertyChanged(nameof(ShowsReadEyeIcon));
         OnPropertyChanged(nameof(ShowsReadingStatus));
         OnPropertyChanged(nameof(ShowsReadingSettingsToggle));
         OnPropertyChanged(nameof(ReadingSettingsOverlayContent));
-        OnPropertyChanged(nameof(ShowsAppMenuControl));
-        OnPropertyChanged(nameof(ShowsFloatingAppMenuButton));
-        OnPropertyChanged(nameof(IsAppMenuOpen));
-        OnPropertyChanged(nameof(IsAppSettingsOpen));
-        OnPropertyChanged(nameof(IsAppAboutOpen));
-        OnPropertyChanged(nameof(IsAppOverlayOpen));
-        OnPropertyChanged(nameof(HasOpenOverlay));
-        OnPropertyChanged(nameof(AppMenuOverlayContent));
-        OnPropertyChanged(nameof(AppSettingsOverlayContent));
-        OnPropertyChanged(nameof(AppAboutOverlayContent));
         OnPropertyChanged(nameof(ActiveDocumentContent));
         UpdateCommandStates();
     }
@@ -1780,6 +1739,11 @@ public partial class ShellViewModel : ObservableObject
             _currentPath = EditorSession.CurrentPath;
         }
 
+        if (e.PropertyName == nameof(EditorSessionViewModel.IsEditorScrolled))
+        {
+            OnPropertyChanged(nameof(IsDocumentScrolled));
+        }
+
         if (e.PropertyName is nameof(EditorSessionViewModel.SourceText)
             or nameof(EditorSessionViewModel.LastPersistedSource)
             or nameof(EditorSessionViewModel.FileName)
@@ -1795,7 +1759,6 @@ public partial class ShellViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(FileName));
         OnPropertyChanged(nameof(TitleFileDisplayName));
-        OnPropertyChanged(nameof(HasDocumentTitle));
         OnPropertyChanged(nameof(WordCount));
         OnPropertyChanged(nameof(ReadTimeMinutes));
         OnPropertyChanged(nameof(WordCountStatusLabel));

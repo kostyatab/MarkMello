@@ -24,6 +24,7 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
     private ReadingPreferences _readingPreferences;
     private RenderedMarkdownDocument _renderedPreview;
     private string _statusMessage;
+    private bool _isEditorScrolled;
 
     public EditorSessionViewModel(
         MarkdownSource source,
@@ -178,6 +179,16 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
     {
         get => _splitRatio;
         set => SetProperty(ref _splitRatio, Math.Clamp(value, 0.2, 0.8));
+    }
+
+    /// <summary>
+    /// Текст в правке прокручен вниз от начала. Его сообщает вид правки; по нему shell
+    /// рисует линию под строкой окна так же, как по позиции вьюера в чтении.
+    /// </summary>
+    public bool IsEditorScrolled
+    {
+        get => _isEditorScrolled;
+        set => SetProperty(ref _isEditorScrolled, value);
     }
 
     public ReadingPreferences ReadingPreferences

@@ -6,20 +6,46 @@ namespace MarkMello.Presentation.Tests;
 
 public sealed class MainWindowPlacementTests
 {
-    [Fact]
-    public void CalculateTitleBarContentMarginKeepsDefaultInsetOutsideMacOS()
+    /// <summary>
+    /// Светофор macOS в шапке открытого сайдбара, а без неё — в строке окна слева:
+    /// тогда строка оставляет ему место (ADR-0009 Rule 1).
+    /// </summary>
+    [Theory]
+    [InlineData(false, 80)]
+    [InlineData(true, 8)]
+    public void WindowRowReservesTheTrafficLightsOnMacOSOnlyWithoutTheSidebar(bool showsSidebar, double leading)
     {
-        var margin = MainWindow.CalculateTitleBarContentMargin(isMacOS: false);
+        var padding = MainWindow.CalculateWindowRowPadding(isMacOS: true, isWindows: false, showsSidebar);
 
-        Assert.Equal(new Thickness(14, 0, 0, 0), margin);
+        Assert.Equal(new Thickness(leading, 0, 10, 0), padding);
     }
 
-    [Fact]
-    public void CalculateTitleBarContentMarginReservesMacOSWindowButtonsArea()
+    /// <summary>Кнопки окна Windows прижаты к правому краю, на Linux рамку рисует оконный менеджер.</summary>
+    /// <summary>
+    /// Карточки строки раскрываются под своей кнопкой у правого края. На Windows
+    /// правее кнопок строки стоят кнопки окна, и карточки отступают на их ширину.
+    /// </summary>
+    [Theory]
+    [InlineData(0, 12)]
+    [InlineData(153, 165)]
+    public void OverlayCardsKeepClearOfTheWindowButtons(double windowButtonsWidth, double trailing)
     {
-        var margin = MainWindow.CalculateTitleBarContentMargin(isMacOS: true);
+        var margin = MainWindow.CalculateOverlayCardMargin(windowButtonsWidth);
 
-        Assert.Equal(new Thickness(82, 0, 14, 0), margin);
+        Assert.Equal(new Thickness(0, 6, trailing, 0), margin);
+    }
+
+    [Theory]
+    [InlineData(true, 0)]
+    [InlineData(false, 10)]
+    public void WindowRowKeepsTheWindowsButtonsAtTheEdge(bool isWindows, double trailing)
+    {
+        foreach (var showsSidebar in new[] { false, true })
+        {
+            var padding = MainWindow.CalculateWindowRowPadding(isMacOS: false, isWindows, showsSidebar);
+
+            Assert.Equal(new Thickness(8, 0, trailing, 0), padding);
+        }
     }
 
     [Theory]

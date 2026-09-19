@@ -33,6 +33,4 @@
   <sys:Double x:Key="MmDocumentLineHeight">1.7</sys:Double>
   <sys:Double x:Key="MmDocumentMaxWidth">820</sys:Double>
 
-  <sys:Double x:Key="MmTitleBarHeight">36</sys:Double>
-
 </ResourceDictionary>

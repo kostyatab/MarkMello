@@ -15,7 +15,7 @@ public sealed class SidebarChromeTests
     private static readonly string Root = TestPaths.At("docs");
 
     [Fact]
-    public async Task CollapsingKeepsTheFolderOpenAndBringsBackTheFloatingButton()
+    public async Task CollapsingKeepsTheFolderOpenAndPutsTheShowButtonIntoTheRow()
     {
         var harness = await CreateAsync();
 
@@ -23,7 +23,7 @@ public sealed class SidebarChromeTests
 
         Assert.False(harness.ViewModel.ShowsSidebar);
         Assert.Null(harness.ViewModel.SidebarContent);
-        Assert.True(harness.ViewModel.ShowsFloatingAppMenuButton);
+        Assert.True(harness.ViewModel.ShowsExpandSidebarButton);
 
         // Папка остаётся открытой: сворачивание — про место на экране, а не про выход из режима.
         Assert.NotNull(harness.ViewModel.Workspace);
@@ -31,23 +31,25 @@ public sealed class SidebarChromeTests
     }
 
     /// <summary>
-    /// Свёрнутое дерево возвращает отдельная кнопка рядом с гамбургером: в макете
-    /// возврат был только пунктом меню, и найти его не получалось.
+    /// Свёрнутое дерево возвращает кнопка в строке окна: возврат только пунктом меню
+    /// найти не получалось. Подсказка у кнопки говорит, что она сделает, и с сочетанием.
     /// </summary>
     [Fact]
     public async Task CollapsedSidebarGetsItsOwnButtonBack()
     {
         var harness = await CreateAsync();
 
-        Assert.False(harness.ViewModel.ShowsFloatingSidebarButton);
+        Assert.False(harness.ViewModel.ShowsExpandSidebarButton);
+        Assert.Equal("Hide file panel (Ctrl+B)", harness.ViewModel.SidebarToggleTooltip);
 
         harness.ViewModel.ToggleSidebarCommand.Execute(null);
 
-        Assert.True(harness.ViewModel.ShowsFloatingSidebarButton);
+        Assert.True(harness.ViewModel.ShowsExpandSidebarButton);
+        Assert.Equal("Show file panel (Ctrl+B)", harness.ViewModel.SidebarToggleTooltip);
 
         harness.ViewModel.ToggleSidebarCommand.Execute(null);
 
-        Assert.False(harness.ViewModel.ShowsFloatingSidebarButton);
+        Assert.False(harness.ViewModel.ShowsExpandSidebarButton);
     }
 
     [Fact]
@@ -60,7 +62,7 @@ public sealed class SidebarChromeTests
 
         Assert.True(harness.ViewModel.ShowsSidebar);
         Assert.NotNull(harness.ViewModel.SidebarContent);
-        Assert.False(harness.ViewModel.ShowsFloatingAppMenuButton);
+        Assert.False(harness.ViewModel.ShowsExpandSidebarButton);
     }
 
     [Fact]
@@ -81,7 +83,7 @@ public sealed class SidebarChromeTests
     {
         var shell = CreateShell();
 
-        Assert.False(shell.ShowsFloatingSidebarButton);
+        Assert.False(shell.ShowsExpandSidebarButton);
     }
 
     [Fact]

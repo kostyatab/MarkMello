@@ -241,6 +241,11 @@ public partial class EditWorkspaceView : UserControl, IFindHost
         _previewDocumentView.DocumentRenderInvalidated += OnPreviewDocumentRenderInvalidated;
         _editorTextBox.TextChanged += OnEditorTextChanged;
 
+        if (DataContext is EditorSessionViewModel session)
+        {
+            session.IsEditorScrolled = _editorScrollViewer.Offset.Y > 0;
+        }
+
         if (_activeSearchQuery.Length > 0)
         {
             _previewDocumentView.ApplySearchQuery(_activeSearchQuery);
@@ -282,7 +287,23 @@ public partial class EditWorkspaceView : UserControl, IFindHost
 
     private void OnScrollViewerPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
     {
-        if (e.Property != ScrollViewer.OffsetProperty || _isSynchronizingScroll)
+        if (e.Property != ScrollViewer.OffsetProperty)
+        {
+            return;
+        }
+
+        // Линия под строкой окна идёт за редактором: он ведёт синхронизацию, а
+        // предпросмотр держит строку на якоре посреди экрана и в самом начале текста
+        // уже сдвинут. Редактор двигается и сам, и вслед за предпросмотром, поэтому
+        // проверка стоит до синхронизации.
+        if (sender is ScrollViewer editor
+            && ReferenceEquals(editor, _editorScrollViewer)
+            && DataContext is EditorSessionViewModel session)
+        {
+            session.IsEditorScrolled = editor.Offset.Y > 0;
+        }
+
+        if (_isSynchronizingScroll)
         {
             return;
         }

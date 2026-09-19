@@ -12,12 +12,10 @@
   <UserControl.Styles>
     <!-- ======================= Полоса вкладок ======================= -->
 
+    <!-- Полоса живёт в строке окна и берёт её высоту и фон. Прозрачный фон, а не
+         пустой: пустое место между вкладками должно ловить нажатие и тянуть окно. -->
     <Style Selector="Border.mm-tab-strip">
-      <Setter Property="Height" Value="34" />
-      <Setter Property="Background" Value="{DynamicResource MmTitleBarBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
-      <Setter Property="BorderThickness" Value="0,0,0,1" />
-      <Setter Property="Padding" Value="6,0,0,0" />
+      <Setter Property="Background" Value="Transparent" />
     </Style>
 
     <Style Selector="Border.mm-tab">

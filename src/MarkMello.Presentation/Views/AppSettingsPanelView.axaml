@@ -8,7 +8,7 @@
              x:Class="MarkMello.Presentation.Views.AppSettingsPanelView"
              x:DataType="vm:ShellViewModel">
       <Border
-              Classes="mm-settings-panel mm-popover-left mm-app-settings-panel"
+              Classes="mm-settings-panel mm-popover-right mm-app-settings-panel"
               Width="320">
         <StackPanel>
           <Border Classes="mm-settings-head-shell">

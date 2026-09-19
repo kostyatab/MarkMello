@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Threading;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 using Avalonia.VisualTree;
 using MarkMello.Presentation.ViewModels;
 
@@ -14,9 +15,31 @@ namespace MarkMello.Presentation.Views;
 /// </summary>
 public partial class WorkspaceSidebarView : UserControl
 {
+    // Шапка по A-Chrome: на macOS слева светофор, кнопка панели справа; на Windows
+    // и Linux кнопка слева.
+    private const double MacOsHeaderLeadingInset = 16;
+    private const double MacOsHeaderTrailingInset = 7;
+    private const double HeaderInset = 8;
+
+    /// <summary>
+    /// Строка дерева показывает текущий документ. Заливку рисует шаблон
+    /// <see cref="TreeViewItem"/>, куда класс из шаблона данных не дотягивается, поэтому
+    /// признак переносится на контейнер стилем и ловится селектором свойства.
+    /// </summary>
+    public static readonly AttachedProperty<bool> IsActiveRowProperty =
+        AvaloniaProperty.RegisterAttached<WorkspaceSidebarView, TreeViewItem, bool>("IsActiveRow");
+
+    public static bool GetIsActiveRow(TreeViewItem item) => item.GetValue(IsActiveRowProperty);
+
+    public static void SetIsActiveRow(TreeViewItem item, bool value) => item.SetValue(IsActiveRowProperty, value);
+
     public WorkspaceSidebarView()
     {
         InitializeComponent();
+
+        var (padding, alignment) = CalculateHeaderLayout(OperatingSystem.IsMacOS());
+        SidebarHeader.Padding = padding;
+        SidebarToggleButton.HorizontalAlignment = alignment;
 
         // TreeViewItem помечает нажатие обработанным ради выделения, поэтому Tapped
         // до строки не доходит: слушаем отпускание кнопки вместе с обработанными событиями.
@@ -33,6 +56,11 @@ public partial class WorkspaceSidebarView : UserControl
             RoutingStrategies.Bubble,
             handledEventsToo: true);
     }
+
+    internal static (Thickness Padding, HorizontalAlignment ToggleAlignment) CalculateHeaderLayout(bool isMacOS)
+        => isMacOS
+            ? (new Thickness(MacOsHeaderLeadingInset, 0, MacOsHeaderTrailingInset, 0), HorizontalAlignment.Right)
+            : (new Thickness(HeaderInset, 0), HorizontalAlignment.Left);
 
     private void OnTreePointerReleased(object? sender, PointerReleasedEventArgs e)
     {

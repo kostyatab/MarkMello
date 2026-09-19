@@ -21,9 +21,17 @@ public partial class MainWindow : Window
 {
     private const double DefaultWindowWidth = 1280;
     private const double DefaultWindowHeight = 840;
-    private const double TitleBarLeadingInset = 14;
-    private const double MacOsTitleBarLeadingInset = 82;
+    private const double WindowRowHeight = 44;
+    private const double WindowRowLeadingInset = 8;
+    private const double WindowRowTrailingInset = 10;
+    // Светофор macOS в строке окна: 16 до первой кнопки, 52 на три кнопки, 12 до содержимого.
+    private const double MacOsTrafficLightsInset = 80;
+    private const double OverlayCardTopInset = 6;
+    private const double OverlayCardTrailingInset = 12;
     private const int WindowPlacementMarginPixels = 8;
+
+    /// <summary>Класс области, за пустое место которой тянется окно: строка окна и шапка сайдбара.</summary>
+    internal const string WindowDragClass = "mm-window-drag";
 
     private readonly ShellViewModel _viewModel = default!;
     private readonly StartupSmokeTestOptions _startupSmokeTestOptions = StartupSmokeTestOptions.Disabled;
@@ -44,7 +52,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        ApplyPlatformTitleBarLayout();
+        ApplyWindowRowLayout();
     }
 
     public MainWindow(
@@ -66,7 +74,7 @@ public partial class MainWindow : Window
 
         ConfigurePlatformChrome();
         InitializeComponent();
-        ApplyPlatformTitleBarLayout();
+        ApplyWindowRowLayout();
         ApplyStartupWindowPlacement();
         SyncSidebarColumn();
         SyncOverlayWindowClasses();
@@ -79,6 +87,7 @@ public partial class MainWindow : Window
         AddHandler(DragDrop.DragLeaveEvent, OnDragLeave);
         AddHandler(DragDrop.DropEvent, OnDrop);
         AddHandler(PointerPressedEvent, OnWindowPointerPressed, RoutingStrategies.Tunnel);
+        AddHandler(PointerPressedEvent, OnTitleBarPointerPressed, RoutingStrategies.Bubble);
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
 
         Opened += OnWindowOpened;
@@ -95,7 +104,7 @@ public partial class MainWindow : Window
     /// <summary>
     /// Platform chrome rules for Avalonia 12:
     /// - Windows: extended client area + BorderOnly keeps the native resize border
-    ///   while the XAML layout draws the custom title bar.
+    ///   while the XAML layout draws the window row with its own window buttons.
     /// - macOS: keep native decorations, but extend the client area under our layout.
     ///   BorderOnly/None still have problematic drag behaviour in 12.0.x.
     /// - Linux: keep native chrome because window manager behaviour varies widely.
@@ -105,7 +114,7 @@ public partial class MainWindow : Window
         if (OperatingSystem.IsWindows())
         {
             ExtendClientAreaToDecorationsHint = true;
-            ExtendClientAreaTitleBarHeightHint = 36;
+            ExtendClientAreaTitleBarHeightHint = WindowRowHeight;
             WindowDecorations = global::Avalonia.Controls.WindowDecorations.BorderOnly;
             _windowsWndProcHookCallback = OnWindowsWndProc;
             Win32Properties.AddWndProcHookCallback(this, _windowsWndProcHookCallback);
@@ -113,24 +122,54 @@ public partial class MainWindow : Window
         else if (OperatingSystem.IsMacOS())
         {
             ExtendClientAreaToDecorationsHint = true;
-            ExtendClientAreaTitleBarHeightHint = 36;
+            ExtendClientAreaTitleBarHeightHint = WindowRowHeight;
             WindowDecorations = global::Avalonia.Controls.WindowDecorations.Full;
         }
         // Linux: let the window manager draw its native chrome.
     }
 
-    private void ApplyPlatformTitleBarLayout()
+    private void ApplyWindowRowLayout()
     {
-        if (this.FindControl<DockPanel>("TitleBarContent") is { } titleBarContent)
+        if (this.FindControl<Grid>("WindowRowContent") is { } rowContent)
         {
-            titleBarContent.Margin = CalculateTitleBarContentMargin(OperatingSystem.IsMacOS());
+            rowContent.Margin = CalculateWindowRowPadding(
+                OperatingSystem.IsMacOS(),
+                OperatingSystem.IsWindows(),
+                (DataContext as ShellViewModel)?.ShowsSidebar == true);
         }
     }
 
-    internal static Thickness CalculateTitleBarContentMargin(bool isMacOS)
-        => isMacOS
-            ? new Thickness(MacOsTitleBarLeadingInset, 0, TitleBarLeadingInset, 0)
-            : new Thickness(TitleBarLeadingInset, 0, 0, 0);
+    /// <summary>
+    /// Отступы строки окна (ADR-0009 Rule 1). Светофор macOS стоит в шапке открытого
+    /// сайдбара, а без неё — в самой строке слева, и строка оставляет ему место.
+    /// Кнопки окна Windows прижаты к правому краю, на macOS и Linux справа поле.
+    /// </summary>
+    internal static Thickness CalculateWindowRowPadding(bool isMacOS, bool isWindows, bool showsSidebar)
+        => new(
+            isMacOS && !showsSidebar ? MacOsTrafficLightsInset : WindowRowLeadingInset,
+            0,
+            isWindows ? 0 : WindowRowTrailingInset,
+            0);
+
+    /// <summary>
+    /// Карточки строки — меню ⋯, Aa и настройки — раскрываются под своей кнопкой
+    /// у правого края (ADR-0009 Rule 2). На Windows правее кнопок строки стоят ещё
+    /// кнопки окна, поэтому карточки отступают на их ширину: она приходит из самой
+    /// разметки, чтобы отступ не разъезжался с размерами кнопок.
+    /// </summary>
+    private void OnWindowButtonsSizeChanged(object? sender, SizeChangedEventArgs e)
+        => ApplyOverlayCardInset(e.NewSize.Width);
+
+    private void ApplyOverlayCardInset(double windowButtonsWidth)
+    {
+        if (this.FindControl<Panel>("OverlayCardHost") is { } host)
+        {
+            host.Margin = CalculateOverlayCardMargin(windowButtonsWidth);
+        }
+    }
+
+    internal static Thickness CalculateOverlayCardMargin(double windowButtonsWidth)
+        => new(0, OverlayCardTopInset, OverlayCardTrailingInset + Math.Max(0, windowButtonsWidth), 0);
 
     private async void OnWindowOpened(object? sender, EventArgs e)
     {
@@ -371,11 +410,18 @@ public partial class MainWindow : Window
 
     private void OnCloseClick(object? sender, RoutedEventArgs e) => Close();
 
+    /// <summary>
+    /// Пустое место строки окна и шапки сайдбара тянет окно, на Windows двойной клик
+    /// разворачивает его. Кнопки, вкладки и поля забирают нажатие себе, поэтому
+    /// обработчик на всплытии видит только нажатия по фону.
+    /// </summary>
     private void OnTitleBarPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         var isWindows = OperatingSystem.IsWindows();
         var isMacOS = OperatingSystem.IsMacOS();
-        if (!CanUseDraggableTitleBar(isWindows, isMacOS))
+        if (!CanUseDraggableTitleBar(isWindows, isMacOS)
+            || e.Source is not Visual source
+            || !IsWindowDragSource(source))
         {
             return;
         }
@@ -427,6 +473,19 @@ public partial class MainWindow : Window
 
     internal static bool CanUseDraggableTitleBar(bool isWindows, bool isMacOS)
         => isWindows || isMacOS;
+
+    internal static bool IsWindowDragSource(Visual source)
+    {
+        for (Visual? current = source; current is not null; current = current.GetVisualParent())
+        {
+            if (current.Classes.Contains(WindowDragClass))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private void OnWindowPointerPressed(object? sender, PointerPressedEventArgs e)
     {
@@ -595,6 +654,7 @@ public partial class MainWindow : Window
             or nameof(ShellViewModel.SidebarWidth))
         {
             SyncSidebarColumn();
+            ApplyWindowRowLayout();
             return;
         }
 
@@ -1696,7 +1756,6 @@ public partial class MainWindow : Window
 
     private void SyncOverlayWindowClasses()
     {
-        Classes.Set("mm-overlay-open", _viewModel.HasOpenOverlay);
         Classes.Set("mm-reading-settings-open", _viewModel.IsSettingsOpen);
         Classes.Set("mm-app-menu-open", _viewModel.IsAppMenuOpen);
         Classes.Set("mm-app-settings-open", _viewModel.IsAppSettingsOpen);

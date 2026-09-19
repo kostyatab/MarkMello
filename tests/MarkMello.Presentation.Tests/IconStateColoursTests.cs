@@ -28,23 +28,22 @@ public sealed class IconStateColoursTests
     {
         (string ClassName, bool IsToggle, string States, string Expected)[] cases =
         [
-            // Кнопки top bar и find bar: наведение темнее, нажатие — акцент.
+            // Кнопки find bar: наведение темнее, нажатие — акцент.
             ("topbar-ghost", false, "", Soft),
             ("topbar-ghost", false, ":pointerover", Text),
             ("topbar-ghost", false, ":pointerover :pressed", Accent),
             ("topbar-ghost", false, ":disabled", Soft),
-            // Меню и настройки чтения: открытая панель держит акцент и под курсором.
-            ("topbar-ghost", true, "", Soft),
-            ("topbar-ghost", true, ":pointerover", Text),
-            ("topbar-ghost", true, ":pointerover :pressed", Text),
-            ("topbar-ghost", true, ":pressed", Soft),
-            ("topbar-ghost", true, ":checked", Accent),
-            ("topbar-ghost", true, ":checked :pointerover", Accent),
-            // Тумблер Edit/Read.
-            ("topbar-action", true, "", Soft),
-            ("topbar-action", true, ":pointerover", Text),
-            ("topbar-action", true, ":checked", Accent),
-            ("topbar-action", true, ":checked :pointerover", Accent),
+            // Кнопки строки окна и шапки сайдбара: под курсором, нажатая и с открытой
+            // карточкой иконка темнеет до цвета текста — акцента в строке нет.
+            ("mm-row-button", false, "", Soft),
+            ("mm-row-button", false, ":pointerover", Text),
+            ("mm-row-button", false, ":pointerover :pressed", Text),
+            ("mm-row-button", false, ":disabled", Faint),
+            ("mm-row-button", true, "", Soft),
+            ("mm-row-button", true, ":pointerover", Text),
+            ("mm-row-button", true, ":pressed", Text),
+            ("mm-row-button", true, ":checked", Text),
+            ("mm-row-button", true, ":checked :pointerover", Text),
             ("welcome-secondary", false, "", Soft),
             ("welcome-secondary", false, ":pointerover", Text),
             ("welcome-secondary", false, ":pointerover :pressed", Text),

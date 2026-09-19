@@ -30,7 +30,6 @@ public sealed class ShellViewModelTests
         Assert.True(harness.ViewModel.IsEditMode);
         Assert.NotNull(harness.ViewModel.EditorSession);
         Assert.Same(harness.ViewModel.EditorSession, harness.ViewModel.ActiveDocumentContent);
-        Assert.Equal("Reading", harness.ViewModel.EditToggleLabel);
         Assert.Equal(1, harness.StartupMetrics.Marks.Count(stage => stage == StartupStage.EditorActivation));
     }
 
@@ -182,8 +181,12 @@ public sealed class ShellViewModelTests
         Assert.True(harness.ViewModel.IsEditMode);
     }
 
+    /// <summary>
+    /// Меню ⋯ стоит в строке окна и в правке (ADR-0009 Rule 2): вход в правку закрывает
+    /// открытую карточку, но меню открывается снова, как и настройки по ⌘,.
+    /// </summary>
     [Fact]
-    public async Task EnteringEditModeClosesAndHidesAppMenuOverlay()
+    public async Task EnteringEditModeClosesTheAppMenuButKeepsItAvailable()
     {
         var harness = CreateHarness();
         var path = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "one.md");
@@ -193,16 +196,23 @@ public sealed class ShellViewModelTests
         harness.ViewModel.ToggleAppMenuCommand.Execute(null);
 
         Assert.True(harness.ViewModel.IsAppMenuOpen);
-        Assert.True(harness.ViewModel.ShowsAppMenuControl);
         Assert.NotNull(harness.ViewModel.AppMenuOverlayContent);
 
         await harness.ViewModel.ToggleEditModeCommand.ExecuteAsync(null);
 
         Assert.True(harness.ViewModel.IsEditMode);
-        Assert.False(harness.ViewModel.ShowsAppMenuControl);
         Assert.False(harness.ViewModel.IsAppMenuOpen);
-        Assert.False(harness.ViewModel.IsAppOverlayOpen);
         Assert.Null(harness.ViewModel.AppMenuOverlayContent);
+
+        harness.ViewModel.ToggleAppMenuCommand.Execute(null);
+
+        Assert.True(harness.ViewModel.IsAppMenuOpen);
+        Assert.NotNull(harness.ViewModel.AppMenuOverlayContent);
+
+        harness.ViewModel.ToggleAppSettingsCommand.Execute(null);
+
+        Assert.True(harness.ViewModel.IsAppSettingsOpen);
+        Assert.True(harness.ViewModel.IsEditMode);
     }
 
     [Fact]
@@ -563,7 +573,7 @@ public sealed class ShellViewModelTests
         await harness.ViewModel.InitializeAsync();
 
         Assert.True(harness.ViewModel.IsRussianLanguageSelected);
-        Assert.Equal("Редактирование", harness.ViewModel.EditToggleLabel);
+        Assert.Equal("Переключить режим редактирования (Ctrl+E)", harness.ViewModel.EditToggleTooltip);
         Assert.Equal("Проверить", harness.ViewModel.CheckForUpdatesLabel);
         Assert.Equal("Обновления", harness.ViewModel.UpdateStatusTitle);
     }
@@ -638,12 +648,13 @@ public sealed class ShellViewModelTests
     }
 
     [Theory]
-    [InlineData("macOS", "Toggle edit mode (⌘E)", "⌘O", "⇧⌘O", "⌘B")]
-    [InlineData("Windows", "Toggle edit mode (Ctrl+E)", "Ctrl+O", "Ctrl+Shift+O", "Ctrl+B")]
-    [InlineData("Linux", "Toggle edit mode (Ctrl+E)", "Ctrl+O", "Ctrl+Shift+O", "Ctrl+B")]
+    [InlineData("macOS", "Toggle edit mode (⌘E)", "Find in document (⌘F)", "⌘O", "⇧⌘O", "⌘B")]
+    [InlineData("Windows", "Toggle edit mode (Ctrl+E)", "Find in document (Ctrl+F)", "Ctrl+O", "Ctrl+Shift+O", "Ctrl+B")]
+    [InlineData("Linux", "Toggle edit mode (Ctrl+E)", "Find in document (Ctrl+F)", "Ctrl+O", "Ctrl+Shift+O", "Ctrl+B")]
     public void ShortcutLabelsFollowPlatform(
         string platformName,
         string editTooltip,
+        string findTooltip,
         string openFile,
         string openFolder,
         string toggleSidebar)
@@ -651,6 +662,7 @@ public sealed class ShellViewModelTests
         var viewModel = CreateHarness(platformName: platformName).ViewModel;
 
         Assert.Equal(editTooltip, viewModel.EditToggleTooltip);
+        Assert.Equal(findTooltip, viewModel.FindToggleTooltip);
         Assert.Equal(openFile, viewModel.OpenFileShortcut);
         Assert.Equal(openFolder, viewModel.OpenFolderShortcut);
         Assert.Equal(toggleSidebar, viewModel.ToggleSidebarShortcut);
@@ -664,6 +676,7 @@ public sealed class ShellViewModelTests
         viewModel.SelectRussianLanguageCommand.Execute(null);
 
         Assert.Equal("Переключить режим редактирования (⌘E)", viewModel.EditToggleTooltip);
+        Assert.Equal("Найти в документе (⌘F)", viewModel.FindToggleTooltip);
         Assert.Equal("Вид: тема, шрифт, размер", viewModel.ReadingSettingsTooltip);
         Assert.Equal("Меньше (⌘-)", viewModel.ReadingSizeDecreaseTooltip);
         Assert.Equal("Больше (⌘+)", viewModel.ReadingSizeIncreaseTooltip);
@@ -785,7 +798,7 @@ public sealed class ShellViewModelTests
     }
 
     [Fact]
-    public async Task SettingsShortcutTogglesAppSettingsEverywhereButEditMode()
+    public async Task SettingsShortcutTogglesAppSettingsEverywhere()
     {
         var harness = CreateHarness();
         var viewModel = harness.ViewModel;
@@ -803,11 +816,12 @@ public sealed class ShellViewModelTests
         Assert.False(viewModel.IsSettingsOpen);
         Assert.True(viewModel.IsAppSettingsOpen);
 
-        // В правке меню приложения нет — до окна «Настройки» сочетание молчит.
+        // В правке тоже: меню ⋯ стоит в строке окна и там (ADR-0009 Rules 2, 7).
         viewModel.CloseOverlayCommand.Execute(null);
         await viewModel.ToggleEditModeCommand.ExecuteAsync(null);
         viewModel.ToggleAppSettingsCommand.Execute(null);
-        Assert.False(viewModel.HasOpenOverlay);
+        Assert.True(viewModel.IsAppSettingsOpen);
+        Assert.True(viewModel.IsEditMode);
     }
 
     [Theory]

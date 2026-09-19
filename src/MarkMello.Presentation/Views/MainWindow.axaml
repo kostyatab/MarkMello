@@ -66,23 +66,28 @@
   </Window.KeyBindings>
 
   <Window.Styles>
-    <Style Selector="Border.mm-top-chrome">
-      <Setter Property="Opacity" Value="0" />
-      <Setter Property="RenderTransform" Value="translate(0px,-4px)" />
-      <Setter Property="Transitions">
-        <Transitions>
-          <DoubleTransition Property="Opacity" Duration="0:0:0.18" />
-          <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" />
-        </Transitions>
-      </Setter>
+    <!-- Строка окна 44 px (ADR-0009 Rule 1): фон документа, без текста заголовка.
+         Пустое место строки тянет окно — класс mm-window-drag. -->
+    <Style Selector="Border.mm-window-row">
+      <Setter Property="Height" Value="44" />
+      <Setter Property="Background" Value="{DynamicResource MmBackgroundBrush}" />
     </Style>
-    <Style Selector="Window:pointerover Border.mm-top-chrome">
-      <Setter Property="Opacity" Value="1" />
-      <Setter Property="RenderTransform" Value="translate(0px,0px)" />
+    <!-- Линия под строкой — только когда документ прокручен: наверху документа
+         строка сливается с ним. Лежит поверх нижнего пикселя строки, поэтому
+         её появление ничего не сдвигает. -->
+    <Style Selector="Border.mm-window-row-divider">
+      <Setter Property="Height" Value="1" />
+      <Setter Property="VerticalAlignment" Value="Bottom" />
+      <Setter Property="Background" Value="{DynamicResource MmBorderSoftBrush}" />
+      <Setter Property="IsHitTestVisible" Value="False" />
     </Style>
-    <Style Selector="Window.mm-overlay-open Border.mm-top-chrome">
-      <Setter Property="Opacity" Value="1" />
-      <Setter Property="RenderTransform" Value="translate(0px,0px)" />
+    <!-- Черта между кнопками строки и кнопками окна Windows -->
+    <Style Selector="Border.mm-window-buttons-divider">
+      <Setter Property="Width" Value="1" />
+      <Setter Property="Height" Value="20" />
+      <Setter Property="Margin" Value="8,0,6,0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Background" Value="{DynamicResource MmBorderBrush}" />
     </Style>
 
     <Style Selector="Border.mm-status">
@@ -164,113 +169,161 @@
   <Border Name="WindowBorder"
           BorderBrush="{DynamicResource MmBorderBrush}"
           BorderThickness="0">
-    <Grid RowDefinitions="Auto,*">
+    <Grid Name="SidebarLayout">
 
-      <Border Grid.Row="0"
-              Height="36"
-              Background="{DynamicResource MmTitleBarBrush}">
-        <Grid ColumnDefinitions="*,Auto">
-          <Border Grid.Column="0"
-                  Background="Transparent"
-                  PointerPressed="OnTitleBarPointerPressed">
-            <DockPanel Name="TitleBarContent"
-                     LastChildFill="True"
-                     Margin="14,0,0,0"
-                     VerticalAlignment="Center">
-            <Ellipse DockPanel.Dock="Left"
-                       Width="5" Height="5"
-                       VerticalAlignment="Center"
-                       Margin="0,0,8,0"
-                       Fill="{DynamicResource MmAccentBrush}"
-                       IsVisible="{Binding HasDocumentTitle}" />
-              <TextBlock Text="{Binding WindowTitle}"
-                         FontSize="12"
-                         FontWeight="Medium"
-                         VerticalAlignment="Center"
-                         TextTrimming="CharacterEllipsis"
-                         Foreground="{DynamicResource MmTitleBarTextBrush}" />
-            </DockPanel>
-          </Border>
+      <!-- Ширину держит колонка, а не контент: GridSplitter двигает именно колонку,
+           и фиксированная ширина сайдбара оставляла бы рядом с ним пустую полосу.
+           Диапазон 220-340 из макета, он же в WorkspaceSidebarWidth. -->
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto" MinWidth="0" MaxWidth="340" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
 
-          <StackPanel Grid.Column="1"
-                      Orientation="Horizontal"
-                      IsVisible="{Binding ShowCustomTitleBar}">
-            <Button Classes="titlebar"
-                    Click="OnMinimizeClick"
-                    ToolTip.Tip="{Binding TitleBarMinimize}">
-              <Path Data="M0,5 L10,5"
-                    Stroke="{DynamicResource MmTitleBarTextBrush}"
-                    StrokeThickness="1" />
-            </Button>
-            <Button Name="TitleBarMaximizeButton"
-                    Classes="titlebar"
-                    Click="OnMaximizeClick">
-              <Grid Width="10" Height="10">
-                <Path Name="TitleBarMaximizeIcon"
-                      Data="M0,0 L10,0 L10,10 L0,10 Z"
-                      Stroke="{DynamicResource MmTitleBarTextBrush}"
-                      StrokeThickness="1"
-                      Fill="Transparent" />
-                <Path Name="TitleBarRestoreIcon"
-                      IsVisible="False"
-                      Data="M3.5,0.5 L9.5,0.5 L9.5,6.5 L7.5,6.5 M0.5,3.5 L6.5,3.5 L6.5,9.5 L0.5,9.5 Z"
-                      Stroke="{DynamicResource MmTitleBarTextBrush}"
-                      StrokeThickness="1"
-                      Fill="Transparent" />
-              </Grid>
-            </Button>
-            <Button Classes="titlebar close"
-                    Click="OnCloseClick"
-                    ToolTip.Tip="{Binding TitleBarClose}">
-              <Path Data="M0,0 L10,10 M10,0 L0,10"
-                    Stroke="{DynamicResource MmTitleBarTextBrush}"
-                    StrokeThickness="1" />
-            </Button>
-          </StackPanel>
-        </Grid>
-      </Border>
-
-      <Grid Grid.Row="1" Name="SidebarLayout">
-
-        <!-- Ширину держит колонка, а не контент: GridSplitter двигает именно колонку,
-             и фиксированная ширина сайдбара оставляла бы рядом с ним пустую полосу.
-             Диапазон 220-340 из макета, он же в WorkspaceSidebarWidth. -->
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="Auto" MinWidth="0" MaxWidth="340" />
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
-
-        <!-- ContentControl, а не сам контрол: в single-file режиме сайдбара не должно
-             быть в визуальном дереве вообще (ADR-0007 Rule 3). -->
-        <ContentControl Grid.Column="0"
-                        IsVisible="{Binding ShowsSidebar}"
-                        Content="{Binding SidebarContent}">
-          <ContentControl.ContentTemplate>
-            <DataTemplate x:DataType="vm:ShellViewModel">
-              <views:WorkspaceSidebarView />
-            </DataTemplate>
-          </ContentControl.ContentTemplate>
-        </ContentControl>
-
-        <GridSplitter Grid.Column="1"
-                      Classes="mm-editor-splitter"
+      <!-- ContentControl, а не сам контрол: в single-file режиме сайдбара не должно
+           быть в визуальном дереве вообще (ADR-0007 Rule 3). Его шапка 44 px — продолжение
+           строки окна: на macOS в ней светофор, и она тоже тянет окно. -->
+      <ContentControl Grid.Column="0"
                       IsVisible="{Binding ShowsSidebar}"
-                      DragCompleted="OnSidebarSplitterDragCompleted"
-                      ResizeDirection="Columns" />
+                      Content="{Binding SidebarContent}">
+        <ContentControl.ContentTemplate>
+          <DataTemplate x:DataType="vm:ShellViewModel">
+            <views:WorkspaceSidebarView />
+          </DataTemplate>
+        </ContentControl.ContentTemplate>
+      </ContentControl>
+
+      <GridSplitter Grid.Column="1"
+                    Classes="mm-editor-splitter"
+                    IsVisible="{Binding ShowsSidebar}"
+                    DragCompleted="OnSidebarSplitterDragCompleted"
+                    ResizeDirection="Columns" />
 
       <Grid Grid.Column="2"
-            RowDefinitions="Auto,*">
+            RowDefinitions="44,*">
 
-        <ContentControl Grid.Row="0"
-                        IsVisible="{Binding ShowsTabStrip}"
-                        Content="{Binding TabStripContent}">
-          <ContentControl.ContentTemplate>
-            <DataTemplate x:DataType="vm:ShellViewModel">
-              <views:TabStripView />
-            </DataTemplate>
-          </ContentControl.ContentTemplate>
-        </ContentControl>
+        <!-- Строка окна: вкладки и постоянный блок кнопок справа вместо тайтлбара
+             и строки вкладок (ADR-0009 Rules 1–2). Отступы по краям зависят от
+             платформы и сайдбара — их ставит code-behind. -->
+        <Border Grid.Row="0"
+                Name="WindowRow"
+                Classes="mm-window-row mm-window-drag">
+          <Grid Name="WindowRowContent"
+                ColumnDefinitions="Auto,*,Auto,Auto">
+
+            <!-- Свёрнутый сайдбар возвращается отсюда: без видимой кнопки дерево
+                 кажется потерянным. -->
+            <Button Grid.Column="0"
+                    Classes="mm-row-button"
+                    Margin="0,0,4,0"
+                    IsVisible="{Binding ShowsExpandSidebarButton}"
+                    Command="{Binding ToggleSidebarCommand}"
+                    ToolTip.Tip="{Binding SidebarToggleTooltip}">
+              <views:LucideIcon Data="{DynamicResource LucidePanelLeftOpenGeometry}"
+                                Width="14"
+                                Height="14" />
+            </Button>
+
+            <ContentControl Grid.Column="1"
+                            IsVisible="{Binding ShowsTabStrip}"
+                            Content="{Binding TabStripContent}">
+              <ContentControl.ContentTemplate>
+                <DataTemplate x:DataType="vm:ShellViewModel">
+                  <views:TabStripView />
+                </DataTemplate>
+              </ContentControl.ContentTemplate>
+            </ContentControl>
+
+            <!-- Кнопки видны всегда, без показа по наведению. Лишние для состояния
+                 прячутся: на стартовом экране остаётся одно меню ⋯, в правке нет Aa. -->
+            <StackPanel Grid.Column="2"
+                        Orientation="Horizontal"
+                        Spacing="4"
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Center">
+              <ToggleButton Name="FindTriggerButton"
+                            Classes="mm-row-button"
+                            IsVisible="{Binding ShowsFindToggle}"
+                            IsChecked="{Binding IsFindBarOpen, Mode=OneWay}"
+                            Command="{Binding ToggleFindBarCommand}"
+                            ToolTip.Tip="{Binding FindToggleTooltip}">
+                <views:LucideIcon Data="{DynamicResource LucideSearchGeometry}"
+                                  Width="14"
+                                  Height="14" />
+              </ToggleButton>
+
+              <ToggleButton Name="SettingsTriggerButton"
+                            Classes="mm-row-button"
+                            IsVisible="{Binding ShowsReadingSettingsToggle}"
+                            IsChecked="{Binding IsSettingsOpen, Mode=OneWay}"
+                            Command="{Binding ToggleSettingsCommand}"
+                            ToolTip.Tip="{Binding ReadingSettingsTooltip}">
+                <views:LucideIcon Data="{DynamicResource LucideALargeSmallGeometry}"
+                                  Width="14"
+                                  Height="14" />
+              </ToggleButton>
+
+              <ToggleButton Name="EditTriggerButton"
+                            Classes="mm-row-button"
+                            IsVisible="{Binding ShowsEditToggle}"
+                            IsChecked="{Binding IsEditMode, Mode=OneWay}"
+                            Command="{Binding ToggleEditModeCommand}"
+                            ToolTip.Tip="{Binding EditToggleTooltip}">
+                <views:LucideIcon Data="{DynamicResource LucidePenLineGeometry}"
+                                  Width="14"
+                                  Height="14" />
+              </ToggleButton>
+
+              <ToggleButton Name="AppMenuTriggerButton"
+                            Classes="mm-row-button"
+                            IsChecked="{Binding IsAppOverlayOpen, Mode=OneWay}"
+                            Command="{Binding ToggleAppMenuCommand}"
+                            ToolTip.Tip="{Binding AppMenuTooltip}">
+                <views:LucideIcon Data="{DynamicResource LucideEllipsisGeometry}"
+                                  Width="14"
+                                  Height="14" />
+              </ToggleButton>
+            </StackPanel>
+
+            <!-- Кнопки окна Windows: системные глифы 46×44. На macOS окно ведёт
+                 светофор, на Linux — рамка оконного менеджера. -->
+            <StackPanel Grid.Column="3"
+                        Name="WindowButtons"
+                        Orientation="Horizontal"
+                        IsVisible="{Binding ShowCustomTitleBar}"
+                        SizeChanged="OnWindowButtonsSizeChanged">
+              <Border Classes="mm-window-buttons-divider" />
+              <Button Classes="titlebar"
+                      Click="OnMinimizeClick"
+                      ToolTip.Tip="{Binding TitleBarMinimize}">
+                <Path Data="M0,5 L10,5" />
+              </Button>
+              <Button Name="TitleBarMaximizeButton"
+                      Classes="titlebar"
+                      Click="OnMaximizeClick">
+                <Grid Width="10" Height="10">
+                  <Path Name="TitleBarMaximizeIcon"
+                        Data="M0,0 L10,0 L10,10 L0,10 Z"
+                        Fill="Transparent" />
+                  <Path Name="TitleBarRestoreIcon"
+                        IsVisible="False"
+                        Data="M3.5,0.5 L9.5,0.5 L9.5,6.5 L7.5,6.5 M0.5,3.5 L6.5,3.5 L6.5,9.5 L0.5,9.5 Z"
+                        Fill="Transparent" />
+                </Grid>
+              </Button>
+              <Button Classes="titlebar close"
+                      Click="OnCloseClick"
+                      ToolTip.Tip="{Binding TitleBarClose}">
+                <Path Data="M0,0 L10,10 M10,0 L0,10" />
+              </Button>
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <Border Grid.Row="0"
+                Name="WindowRowDivider"
+                Classes="mm-window-row-divider"
+                IsVisible="{Binding IsDocumentScrolled}" />
 
       <Panel Grid.Row="1"
              Name="BodyPanel">
@@ -290,126 +343,58 @@
                 Background="{DynamicResource MmAccentBrush}"
                 IsHitTestVisible="False" />
 
-        <Border Classes="mm-top-chrome"
-                HorizontalAlignment="Left"
-                VerticalAlignment="Top"
-                Margin="16,12,0,0"
-                IsVisible="{Binding ShowsFloatingAppMenuButton}">
-          <StackPanel Orientation="Horizontal" Spacing="6">
-            <ToggleButton Name="AppMenuTriggerButton"
-                          Classes="topbar-ghost"
-                          IsChecked="{Binding IsAppOverlayOpen, Mode=OneWay}"
-                          Command="{Binding ToggleAppMenuCommand}"
-                          ToolTip.Tip="{Binding AppMenuTooltip}">
-              <views:LucideIcon Data="{DynamicResource LucideMenuGeometry}"
-                                Width="14"
-                                Height="14" />
-            </ToggleButton>
+        <!-- Карточки Aa, меню ⋯ и настройки раскрываются под строкой у правого края —
+             одно правило на всю строку (ADR-0009 Rule 2). Правый отступ держит хост:
+             на Windows справа от кнопок строки стоят ещё кнопки окна, и его ставит
+             code-behind по их ширине. -->
+        <Panel Name="OverlayCardHost"
+               HorizontalAlignment="Right"
+               VerticalAlignment="Top"
+               Margin="0,6,12,0">
+          <ContentControl Name="AppMenuPanel"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Top"
+                          Content="{Binding AppMenuOverlayContent}">
+            <ContentControl.ContentTemplate>
+              <DataTemplate x:DataType="vm:ShellViewModel">
+                <views:AppMenuPanelView />
+              </DataTemplate>
+            </ContentControl.ContentTemplate>
+          </ContentControl>
 
-            <!-- Зеркало шеврона из шапки сайдбара: свернуть дерево есть чем,
-                 развернуть обратно — тоже. -->
-            <Button Classes="topbar-ghost"
-                    IsVisible="{Binding ShowsFloatingSidebarButton}"
-                    Command="{Binding ToggleSidebarCommand}"
-                    ToolTip.Tip="{Binding AppMenuToggleSidebarHint}">
-              <views:LucideIcon Data="{DynamicResource LucidePanelLeftOpenGeometry}"
-                                Width="14"
-                                Height="14" />
-            </Button>
-          </StackPanel>
-        </Border>
+          <ContentControl Name="AppSettingsPanel"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Top"
+                          Content="{Binding AppSettingsOverlayContent}">
+            <ContentControl.ContentTemplate>
+              <DataTemplate x:DataType="vm:ShellViewModel">
+                <views:AppSettingsPanelView />
+              </DataTemplate>
+            </ContentControl.ContentTemplate>
+          </ContentControl>
 
-        <Border Classes="mm-top-chrome"
-                HorizontalAlignment="Right"
-                VerticalAlignment="Top"
-                Margin="0,12,16,0">
-          <StackPanel Orientation="Horizontal" Spacing="6">
-            <ToggleButton Classes="topbar-action"
-                          IsVisible="{Binding ShowsEditToggle}"
-                          IsChecked="{Binding IsEditMode, Mode=OneWay}"
-                          Command="{Binding ToggleEditModeCommand}"
-                          ToolTip.Tip="{Binding EditToggleTooltip}">
-              <StackPanel Orientation="Horizontal"
-                          Spacing="6"
-                          VerticalAlignment="Center">
-                <Panel Width="12"
-                       Height="12"
-                       VerticalAlignment="Center">
-                  <views:LucideIcon IsVisible="{Binding ShowsEditPencilIcon}"
-                                    Data="{DynamicResource LucidePenLineGeometry}"
-                                    Width="12"
-                                    Height="12" />
-                  <views:LucideIcon IsVisible="{Binding ShowsReadEyeIcon}"
-                                    Data="{DynamicResource LucideEyeGeometry}"
-                                    Width="12"
-                                    Height="12" />
-                </Panel>
-                <TextBlock Text="{Binding EditToggleLabel}"
-                           FontFamily="{DynamicResource MmDocumentSansFontFamily}"
-                           FontSize="12" />
-              </StackPanel>
-            </ToggleButton>
+          <ContentControl Name="AppAboutPanel"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Top"
+                          Content="{Binding AppAboutOverlayContent}">
+            <ContentControl.ContentTemplate>
+              <DataTemplate x:DataType="vm:ShellViewModel">
+                <views:AppAboutPanelView />
+              </DataTemplate>
+            </ContentControl.ContentTemplate>
+          </ContentControl>
 
-            <ToggleButton Name="SettingsTriggerButton"
-                          Classes="topbar-ghost"
-                          IsVisible="{Binding ShowsReadingSettingsToggle}"
-                          Command="{Binding ToggleSettingsCommand}"
-                          IsChecked="{Binding IsSettingsOpen, Mode=OneWay}"
-                          ToolTip.Tip="{Binding ReadingSettingsTooltip}">
-              <views:LucideIcon Data="{DynamicResource LucideALargeSmallGeometry}"
-                                Width="14"
-                                Height="14" />
-            </ToggleButton>
-          </StackPanel>
-        </Border>
-
-        <ContentControl Name="AppMenuPanel"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Top"
-                        Margin="16,54,0,0"
-                        Content="{Binding AppMenuOverlayContent}">
-          <ContentControl.ContentTemplate>
-            <DataTemplate x:DataType="vm:ShellViewModel">
-              <views:AppMenuPanelView />
-            </DataTemplate>
-          </ContentControl.ContentTemplate>
-        </ContentControl>
-
-        <ContentControl Name="AppSettingsPanel"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Top"
-                        Margin="16,54,0,0"
-                        Content="{Binding AppSettingsOverlayContent}">
-          <ContentControl.ContentTemplate>
-            <DataTemplate x:DataType="vm:ShellViewModel">
-              <views:AppSettingsPanelView />
-            </DataTemplate>
-          </ContentControl.ContentTemplate>
-        </ContentControl>
-
-        <ContentControl Name="AppAboutPanel"
-                        HorizontalAlignment="Left"
-                        VerticalAlignment="Top"
-                        Margin="16,54,0,0"
-                        Content="{Binding AppAboutOverlayContent}">
-          <ContentControl.ContentTemplate>
-            <DataTemplate x:DataType="vm:ShellViewModel">
-              <views:AppAboutPanelView />
-            </DataTemplate>
-          </ContentControl.ContentTemplate>
-        </ContentControl>
-
-        <ContentControl Name="SettingsPanel"
-                        HorizontalAlignment="Right"
-                        VerticalAlignment="Top"
-                        Margin="0,54,16,0"
-                        Content="{Binding ReadingSettingsOverlayContent}">
-          <ContentControl.ContentTemplate>
-            <DataTemplate x:DataType="vm:ShellViewModel">
-              <views:ReadingSettingsPanelView />
-            </DataTemplate>
-          </ContentControl.ContentTemplate>
-        </ContentControl>
+          <ContentControl Name="SettingsPanel"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Top"
+                          Content="{Binding ReadingSettingsOverlayContent}">
+            <ContentControl.ContentTemplate>
+              <DataTemplate x:DataType="vm:ShellViewModel">
+                <views:ReadingSettingsPanelView />
+              </DataTemplate>
+            </ContentControl.ContentTemplate>
+          </ContentControl>
+        </Panel>
 
         <ContentControl Name="FindBarHost"
                         HorizontalAlignment="Center"
@@ -483,7 +468,7 @@
                      VerticalAlignment="Center" />
         </Border>
 
-        <!-- Подтверждение удаления: скрим начинается под тайтлбаром, окно остаётся перетаскиваемым -->
+        <!-- Подтверждение удаления: скрим начинается под строкой окна, окно остаётся перетаскиваемым -->
         <ContentControl Content="{Binding DeletePromptContent}">
           <ContentControl.ContentTemplate>
             <DataTemplate x:DataType="vm:ShellViewModel">
@@ -556,8 +541,6 @@
           </Border>
         </Grid>
       </Panel>
-
-      </Grid>
 
       </Grid>
 

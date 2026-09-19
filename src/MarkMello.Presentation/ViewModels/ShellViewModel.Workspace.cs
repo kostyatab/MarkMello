@@ -20,8 +20,7 @@ public partial class ShellViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowsSidebar))]
     [NotifyPropertyChangedFor(nameof(SidebarContent))]
-    [NotifyPropertyChangedFor(nameof(ShowsFloatingAppMenuButton))]
-    [NotifyPropertyChangedFor(nameof(ShowsFloatingSidebarButton))]
+    [NotifyPropertyChangedFor(nameof(ShowsExpandSidebarButton))]
     // Пустой экран зависит от того, открыта ли папка: без папки это welcome,
     // с папкой — «выберите файл в дереве» (макет 07).
     [NotifyPropertyChangedFor(nameof(IsWelcome))]
@@ -41,8 +40,8 @@ public partial class ShellViewModel
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowsSidebar))]
     [NotifyPropertyChangedFor(nameof(SidebarContent))]
-    [NotifyPropertyChangedFor(nameof(ShowsFloatingAppMenuButton))]
-    [NotifyPropertyChangedFor(nameof(ShowsFloatingSidebarButton))]
+    [NotifyPropertyChangedFor(nameof(ShowsExpandSidebarButton))]
+    [NotifyPropertyChangedFor(nameof(SidebarToggleTooltip))]
     [NotifyPropertyChangedFor(nameof(CanToggleSidebar))]
     [NotifyPropertyChangedFor(nameof(IsWelcome))]
     [NotifyPropertyChangedFor(nameof(IsEmptyDocumentSurface))]
@@ -78,16 +77,10 @@ public partial class ShellViewModel
     public object? SidebarContent => ShowsSidebar ? this : null;
 
     /// <summary>
-    /// Плавающий гамбургер живёт только без сайдбара: при открытой папке его роль
-    /// исполняет кнопка в шапке сайдбара (макет 03).
+    /// «Показать панель файлов» в строке окна, слева от вкладок: свёрнутое дерево
+    /// без видимой кнопки возврата кажется потерянным (ADR-0009 Rule 1).
     /// </summary>
-    public bool ShowsFloatingAppMenuButton => ShowsAppMenuControl && !ShowsSidebar;
-
-    /// <summary>
-    /// Кнопка возврата свёрнутого дерева. В макете возврат был только через меню
-    /// плавающего гамбургера, но без видимой кнопки дерево кажется потерянным.
-    /// </summary>
-    public bool ShowsFloatingSidebarButton => Workspace is not null && IsSidebarCollapsed;
+    public bool ShowsExpandSidebarButton => Workspace is not null && IsSidebarCollapsed;
 
     public bool CanCloseFolder => Workspace is not null;
 

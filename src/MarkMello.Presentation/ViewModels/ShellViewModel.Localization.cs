@@ -79,6 +79,7 @@ public partial class ShellViewModel
         nameof(FindNextTooltip),
         nameof(FindPlaceholder),
         nameof(FindPreviousTooltip),
+        nameof(FindToggleTooltip),
         nameof(LanguageHint),
         nameof(LanguageLabel),
         nameof(LoadErrorOpenAnotherFile),
@@ -134,15 +135,17 @@ public partial class ShellViewModel
         nameof(ExternalChangeTitle),
         nameof(AppMenuToggleSidebarHint),
         nameof(AppMenuToggleSidebarLabel),
-        nameof(SidebarCollapse),
+        nameof(SidebarCreateTooltip),
         nameof(SidebarFooterLabel),
         nameof(SidebarNewFile),
         nameof(SidebarNewFolder),
+        nameof(SidebarOpenAnotherFolder),
         nameof(SidebarSearchEmpty),
         nameof(SidebarSearchMatches),
         nameof(SidebarSearchPlaceholder),
         nameof(SidebarSearchReset),
         nameof(SidebarSearchTruncated),
+        nameof(SidebarToggleTooltip),
         nameof(SidebarTooltip),
         nameof(TabClose),
         nameof(TreeDelete),
@@ -177,7 +180,6 @@ public partial class ShellViewModel
     public string AppMenuOpenFileHint => _localization["AppMenuOpenFileHint"];
     public string AppMenuOpenFolderHint => _localization["AppMenuOpenFolderHint"];
     public string AppMenuOpenFolderLabel => _localization["AppMenuOpenFolderLabel"];
-    public string SidebarCollapse => _localization["SidebarCollapse"];
     public string AppMenuToggleSidebarLabel => _localization["AppMenuToggleSidebarLabel"];
 
     public string AppMenuToggleSidebarHint => _localization[IsSidebarCollapsed
@@ -209,6 +211,16 @@ public partial class ShellViewModel
 
     public string SidebarNewFile => _localization["SidebarNewFile"];
     public string SidebarNewFolder => _localization["SidebarNewFolder"];
+    public string SidebarCreateTooltip => _localization["SidebarCreateTooltip"];
+    public string SidebarOpenAnotherFolder => _localization["SidebarOpenAnotherFolder"];
+
+    /// <summary>
+    /// Одна кнопка на оба направления: в шапке сайдбара она скрывает панель, в строке
+    /// окна при свёрнутой панели — показывает.
+    /// </summary>
+    public string SidebarToggleTooltip => _localization.Format(
+        IsSidebarCollapsed ? "SidebarShowTooltip" : "SidebarHideTooltip",
+        ToggleSidebarShortcut);
     public string TreeDelete => _localization["TreeDelete"];
     public string TreeDuplicate => _localization["TreeDuplicate"];
     public string TreeOpenInNewTab => _localization["TreeOpenInNewTab"];
@@ -250,6 +262,7 @@ public partial class ShellViewModel
     public string FindNextTooltip => _localization["FindNextTooltip"];
     public string FindPlaceholder => _localization["FindPlaceholder"];
     public string FindPreviousTooltip => _localization["FindPreviousTooltip"];
+    public string FindToggleTooltip => _localization.Format("FindToggleTooltip", CommandShortcut(Key.F));
     public string LanguageHint => _localization["LanguageHint"];
     public string LanguageLabel => _localization["LanguageLabel"];
     public string LoadErrorOpenAnotherFile => _localization["LoadErrorOpenAnotherFile"];
@@ -397,7 +410,6 @@ public partial class ShellViewModel
         NotifyLocalizedBindingPropertiesChanged();
         EditorSession?.RefreshLocalizedProperties();
 
-        OnPropertyChanged(nameof(EditToggleLabel));
         OnPropertyChanged(nameof(FindResultLabel));
         OnPropertyChanged(nameof(CheckForUpdatesLabel));
         OnPropertyChanged(nameof(DownloadUpdateLabel));

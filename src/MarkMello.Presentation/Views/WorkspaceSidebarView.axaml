@@ -20,37 +20,33 @@
       <Setter Property="BorderThickness" Value="0,0,1,0" />
     </Style>
 
-    <Style Selector="TextBlock.mm-sidebar-root">
-      <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
-      <Setter Property="FontSize" Value="12" />
-      <Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-      <Setter Property="VerticalAlignment" Value="Center" />
-      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-    </Style>
-
-    <Style Selector="ToggleButton.mm-sidebar-icon">
-      <Setter Property="Width" Value="24" />
-      <Setter Property="Height" Value="24" />
-      <Setter Property="Padding" Value="0" />
+    <!-- «имя папки ▾»: кнопка с меню действий над папкой (ADR-0009 Rule 4) -->
+    <Style Selector="Button.mm-sidebar-folder">
+      <Setter Property="Height" Value="28" />
+      <Setter Property="Padding" Value="8,0" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="CornerRadius" Value="4" />
-      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Cursor" Value="Hand" />
     </Style>
-    <Style Selector="ToggleButton.mm-sidebar-icon:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource MmSurfaceHoverBrush}" />
-      <Setter Property="CornerRadius" Value="4" />
+    <Style Selector="Button.mm-sidebar-folder:pointerover /template/ ContentPresenter, Button.mm-sidebar-folder:pressed /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
     </Style>
-    <Style Selector="ToggleButton.mm-sidebar-icon:checked /template/ ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource MmSurfaceHoverBrush}" />
-      <Setter Property="CornerRadius" Value="4" />
-    </Style>
-    <!-- Иконки шапки не перекрашиваются: наведение и checked показывает только фон.
-         Цвет стоит на самой иконке — Foreground кнопки Fluent меняет по состояниям. -->
-    <Style Selector="ToggleButton.mm-sidebar-icon views|LucideIcon">
+    <!-- Иконки подписи не перекрашиваются: наведение показывает только фон.
+         Цвет стоит на самих иконках — Foreground кнопки Fluent меняет по состояниям. -->
+    <Style Selector="Button.mm-sidebar-folder views|LucideIcon">
       <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+    </Style>
+
+    <Style Selector="TextBlock.mm-sidebar-root">
+      <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
     </Style>
 
     <Style Selector="TreeView.mm-tree">
@@ -71,9 +67,13 @@
            о раскрытии, каталог не читается, и под папкой остаётся пустая строка-заглушка. -->
       <Setter Property="IsExpanded"
               Value="{CompiledBinding IsExpanded, Mode=TwoWay, DataType=vm:FileTreeNodeViewModel}" />
-      <Setter Property="MinHeight" Value="26" />
+      <!-- Заливку текущего файла рисует шаблон контейнера, куда класс из шаблона
+           данных не дотягивается: признак переносится на контейнер свойством. -->
+      <Setter Property="views:WorkspaceSidebarView.IsActiveRow"
+              Value="{CompiledBinding IsActiveDocument, DataType=vm:FileTreeNodeViewModel}" />
+      <Setter Property="MinHeight" Value="28" />
       <Setter Property="Padding" Value="0" />
-      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="CornerRadius" Value="7" />
       <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
       <!-- Тот же панельный шаблон для вложенных уровней: раскрытый большой каталог
            не должен стоить дороже корневого. -->
@@ -84,13 +84,12 @@
       </Setter>
     </Style>
 
-    <!-- Отступы уровней из макета: 6px у корня, +20px на уровень, шеврон 12px
-         с щелью 6px. Штатный шаблон отводит место под шеврон в каждой строке и
-         добавляет свой отступ вложенности — вместе это давало дыру перед именем,
-         особенно у файлов, у которых шеврона нет вовсе. -->
+    <!-- Отступы уровней из макета: 6px у корня, +16px на уровень, место под шеврон
+         12px с щелью 6px — в каждой строке, чтобы иконки файлов стояли ровно под
+         иконками папок того же уровня. Штатный отступ вложенности Fluent заменён
+         своим: вместе они давали дыру перед именем. -->
     <Style Selector="TreeView.mm-tree TreeViewItem /template/ Panel#PART_ExpandCollapseChevronContainer">
-      <Setter Property="Width"
-              Value="{CompiledBinding IsDirectory, DataType=vm:FileTreeNodeViewModel, Converter={x:Static views:TreeChevronWidthConverter.Instance}}" />
+      <Setter Property="Width" Value="18" />
       <Setter Property="Margin"
               Value="{Binding $parent[TreeViewItem].Level, Converter={x:Static views:TreeLevelIndentConverter.Instance}}" />
     </Style>
@@ -122,16 +121,21 @@
          который в тёплой палитре выглядит инородным фиолетовым пятном. -->
     <Style Selector="TreeView.mm-tree TreeViewItem /template/ Border#PART_LayoutRoot">
       <Setter Property="Background" Value="Transparent" />
-      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="CornerRadius" Value="7" />
     </Style>
     <Style Selector="TreeView.mm-tree TreeViewItem:pointerover /template/ Border#PART_LayoutRoot">
-      <Setter Property="Background" Value="{DynamicResource MmSurfaceHoverBrush}" />
+      <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
     </Style>
     <Style Selector="TreeView.mm-tree TreeViewItem:selected /template/ Border#PART_LayoutRoot">
-      <Setter Property="Background" Value="{DynamicResource MmSurfaceHoverBrush}" />
+      <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
     </Style>
     <Style Selector="TreeView.mm-tree TreeViewItem:selected:focus /template/ Border#PART_LayoutRoot">
-      <Setter Property="Background" Value="{DynamicResource MmSurfaceHoverBrush}" />
+      <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
+    </Style>
+    <!-- Текущий файл — заливка вместо полоски (ADR-0009 Rule 1). Ниже наведения
+         и выделения, чтобы держаться и под курсором. -->
+    <Style Selector="TreeView.mm-tree TreeViewItem[(views|WorkspaceSidebarView.IsActiveRow)=True] /template/ Border#PART_LayoutRoot">
+      <Setter Property="Background" Value="{DynamicResource MmTabActiveBrush}" />
     </Style>
     <Style Selector="TreeView.mm-tree TreeViewItem:selected /template/ ContentPresenter#PART_HeaderPresenter">
       <Setter Property="Background" Value="Transparent" />
@@ -139,7 +143,7 @@
 
     <Style Selector="TextBlock.mm-tree-label">
       <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
-      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="FontSize" Value="13" />
       <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
       <Setter Property="VerticalAlignment" Value="Center" />
       <Setter Property="TextTrimming" Value="CharacterEllipsis" />
@@ -148,12 +152,28 @@
     <Style Selector="TextBlock.mm-tree-label.inert">
       <Setter Property="Foreground" Value="{DynamicResource MmTreeInertTextBrush}" />
     </Style>
-    <!-- Активный документ: акцент даёт планку слева бесплатно через вес и цвет -->
-    <Style Selector="Border.mm-tree-active-bar">
-      <Setter Property="Width" Value="2" />
-      <Setter Property="Margin" Value="-6,4,0,4" />
-      <Setter Property="CornerRadius" Value="1" />
-      <Setter Property="Background" Value="{DynamicResource MmAccentBrush}" />
+    <!-- Иконка строки: папка закрытая или открытая, документ, прочий файл. Иконку
+         текущего файла выделяет акцент, не-документ — тот же приглушённый цвет,
+         что и его имя. -->
+    <Style Selector="views|LucideIcon.mm-tree-icon">
+      <Setter Property="Data" Value="{DynamicResource LucideFileGeometry}" />
+      <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="views|LucideIcon.mm-tree-icon.document">
+      <Setter Property="Data" Value="{DynamicResource LucideFileTextGeometry}" />
+    </Style>
+    <Style Selector="views|LucideIcon.mm-tree-icon.folder">
+      <Setter Property="Data" Value="{DynamicResource LucideFolderGeometry}" />
+    </Style>
+    <Style Selector="views|LucideIcon.mm-tree-icon.folder.open">
+      <Setter Property="Data" Value="{DynamicResource LucideFolderOpenGeometry}" />
+    </Style>
+    <Style Selector="views|LucideIcon.mm-tree-icon.inert">
+      <Setter Property="Foreground" Value="{DynamicResource MmTreeInertTextBrush}" />
+    </Style>
+    <Style Selector="views|LucideIcon.mm-tree-icon.active">
+      <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
     </Style>
 
     <Style Selector="TextBlock.mm-tree-label.active">
@@ -171,13 +191,13 @@
     <!-- ======================= Поиск в сайдбаре ======================= -->
 
     <Style Selector="Border.mm-search-shell">
-      <Setter Property="Height" Value="28" />
-      <Setter Property="Margin" Value="10,0,10,8" />
-      <Setter Property="Padding" Value="9,0" />
-      <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
+      <Setter Property="Height" Value="30" />
+      <Setter Property="Margin" Value="10,0,10,10" />
+      <Setter Property="Padding" Value="10,0" />
+      <Setter Property="Background" Value="{DynamicResource MmBackgroundBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
       <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="CornerRadius" Value="8" />
     </Style>
     <!-- Активный поиск обводится акцентом: дерево в этот момент скрыто, и это единственный признак -->
     <Style Selector="Border.mm-search-shell.active">
@@ -196,7 +216,7 @@
       <Setter Property="Padding" Value="0" />
       <Setter Property="MinHeight" Value="0" />
       <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
-      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontSize" Value="12.5" />
       <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
       <Setter Property="CaretBrush" Value="{DynamicResource MmTextBrush}" />
       <Setter Property="VerticalAlignment" Value="Center" />
@@ -292,24 +312,6 @@
 
     <!-- ======================= Операции в дереве ======================= -->
 
-    <Style Selector="Button.mm-sidebar-action">
-      <Setter Property="Width" Value="24" />
-      <Setter Property="Height" Value="24" />
-      <Setter Property="Padding" Value="0" />
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="CornerRadius" Value="4" />
-      <Setter Property="HorizontalContentAlignment" Value="Center" />
-      <Setter Property="VerticalContentAlignment" Value="Center" />
-    </Style>
-    <Style Selector="Button.mm-sidebar-action:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource MmSurfaceHoverBrush}" />
-      <Setter Property="CornerRadius" Value="4" />
-    </Style>
-    <Style Selector="Button.mm-sidebar-action views|LucideIcon">
-      <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-    </Style>
-
     <!-- Инлайн-ввод имени встаёт в дерево, а не в диалог: видно, куда попадёт элемент -->
     <Style Selector="TextBox.mm-tree-edit-input">
       <Setter Property="Height" Value="24" />
@@ -363,60 +365,83 @@
   </UserControl.Styles>
 
   <Border Classes="mm-sidebar">
-    <Grid RowDefinitions="44,Auto,*,Auto">
+    <Grid RowDefinitions="44,Auto,Auto,*,Auto">
 
-      <!-- Шапка: гамбургер переезжает сюда с плавающей позиции, рядом — имя корня -->
-      <Grid Grid.Row="0"
-            ColumnDefinitions="Auto,*,Auto,Auto,Auto"
-            Margin="10,0,8,0"
-            VerticalAlignment="Center">
-        <ToggleButton Grid.Column="0"
-                      Classes="mm-sidebar-icon"
-                      IsChecked="{Binding IsAppOverlayOpen, Mode=OneWay}"
-                      Command="{Binding ToggleAppMenuCommand}"
-                      IsVisible="{Binding ShowsAppMenuControl}"
-                      ToolTip.Tip="{Binding AppMenuTooltip}">
-          <views:LucideIcon Data="{DynamicResource LucideMenuGeometry}"
-                            Width="14"
-                            Height="14" />
-        </ToggleButton>
-
-        <TextBlock Grid.Column="1"
-                   Classes="mm-sidebar-root"
-                   Margin="8,0,0,0"
-                   Text="{Binding Workspace.RootDisplayName}"
-                   ToolTip.Tip="{Binding Workspace.Folder.RootPath}" />
-
-        <Button Grid.Column="2"
-                Classes="mm-sidebar-action"
-                Command="{Binding Workspace.StartNewFileCommand}"
-                ToolTip.Tip="{Binding SidebarNewFile}">
-          <views:LucideIcon Data="{DynamicResource LucideFilePlusGeometry}"
-                            Width="14"
-                            Height="14" />
-        </Button>
-
-        <Button Grid.Column="4"
-                Classes="mm-sidebar-action"
+      <!-- Шапка 44 px — продолжение строки окна: пустое место тянет окно, на macOS
+           слева стоит светофор. Сторону кнопки и отступы по платформе ставит
+           code-behind. -->
+      <Border Grid.Row="0"
+              Name="SidebarHeader"
+              Classes="mm-window-drag"
+              Background="Transparent">
+        <Button Name="SidebarToggleButton"
+                Classes="mm-row-button"
                 Command="{Binding ToggleSidebarCommand}"
-                ToolTip.Tip="{Binding SidebarCollapse}">
+                ToolTip.Tip="{Binding SidebarToggleTooltip}">
           <views:LucideIcon Data="{DynamicResource LucidePanelLeftCloseGeometry}"
                             Width="14"
                             Height="14" />
         </Button>
+      </Border>
 
-        <Button Grid.Column="3"
-                Classes="mm-sidebar-action"
-                Command="{Binding Workspace.StartNewFolderCommand}"
-                ToolTip.Tip="{Binding SidebarNewFolder}">
-          <views:LucideIcon Data="{DynamicResource LucideFolderPlusGeometry}"
+      <!-- «имя папки ▾» — действия над самой папкой, «+» — создание в ней -->
+      <Grid Grid.Row="1"
+            ColumnDefinitions="*,Auto"
+            Margin="8,4,7,8">
+        <Button Grid.Column="0"
+                Name="FolderMenuButton"
+                Classes="mm-sidebar-folder"
+                ToolTip.Tip="{Binding Workspace.Folder.RootPath}">
+          <Button.Flyout>
+            <MenuFlyout Placement="BottomEdgeAlignedLeft">
+              <MenuItem Header="{Binding SidebarOpenAnotherFolder}"
+                        Command="{Binding OpenFolderCommand}" />
+              <MenuItem Header="{Binding TreeRevealInExplorer}"
+                        Command="{Binding Workspace.RevealRootCommand}" />
+              <Separator />
+              <MenuItem Header="{Binding AppMenuCloseFolderLabel}"
+                        Command="{Binding CloseFolderCommand}" />
+            </MenuFlyout>
+          </Button.Flyout>
+          <!-- Сетка, а не StackPanel: длинное имя папки обрезается, а не выталкивает шеврон -->
+          <Grid ColumnDefinitions="Auto,*,Auto"
+                ColumnSpacing="7">
+            <views:LucideIcon Grid.Column="0"
+                              Data="{DynamicResource LucideFolderOpenGeometry}"
+                              Width="14"
+                              Height="14"
+                              VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1"
+                       Classes="mm-sidebar-root"
+                       Text="{Binding Workspace.RootDisplayName}" />
+            <views:LucideIcon Grid.Column="2"
+                              Data="{DynamicResource LucideChevronDownGeometry}"
+                              Width="12"
+                              Height="12"
+                              VerticalAlignment="Center" />
+          </Grid>
+        </Button>
+
+        <Button Grid.Column="1"
+                Name="CreateMenuButton"
+                Classes="mm-row-button"
+                ToolTip.Tip="{Binding SidebarCreateTooltip}">
+          <Button.Flyout>
+            <MenuFlyout Placement="BottomEdgeAlignedRight">
+              <MenuItem Header="{Binding SidebarNewFile}"
+                        Command="{Binding Workspace.StartNewFileCommand}" />
+              <MenuItem Header="{Binding SidebarNewFolder}"
+                        Command="{Binding Workspace.StartNewFolderCommand}" />
+            </MenuFlyout>
+          </Button.Flyout>
+          <views:LucideIcon Data="{DynamicResource LucidePlusGeometry}"
                             Width="14"
                             Height="14" />
         </Button>
       </Grid>
 
       <!-- Поиск по именам: поле и лупа получают акцент, пока запрос активен (класс active) -->
-      <Border Grid.Row="1"
+      <Border Grid.Row="2"
               Classes="mm-search-shell"
               Classes.active="{Binding Workspace.HasSearchQuery}">
         <Grid ColumnDefinitions="Auto,*,Auto"
@@ -444,7 +469,7 @@
 
       <!-- Строки не уезжают за правый край: без этого поле ввода и сообщение об ошибке
            растягивают дерево по ширине текста и обрезаются краем сайдбара. -->
-      <TreeView Grid.Row="2"
+      <TreeView Grid.Row="3"
                 Name="FileTree"
                 Classes="mm-tree"
                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -455,7 +480,7 @@
         <TreeView.ItemTemplate>
           <TreeDataTemplate x:DataType="vm:FileTreeNodeViewModel"
                             ItemsSource="{Binding Children}">
-            <Grid ColumnDefinitions="*,Auto"
+            <Grid ColumnDefinitions="Auto,*,Auto"
                   ColumnSpacing="6"
                   Background="Transparent">
               <Grid.ContextMenu>
@@ -483,15 +508,17 @@
                 </ContextMenu>
               </Grid.ContextMenu>
 
-              <!-- Акцентная планка активного документа: 2px у левого края строки.
-                   Лежит поверх строки, как в макете: отдельной колонкой она сдвигала
-                   бы имя вправо в каждой строке дерева, а не только в активной. -->
-              <Border Grid.Column="0"
-                      Classes="mm-tree-active-bar"
-                      HorizontalAlignment="Left"
-                      IsVisible="{Binding IsActiveDocument}" />
+              <views:LucideIcon Grid.Column="0"
+                                Classes="mm-tree-icon"
+                                Classes.folder="{Binding IsDirectory}"
+                                Classes.open="{Binding IsExpanded}"
+                                Classes.document="{Binding IsSupportedDocument}"
+                                Classes.inert="{Binding IsInert}"
+                                Classes.active="{Binding IsActiveDocument}"
+                                Width="14"
+                                Height="14" />
 
-              <StackPanel Grid.Column="0"
+              <StackPanel Grid.Column="1"
                           Orientation="Horizontal"
                           Spacing="6"
                           IsVisible="{Binding !IsEditing}">
@@ -507,7 +534,7 @@
               <!-- Ввод имени стоит в самой строке, а не отдельной панелью над деревом
                    (макет 09). Content = null, пока строка не редактируется, поэтому
                    поле существует только в одной строке из всех. -->
-              <ContentControl Grid.Column="0"
+              <ContentControl Grid.Column="1"
                               Content="{Binding Editor}">
                 <ContentControl.ContentTemplate>
                   <DataTemplate x:DataType="vm:FileTreeNodeViewModel">
@@ -527,7 +554,7 @@
               </ContentControl>
 
               <!-- Несохранённый документ: та же точка, что и во вкладке -->
-              <Ellipse Grid.Column="1"
+              <Ellipse Grid.Column="2"
                        IsVisible="{Binding IsDirty}"
                        Width="5"
                        Height="5"
@@ -539,7 +566,7 @@
         </TreeView.ItemTemplate>
       </TreeView>
 
-      <Grid Grid.Row="2"
+      <Grid Grid.Row="3"
             IsVisible="{Binding Workspace.HasSearchQuery}"
             RowDefinitions="Auto,*">
         <TextBlock Grid.Row="0"
@@ -582,7 +609,7 @@
       </Grid>
 
       <!-- Подвал: в поиске — неполная выдача и подсказка про Esc, иначе счётчик документов -->
-      <StackPanel Grid.Row="3">
+      <StackPanel Grid.Row="4">
         <Border Classes="mm-search-truncated"
                 IsVisible="{Binding Workspace.IsSearchTruncated}">
           <TextBlock Text="{Binding SidebarSearchTruncated}"
