@@ -210,55 +210,27 @@ public sealed class WindowRowTests
         });
     }
 
+    /// <summary>Линия под строкой видна всегда, как под тулбарами macOS, — не только при прокрутке.</summary>
     [Fact]
-    public Task DividerUnderTheRowFollowsTheDocumentScroll()
+    public Task DividerUnderTheRowIsAlwaysShown()
     {
         return _fixture.RunAsync(async () =>
         {
             var viewModel = CreateViewModel();
-            await viewModel.OpenPathAsync(DocumentPath);
             var window = Show(viewModel);
             var divider = window.GetControl<Border>("WindowRowDivider");
 
+            Assert.True(divider.IsVisible);
+
+            await viewModel.OpenPathAsync(DocumentPath);
             viewModel.ReportScrollOffset(0);
-            Assert.False(divider.IsVisible);
+            Assert.True(divider.IsVisible);
 
             viewModel.ReportScrollOffset(120);
             Assert.True(divider.IsVisible);
 
-            viewModel.ReportScrollOffset(0);
-            Assert.False(divider.IsVisible);
-
             window.Hide();
         });
-    }
-
-    [Fact]
-    public async Task DocumentIsScrolledOnlyWhileAScrolledDocumentIsShown()
-    {
-        var viewModel = CreateViewModel();
-
-        viewModel.ReportScrollOffset(120);
-        Assert.False(viewModel.IsDocumentScrolled);
-
-        await viewModel.OpenPathAsync(DocumentPath);
-        viewModel.ReportScrollOffset(120);
-        Assert.True(viewModel.IsDocumentScrolled);
-
-        // В правке линия идёт за редактором, а не за позицией вьюера.
-        await viewModel.ToggleEditModeCommand.ExecuteAsync(null);
-        Assert.False(viewModel.IsDocumentScrolled);
-
-        viewModel.EditorSession!.IsEditorScrolled = true;
-        Assert.True(viewModel.IsDocumentScrolled);
-
-        await viewModel.ToggleEditModeCommand.ExecuteAsync(null);
-        Assert.True(viewModel.IsDocumentScrolled);
-
-        // Последняя вкладка закрыта — стартовый экран, линии нет.
-        await viewModel.CloseActiveTabCommand.ExecuteAsync(null);
-        Assert.True(viewModel.IsWelcome);
-        Assert.False(viewModel.IsDocumentScrolled);
     }
 
     [Fact]

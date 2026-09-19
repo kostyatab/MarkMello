@@ -185,7 +185,6 @@ public partial class ShellViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsViewer))]
     [NotifyPropertyChangedFor(nameof(IsError))]
     [NotifyPropertyChangedFor(nameof(ShowsFindToggle))]
-    [NotifyPropertyChangedFor(nameof(IsDocumentScrolled))]
     private ViewState _state = ViewState.NoDocument;
 
     [ObservableProperty]
@@ -256,19 +255,12 @@ public partial class ShellViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ActiveDocumentContent))]
-    [NotifyPropertyChangedFor(nameof(IsDocumentScrolled))]
     private bool _isEditMode;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ActiveDocumentContent))]
     [NotifyPropertyChangedFor(nameof(IsDirty))]
-    [NotifyPropertyChangedFor(nameof(IsDocumentScrolled))]
     private EditorSessionViewModel? _editorSession;
-
-    /// <summary>Вьюер прокручен вниз от начала документа — последнее, что он сообщил.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsDocumentScrolled))]
-    private bool _isReaderScrolled;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(DirtyPromptContent))]
@@ -395,14 +387,6 @@ public partial class ShellViewModel : ObservableObject
     /// каждом открытии — поле получает фокус, как только карточка появляется.
     /// </summary>
     public object? FindOverlayContent => IsFindBarOpen ? this : null;
-
-    /// <summary>
-    /// Активный документ прокручен вниз от начала — под строкой окна появляется линия
-    /// (ADR-0009 Rule 1). В чтении это позиция вьюера, в правке — редактора, за которым
-    /// идёт предпросмотр.
-    /// </summary>
-    public bool IsDocumentScrolled => IsViewer
-        && (IsEditMode ? EditorSession?.IsEditorScrolled == true : IsReaderScrolled);
 
     public string FindResultLabel
     {
@@ -2082,11 +2066,6 @@ public partial class ShellViewModel : ObservableObject
         if (e.PropertyName == nameof(EditorSessionViewModel.CurrentPath))
         {
             _currentPath = EditorSession.CurrentPath;
-        }
-
-        if (e.PropertyName == nameof(EditorSessionViewModel.IsEditorScrolled))
-        {
-            OnPropertyChanged(nameof(IsDocumentScrolled));
         }
 
         if (e.PropertyName is nameof(EditorSessionViewModel.SourceText)

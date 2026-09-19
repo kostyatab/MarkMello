@@ -72,9 +72,8 @@
     <Style Selector="Border.mm-window-row">
       <Setter Property="Background" Value="{DynamicResource MmBackgroundBrush}" />
     </Style>
-    <!-- Линия под строкой — только когда документ прокручен: наверху документа
-         строка сливается с ним. Лежит поверх нижнего пикселя строки, поэтому
-         её появление ничего не сдвигает. -->
+    <!-- Линия под строкой, как у тулбаров macOS: лежит поверх нижнего пикселя
+         строки и ничего не сдвигает. -->
     <Style Selector="Border.mm-window-row-divider">
       <Setter Property="Height" Value="1" />
       <Setter Property="VerticalAlignment" Value="Bottom" />
@@ -345,8 +344,7 @@
 
         <Border Grid.Row="0"
                 Name="WindowRowDivider"
-                Classes="mm-window-row-divider"
-                IsVisible="{Binding IsDocumentScrolled}" />
+                Classes="mm-window-row-divider" />
 
         <!-- Файл изменился на диске, а во вкладке есть правки: полоса висит до выбора -->
         <ContentControl Grid.Row="1"
