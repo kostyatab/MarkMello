@@ -25,9 +25,12 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(PublishAot)' == 'true' and '$(RuntimeIdentifier)' == 'osx-arm64'">
-    <CustomLinkerArg Include="-ld_classic" />
-  </ItemGroup>
+  <!-- Apple's linker asserts on large addends in arm64 AOT objects before .NET 10.0.12 (dotnet/runtime#119380). -->
+  <Target Name="CheckMacOSArm64AotRuntime"
+          BeforeTargets="PrepareForPublish"
+          Condition="'$(PublishAot)' == 'true' and '$(RuntimeIdentifier)' == 'osx-arm64' and $([MSBuild]::VersionLessThan('$(BundledNETCoreAppPackageVersion)', '10.0.12'))">
+    <Error Text="Native AOT for osx-arm64 needs .NET SDK 10.0.401 or newer (runtime 10.0.12+), found runtime $(BundledNETCoreAppPackageVersion). Older ones break Apple's linker, see dotnet/runtime#119380." />
+  </Target>
 
   <!-- Without the 26+ SDK stamp macOS draws the window with legacy traffic lights. -->
   <PropertyGroup>

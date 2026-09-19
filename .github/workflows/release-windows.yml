@@ -294,10 +294,10 @@ jobs:
       matrix:
         include:
           - runtime_id: osx-arm64
-            runner: macos-15
+            runner: macos-26
             asset_name: MarkMello-macos-arm64.dmg
           - runtime_id: osx-x64
-            runner: macos-15-intel
+            runner: macos-26-intel
             asset_name: MarkMello-macos-x64.dmg
 
     env:
