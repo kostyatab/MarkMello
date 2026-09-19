@@ -86,8 +86,7 @@ public partial class ShellViewModel
         nameof(LanguageHint),
         nameof(LanguageLabel),
         nameof(LoadErrorOpenAnotherFile),
-        nameof(LoadErrorPress),
-        nameof(LoadErrorToDismiss),
+        nameof(LoadErrorDismiss),
         nameof(LoadErrorTryAgain),
         nameof(MetaCurrent),
         nameof(MetaOpen),
@@ -135,7 +134,9 @@ public partial class ShellViewModel
         nameof(EmptySurfaceHint),
         nameof(EmptySurfaceTitle),
         nameof(ExternalChangeKeep),
+        nameof(ExternalChangeMessage),
         nameof(ExternalChangeReload),
+        nameof(ExternalChangeReloadTooltip),
         nameof(ExternalChangeTitle),
         nameof(AppMenuToggleSidebarHint),
         nameof(AppMenuToggleSidebarLabel),
@@ -293,8 +294,7 @@ public partial class ShellViewModel
     public string LanguageHint => _localization["LanguageHint"];
     public string LanguageLabel => _localization["LanguageLabel"];
     public string LoadErrorOpenAnotherFile => _localization["LoadErrorOpenAnotherFile"];
-    public string LoadErrorPress => _localization["LoadErrorPress"];
-    public string LoadErrorToDismiss => _localization["LoadErrorToDismiss"];
+    public string LoadErrorDismiss => _localization["LoadErrorDismiss"];
     public string LoadErrorTryAgain => _localization["LoadErrorTryAgain"];
     public string MetaCurrent => _localization["MetaCurrent"];
     public string MetaOpen => _localization["MetaOpen"];
@@ -545,8 +545,25 @@ public partial class ShellViewModel
         State = ViewState.LoadError;
     }
 
+    /// <summary>
+    /// Экран ошибки по A-LoadError: заголовок говорит, что случилось, пояснение — почему
+    /// и что делать, путь отдельной строкой, чтобы его можно было скопировать.
+    /// </summary>
     private void RefreshLoadErrorTexts()
     {
+        if (_loadErrorResult is null)
+        {
+            return;
+        }
+
+        ErrorKind = _loadErrorResult switch
+        {
+            OpenDocumentResult.NotFound => LoadErrorKind.NotFound,
+            OpenDocumentResult.AccessDenied => LoadErrorKind.AccessDenied,
+            OpenDocumentResult.UnsupportedType => LoadErrorKind.UnsupportedType,
+            _ => LoadErrorKind.ReadFailure
+        };
+
         ErrorTitle = _loadErrorResult switch
         {
             OpenDocumentResult.NotFound => _localization["ErrorFileNotFoundTitle"],
@@ -556,25 +573,58 @@ public partial class ShellViewModel
             _ => string.Empty
         };
 
-        ErrorDetails = _loadErrorResult switch
+        ErrorDescription = _loadErrorResult switch
         {
-            OpenDocumentResult.NotFound notFound => notFound.Path,
-            OpenDocumentResult.AccessDenied denied => denied.Path,
-            OpenDocumentResult.ReadError read => string.Concat(read.Path, Environment.NewLine, Environment.NewLine, read.Message),
-            OpenDocumentResult.UnsupportedType unsupported => _localization.Format(
-                "ErrorSupportedExtensions",
-                unsupported.Path,
-                Environment.NewLine,
-                string.Join(", ", SupportedDocumentTypes.Extensions)),
+            OpenDocumentResult.NotFound => _localization["ErrorFileNotFoundDetails"],
+            OpenDocumentResult.AccessDenied => _localization["ErrorAccessDeniedDetails"],
+            OpenDocumentResult.ReadError read => read.Message,
+            OpenDocumentResult.UnsupportedType => FormatSupportedExtensions(),
             _ => string.Empty
         };
+
+        ErrorPath = FormatErrorPath(GetFailedPath(_loadErrorResult));
+    }
+
+    /// <summary>
+    /// Путь на экране ошибки копируют в терминал или файловый менеджер. На macOS и Linux
+    /// <c>~</c> там понимают, и путь сокращается, как в тултипе вкладки; в Проводнике и cmd
+    /// <c>~\Documents</c> не откроется — там путь полный.
+    /// </summary>
+    private string FormatErrorPath(string? path)
+        => string.Equals(_platform.PlatformName, "Windows", StringComparison.Ordinal)
+            ? path ?? string.Empty
+            : BuildTabTooltip(path);
+
+    /// <summary>«.md, .markdown и .txt» — последний союзом, по правилам языка.</summary>
+    private string FormatSupportedExtensions()
+    {
+        var extensions = SupportedDocumentTypes.Extensions;
+        return extensions.Count == 1
+            ? _localization.Format("ErrorUnsupportedTypeSingleDetails", extensions[0])
+            : _localization.Format(
+                "ErrorUnsupportedTypeDetails",
+                string.Join(", ", extensions.Take(extensions.Count - 1)),
+                extensions[^1]);
+    }
+
+    /// <summary>Ошибка папки — тот же экран, но без пояснения и без «Повторить».</summary>
+    private void SetFolderLoadError(string titleKey, string path)
+    {
+        _loadErrorResult = null;
+        ErrorKind = LoadErrorKind.Folder;
+        ErrorTitle = _localization[titleKey];
+        ErrorDescription = string.Empty;
+        ErrorPath = FormatErrorPath(path);
+        State = ViewState.LoadError;
     }
 
     private void ClearLoadError()
     {
         _loadErrorResult = null;
+        ErrorKind = LoadErrorKind.None;
         ErrorTitle = string.Empty;
-        ErrorDetails = string.Empty;
+        ErrorDescription = string.Empty;
+        ErrorPath = string.Empty;
     }
 
     private void SetUpdateStatus(UpdateStatusSnapshot status)

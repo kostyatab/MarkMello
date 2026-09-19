@@ -143,17 +143,68 @@ public partial class ShellViewModel
                 break;
 
             case OpenFolderResult.NotFound:
-                FailFolderOpen("FolderErrorNotFoundTitle", "FolderErrorNotFoundDetails", path);
+                FailFolderOpen("FolderErrorNotFoundTitle", path);
                 break;
 
             case OpenFolderResult.AccessDenied:
-                FailFolderOpen("FolderErrorAccessDeniedTitle", "FolderErrorAccessDeniedDetails", path);
+                FailFolderOpen("FolderErrorAccessDeniedTitle", path);
                 break;
 
             case OpenFolderResult.ReadError:
-                FailFolderOpen("FolderErrorReadTitle", "FolderErrorReadDetails", path);
+                FailFolderOpen("FolderErrorReadTitle", path);
                 break;
         }
+    }
+
+    /// <summary>
+    /// Слой перетаскивания над окном. <paramref name="path"/> — первый подходящий элемент;
+    /// <c>null</c>, если платформа отдаёт список файлов только при отпускании. DragOver
+    /// приходит на каждое движение мыши, поэтому подпись пересчитывается только при смене пути.
+    /// </summary>
+    public void ShowDropTarget(string? path, bool isDirectory)
+    {
+        IsDragHovering = true;
+        IsDropTargetFolder = path is not null && isDirectory;
+
+        if (string.Equals(_describedDropPath, path, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _describedDropPath = path;
+        DropTargetDetails = path is null ? string.Empty : DescribeDropTarget(path, isDirectory);
+    }
+
+    public void HideDropTarget()
+    {
+        IsDragHovering = false;
+        IsDropTargetFolder = false;
+        DropTargetDetails = string.Empty;
+        _describedDropPath = null;
+    }
+
+    /// <summary>
+    /// Подпись повторяет то, что сделает <see cref="OpenFolderPathAsync"/>: вторая папка
+    /// открывается в новом окне или выводит вперёд окно, где она уже открыта (ADR-0007 Rule 11).
+    /// </summary>
+    internal string DescribeDropTarget(string path, bool isDirectory)
+    {
+        if (!isDirectory)
+        {
+            return Format("DropFileDetails", Path.GetFileName(path));
+        }
+
+        var trimmed = Path.TrimEndingDirectorySeparator(path);
+        var name = Path.GetFileName(trimmed) is { Length: > 0 } folderName ? folderName : trimmed;
+
+        if (Workspace is null || IsSameFolder(path))
+        {
+            return Format("DropFolderThisWindowDetails", name);
+        }
+
+        return _windowLauncher.IsFolderOpen(path)
+            ? Format("DropFolderOpenElsewhereDetails", name)
+            : Format("DropFolderNewWindowDetails", name);
     }
 
     [RelayCommand(CanExecute = nameof(CanCloseFolder))]
@@ -226,7 +277,7 @@ public partial class ShellViewModel
 
         Workspace = workspace;
         IsSidebarCollapsed = false;
-        ClearLoadError();
+        DismissOverlayError();
         UpdateWorkspaceCommandStates();
         AdoptOpenTabsIntoWorkspace();
 
@@ -241,7 +292,9 @@ public partial class ShellViewModel
 
         // Папка сама по себе документ не открывает — кроме README.md в корне,
         // который заменяет пустой экран осмысленным содержимым (ADR-0007 Rule 2).
-        if (!OpenDocuments.HasTabs && workspace.TryGetRootReadmePath() is { Length: > 0 } readmePath)
+        // Вкладка ошибки — не документ: README.md открывается и рядом с ней.
+        if (OpenDocuments.Tabs.All(static tab => tab.IsLoadError)
+            && workspace.TryGetRootReadmePath() is { Length: > 0 } readmePath)
         {
             await OpenDocumentInTabAsync(readmePath).ConfigureAwait(true);
             return;
@@ -254,13 +307,8 @@ public partial class ShellViewModel
         RefreshWindowTitle();
     }
 
-    private void FailFolderOpen(string titleKey, string detailsKey, string path)
-    {
-        // Ошибка папки не трогает открытый документ: он остаётся читаемым (ADR-0007 Rule 14).
-        ErrorTitle = _localization[titleKey];
-        ErrorDetails = string.Format(_localization.Culture, _localization[detailsKey], path);
-        State = ViewState.LoadError;
-    }
+    // Ошибка папки не трогает открытый документ: он остаётся читаемым (ADR-0007 Rule 14).
+    private void FailFolderOpen(string titleKey, string path) => SetFolderLoadError(titleKey, path);
 
     /// <summary>
     /// Ширина сайдбара сохраняется по завершении перетаскивания, а не на каждый пиксель:

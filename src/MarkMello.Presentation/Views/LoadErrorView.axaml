@@ -3,46 +3,104 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:MarkMello.Presentation.ViewModels"
+             xmlns:views="using:MarkMello.Presentation.Views"
              mc:Ignorable="d"
              x:Class="MarkMello.Presentation.Views.LoadErrorView"
              x:DataType="vm:ShellViewModel">
 
+  <!-- Экран ошибки открытия (A-LoadError): иконка вида ошибки, заголовок, пояснение,
+       путь, который можно скопировать, и выход — другой файл, повтор или Esc. -->
   <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14"
-                MaxWidth="520">
+    <StackPanel HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                MaxWidth="520"
+                Margin="16,0,16,64"
+                AutomationProperties.LiveSetting="Assertive">
+
+      <Border Classes="mm-error-badge">
+        <Panel>
+          <views:LucideIcon Data="{DynamicResource LucideFileXGeometry}"
+                            Width="24"
+                            Height="24"
+                            IsVisible="{Binding IsNotFoundError}" />
+          <views:LucideIcon Data="{DynamicResource LucideLockGeometry}"
+                            Width="24"
+                            Height="24"
+                            IsVisible="{Binding IsAccessDeniedError}" />
+          <views:LucideIcon Data="{DynamicResource LucideFileQuestionMarkGeometry}"
+                            Width="24"
+                            Height="24"
+                            IsVisible="{Binding IsUnsupportedTypeError}" />
+          <views:LucideIcon Data="{DynamicResource LucideCircleAlertGeometry}"
+                            Width="24"
+                            Height="24"
+                            IsVisible="{Binding IsGenericError}" />
+        </Panel>
+      </Border>
 
       <TextBlock Text="{Binding ErrorTitle}"
+                 Margin="0,18,0,0"
                  FontFamily="{DynamicResource MmDocumentSerifFontFamily}"
                  FontSize="26"
+                 LineHeight="32"
+                 TextWrapping="Wrap"
+                 TextAlignment="Center"
                  HorizontalAlignment="Center"
                  Foreground="{DynamicResource MmTextBrush}" />
 
-      <SelectableTextBlock Text="{Binding ErrorDetails}"
-                           FontFamily="{DynamicResource MmDocumentMonoFontFamily}"
-                           FontSize="12"
-                           TextWrapping="Wrap"
-                           HorizontalAlignment="Center"
-                           TextAlignment="Center"
-                           Foreground="{DynamicResource MmTextSoftBrush}" />
+      <TextBlock Text="{Binding ErrorDescription}"
+                 IsVisible="{Binding HasErrorDescription}"
+                 Margin="0,8,0,0"
+                 FontSize="13.5"
+                 LineHeight="21"
+                 TextWrapping="Wrap"
+                 TextAlignment="Center"
+                 HorizontalAlignment="Center"
+                 Foreground="{DynamicResource MmTextSoftBrush}" />
 
-      <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center"
-                  Margin="0,12,0,0">
-        <Button Classes="welcome-primary"
+      <!-- Путь выделяется и копируется: с ним идут в терминал или в Finder. -->
+      <Border IsVisible="{Binding HasErrorPath}"
+              Margin="0,14,0,0"
+              Padding="10,6"
+              CornerRadius="7"
+              HorizontalAlignment="Center"
+              Background="{DynamicResource MmCodeBackgroundBrush}">
+        <SelectableTextBlock Text="{Binding ErrorPath}"
+                             FontFamily="{DynamicResource MmDocumentMonoFontFamily}"
+                             FontSize="12"
+                             TextWrapping="Wrap"
+                             TextAlignment="Center"
+                             Foreground="{DynamicResource MmTextSoftBrush}" />
+      </Border>
+
+      <StackPanel Orientation="Horizontal"
+                  Spacing="8"
+                  Margin="0,26,0,0"
+                  HorizontalAlignment="Center">
+        <Button Classes="mm-dialog-primary mm-error-action"
                 Content="{Binding LoadErrorOpenAnotherFile}"
                 Command="{Binding OpenFileCommand}" />
-        <Button Classes="welcome-secondary"
+        <Button Classes="mm-dialog-secondary mm-error-action"
+                IsVisible="{Binding ShowsLoadErrorRetry}"
                 Content="{Binding LoadErrorTryAgain}"
-                Command="{Binding ReloadCommand}" />
+                Command="{Binding RetryLoadCommand}" />
       </StackPanel>
 
-      <TextBlock HorizontalAlignment="Center"
-                 FontSize="11"
-                 Foreground="{DynamicResource MmTextFaintBrush}"
-                 Margin="0,8,0,0">
-        <Run Text="{Binding LoadErrorPress}" />
-        <Run Text="Esc" FontFamily="{DynamicResource MmDocumentMonoFontFamily}" />
-        <Run Text="{Binding LoadErrorToDismiss}" />
-      </TextBlock>
+      <StackPanel Orientation="Horizontal"
+                  Spacing="6"
+                  Margin="0,22,0,0"
+                  HorizontalAlignment="Center">
+        <Border Classes="kbd">
+          <TextBlock Text="{Binding DialogCancelShortcut}"
+                     FontFamily="{DynamicResource MmDocumentMonoFontFamily}"
+                     FontSize="10"
+                     Foreground="{DynamicResource MmTextSoftBrush}" />
+        </Border>
+        <TextBlock Text="{Binding LoadErrorDismiss}"
+                   FontSize="12"
+                   VerticalAlignment="Center"
+                   Foreground="{DynamicResource MmTextSoftBrush}" />
+      </StackPanel>
 
     </StackPanel>
   </Grid>

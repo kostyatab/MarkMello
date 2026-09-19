@@ -1012,6 +1012,38 @@
     <Setter Property="Opacity" Value="0.88" />
   </Style>
 
+  <!-- Экран ошибки открытия (A-LoadError): кнопки — те же, что в диалогах, на 2 px выше.
+       На время «Повторить» команда выключает кнопку, и Fluent перекрасил бы её в серый —
+       выключенное состояние задано явно: та же заливка, приглушённая. -->
+  <Style Selector="Button.mm-error-action">
+    <Setter Property="Height" Value="34" />
+    <Setter Property="Padding" Value="15,0" />
+  </Style>
+  <Style Selector="Button.mm-dialog-primary.mm-error-action:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTextBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmBackgroundBrush}" />
+    <Setter Property="Opacity" Value="0.6" />
+  </Style>
+  <Style Selector="Button.mm-dialog-secondary.mm-error-action:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTabBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+    <Setter Property="Opacity" Value="0.6" />
+  </Style>
+
+  <!-- Плашка с иконкой вида ошибки над заголовком -->
+  <Style Selector="Border.mm-error-badge">
+    <Setter Property="Width" Value="52" />
+    <Setter Property="Height" Value="52" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="Background" Value="{DynamicResource MmTabBrush}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.mm-error-badge views|LucideIcon">
+    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
   <Style Selector="Button.mm-dialog-destructive">
     <Setter Property="Background" Value="{DynamicResource MmAccentBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource MmElevatedBackgroundBrush}" />

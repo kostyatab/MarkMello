@@ -18,14 +18,25 @@ public partial class ShellViewModel
     /// <summary>Активная вкладка изменилась на диске, а в ней есть несохранённые правки.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ExternalChangeContent))]
+    [NotifyPropertyChangedFor(nameof(ExternalChangeTitle))]
     private bool _showsExternalChangeBanner;
 
-    /// <summary>Плашка внешнего изменения появляется по событию, а не с запуска приложения.</summary>
+    /// <summary>
+    /// Полоса внешнего изменения (A-External) появляется по событию, а не с запуска
+    /// приложения, и встаёт под строкой окна, не закрывая текст.
+    /// </summary>
     public object? ExternalChangeContent => ShowsExternalChangeBanner ? this : null;
 
-    public string ExternalChangeTitle => _localization["ExternalChangeTitle"];
+    /// <summary>Полоса называет файл: вкладок с правками может быть несколько.</summary>
+    public string ExternalChangeTitle => _localization.Format(
+        "ExternalChangeTitle",
+        OpenDocuments.ActiveTab?.Title is { Length: > 0 } title ? title : FileName);
+
+    public string ExternalChangeMessage => _localization["ExternalChangeMessage"];
 
     public string ExternalChangeReload => _localization["ExternalChangeReload"];
+
+    public string ExternalChangeReloadTooltip => _localization["ExternalChangeReloadTooltip"];
 
     public string ExternalChangeKeep => _localization["ExternalChangeKeep"];
 
@@ -182,8 +193,16 @@ public partial class ShellViewModel
         ShowsExternalChangeBanner = false;
     }
 
+    /// <summary>
+    /// Полоса принадлежит активной вкладке. Флаг при переходе между двумя вкладками с внешним
+    /// изменением не меняется, поэтому имя файла в заголовке поднимаем явно: иначе полоса
+    /// называла бы прошлый файл, а «Загрузить с диска» выбросила бы правки этого.
+    /// </summary>
     private void SyncExternalChangeBanner()
-        => ShowsExternalChangeBanner = OpenDocuments.ActiveTab?.HasExternalChange == true;
+    {
+        ShowsExternalChangeBanner = OpenDocuments.ActiveTab?.HasExternalChange == true;
+        OnPropertyChanged(nameof(ExternalChangeTitle));
+    }
 
     private static IEqualityComparer<string> PathComparer => OperatingSystem.IsWindows()
         ? StringComparer.OrdinalIgnoreCase

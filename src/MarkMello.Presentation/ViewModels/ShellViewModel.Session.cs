@@ -32,10 +32,12 @@ public partial class ShellViewModel
             return Task.CompletedTask;
         }
 
+        // Вкладка ошибки — след неудачной попытки, а не документ: при следующем открытии
+        // папки она вернулась бы той же ошибкой.
         var session = new WorkspaceSessionState(
             workspace.Folder.RootPath,
-            OpenDocuments.Tabs.Select(static tab => tab.Path).OfType<string>().ToList(),
-            OpenDocuments.ActiveTab?.Path,
+            OpenDocuments.Tabs.Where(static tab => !tab.IsLoadError).Select(static tab => tab.Path).OfType<string>().ToList(),
+            OpenDocuments.ActiveTab is { IsLoadError: false } active ? active.Path : null,
             workspace.GetExpandedDirectories());
 
         _sessionWriteCancellation?.Cancel();

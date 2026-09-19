@@ -350,9 +350,9 @@ public sealed class PerTabEditorSessionTests
     }
 
     /// <summary>
-    /// Неудачное открытие поверх правки: экран ошибки закрывает документ, но вкладка остаётся
-    /// со своей сессией, текстом и режимом. Раньше ошибка снимала сессию с активной вкладки,
-    /// так и не выбросив её: правки пропадали, а окно закрывалось, ни о чём не спросив.
+    /// Неудачное открытие из правки получает свою вкладку ошибки, а вкладка с правками уходит
+    /// в фон со своей сессией, текстом и режимом. Раньше ошибка снимала сессию с активной
+    /// вкладки, так и не выбросив её: правки пропадали, а окно закрывалось, ни о чём не спросив.
     /// </summary>
     [Fact]
     public async Task FailedOpenFromAnEditingTabKeepsItsSessionTextAndMode()
@@ -368,26 +368,28 @@ public sealed class PerTabEditorSessionTests
         await harness.ViewModel.OpenPathAsync(@"C:\docs\missing.md");
 
         Assert.True(harness.ViewModel.IsError);
-        Assert.Same(first, Assert.Single(harness.ViewModel.OpenDocuments.Tabs));
-        Assert.Same(first, harness.ViewModel.OpenDocuments.ActiveTab);
+        Assert.Equal(2, harness.ViewModel.OpenDocuments.Tabs.Count);
+        var errorTab = harness.ViewModel.OpenDocuments.ActiveTab!;
+        Assert.True(errorTab.IsLoadError);
+        Assert.Null(harness.ViewModel.EditorSession);
+        Assert.False(harness.ViewModel.IsEditMode);
         Assert.Same(firstSession, first.EditorSession);
         Assert.True(first.IsEditMode);
         Assert.True(first.IsDirty);
-        Assert.Same(firstSession, harness.ViewModel.EditorSession);
-        Assert.True(harness.ViewModel.IsEditMode);
         Assert.Equal("# first edited", firstSession.SourceText);
+
+        // Esc закрывает вкладку ошибки и возвращает вкладку в правку с тем же текстом.
+        await harness.ViewModel.ClearErrorCommand.ExecuteAsync(null);
+
+        Assert.Same(first, Assert.Single(harness.ViewModel.OpenDocuments.Tabs));
+        Assert.True(harness.ViewModel.IsViewer);
+        Assert.Same(firstSession, harness.ViewModel.ActiveDocumentContent);
+        Assert.True(harness.ViewModel.IsDirty);
 
         // Закрытие окна по-прежнему спрашивает о правках.
         Assert.True(harness.ViewModel.TryQueueCloseRequest());
         Assert.True(harness.ViewModel.IsDirtyPromptOpen);
         harness.ViewModel.CancelDirtyPromptCommand.Execute(null);
-
-        // Esc убирает ошибку и возвращает вкладку в правку с тем же текстом.
-        harness.ViewModel.ClearErrorCommand.Execute(null);
-
-        Assert.True(harness.ViewModel.IsViewer);
-        Assert.Same(firstSession, harness.ViewModel.ActiveDocumentContent);
-        Assert.True(harness.ViewModel.IsDirty);
 
         var scheduler = Assert.Single(schedulers);
         Assert.Equal(0, scheduler.DisposeCount);
@@ -399,8 +401,8 @@ public sealed class PerTabEditorSessionTests
 
     /// <summary>
     /// Неудачное открытие из вкладки в чтении: её сессия после «Готово» и режим чтения
-    /// остаются, правки фоновой вкладки тоже. Раньше ошибка отвязывала сессию читаемой
-    /// вкладки, так и не выбросив её.
+    /// остаются, правки фоновой вкладки тоже, а Esc возвращает именно к ней, а не к соседке
+    /// вкладки ошибки. Раньше ошибка отвязывала сессию читаемой вкладки, так и не выбросив её.
     /// </summary>
     [Fact]
     public async Task FailedOpenFromAReadingTabKeepsItsSessionAndMode()
@@ -422,20 +424,22 @@ public sealed class PerTabEditorSessionTests
         await harness.ViewModel.OpenPathAsync(@"C:\docs\missing.md");
 
         Assert.True(harness.ViewModel.IsError);
-        Assert.Equal(2, harness.ViewModel.OpenDocuments.Tabs.Count);
-        Assert.Same(second, harness.ViewModel.OpenDocuments.ActiveTab);
+        Assert.Equal(3, harness.ViewModel.OpenDocuments.Tabs.Count);
+        Assert.True(harness.ViewModel.OpenDocuments.ActiveTab!.IsLoadError);
         Assert.Same(secondSession, second.EditorSession);
         Assert.False(second.IsEditMode);
-        Assert.Same(secondSession, harness.ViewModel.EditorSession);
-        Assert.False(harness.ViewModel.IsEditMode);
+        Assert.Null(harness.ViewModel.EditorSession);
         Assert.Same(firstSession, first.EditorSession);
         Assert.True(first.IsEditMode);
         Assert.True(first.IsDirty);
         Assert.Equal("# first edited", firstSession.SourceText);
 
-        // Esc убирает ошибку и возвращает вкладку в чтение того же документа.
-        harness.ViewModel.ClearErrorCommand.Execute(null);
+        // Esc закрывает вкладку ошибки и возвращает вкладку в чтение того же документа.
+        await harness.ViewModel.ClearErrorCommand.ExecuteAsync(null);
 
+        Assert.Equal(2, harness.ViewModel.OpenDocuments.Tabs.Count);
+        Assert.Same(second, harness.ViewModel.OpenDocuments.ActiveTab);
+        Assert.Same(secondSession, harness.ViewModel.EditorSession);
         Assert.True(harness.ViewModel.IsViewer);
         Assert.Same(harness.ViewModel, harness.ViewModel.ActiveDocumentContent);
         Assert.Equal("# second", harness.ViewModel.Document!.Content);

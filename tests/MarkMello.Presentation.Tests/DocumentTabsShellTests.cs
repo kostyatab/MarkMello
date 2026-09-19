@@ -511,6 +511,346 @@ public sealed class DocumentTabsShellTests
         Assert.Equal(1, closeRequests);
     }
 
+    /// <summary>
+    /// Неудачное открытие получает активную вкладку с именем файла и экраном ошибки
+    /// (A-LoadError), а прежняя вкладка остаётся на месте. Справа в строке — только ⋯.
+    /// </summary>
+    [Fact]
+    public async Task FailedOpenGetsAnActiveErrorTabNamedAfterTheFile()
+    {
+        var harness = CreateHarness();
+        var missing = TestPaths.At("docs", "missing.md");
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
+
+        await harness.ViewModel.OpenPathAsync(missing);
+
+        Assert.Equal(["first.md", "missing.md"], harness.ViewModel.OpenDocuments.Tabs.Select(tab => tab.Title));
+        var errorTab = harness.ViewModel.OpenDocuments.ActiveTab!;
+        Assert.Equal(missing, errorTab.Path);
+        Assert.True(errorTab.IsLoadError);
+        Assert.True(harness.ViewModel.IsError);
+        Assert.Equal(LoadErrorKind.NotFound, harness.ViewModel.ErrorKind);
+        Assert.Equal("Couldn't find that file", harness.ViewModel.ErrorTitle);
+        Assert.Equal("It may have been moved, renamed, or deleted.", harness.ViewModel.ErrorDescription);
+        Assert.Equal(missing, harness.ViewModel.ErrorPath);
+        Assert.True(harness.ViewModel.ShowsLoadErrorRetry);
+
+        Assert.False(harness.ViewModel.ShowsFindToggle);
+        Assert.False(harness.ViewModel.ShowsReadingSettingsToggle);
+        Assert.False(harness.ViewModel.ShowsEditToggle);
+        Assert.False(harness.ViewModel.ShowsDoneButton);
+        Assert.False(harness.ViewModel.ShowsUnsavedIndicator);
+    }
+
+    /// <summary>
+    /// «Повторить» перечитывает путь своей вкладки, а не документ, открытый до неё, и при
+    /// успехе показывает документ в той же вкладке.
+    /// </summary>
+    [Fact]
+    public async Task RetryRereadsTheErrorTabsPathAndShowsTheDocumentInIt()
+    {
+        var harness = CreateHarness();
+        var missing = TestPaths.At("docs", "missing.md");
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
+        await harness.ViewModel.OpenPathAsync(missing);
+        var errorTab = harness.ViewModel.OpenDocuments.ActiveTab!;
+
+        harness.Loader.Sources[missing] = new MarkdownSource(missing, "missing.md", "# found");
+        await harness.ViewModel.RetryLoadCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, harness.ViewModel.OpenDocuments.Tabs.Count);
+        Assert.Same(errorTab, harness.ViewModel.OpenDocuments.ActiveTab);
+        Assert.False(errorTab.IsLoadError);
+        Assert.True(harness.ViewModel.IsViewer);
+        Assert.Equal("# found", harness.ViewModel.Document!.Content);
+        Assert.Equal(missing, harness.ViewModel.CurrentDocumentPath);
+        Assert.Equal(LoadErrorKind.None, harness.ViewModel.ErrorKind);
+    }
+
+    /// <summary>Повтор, который снова не удался, оставляет ту же вкладку и ту же точку возврата.</summary>
+    [Fact]
+    public async Task RetryThatFailsAgainKeepsTheSameErrorTab()
+    {
+        var harness = CreateHarness();
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
+        var first = harness.ViewModel.OpenDocuments.ActiveTab!;
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "missing.md"));
+        var errorTab = harness.ViewModel.OpenDocuments.ActiveTab!;
+
+        await harness.ViewModel.RetryLoadCommand.ExecuteAsync(null);
+
+        Assert.Equal(2, harness.ViewModel.OpenDocuments.Tabs.Count);
+        Assert.Same(errorTab, harness.ViewModel.OpenDocuments.ActiveTab);
+        Assert.True(errorTab.IsLoadError);
+        Assert.Same(first, errorTab.ReturnTab);
+        Assert.True(harness.ViewModel.IsError);
+    }
+
+    /// <summary>
+    /// Esc и ✕ закрывают вкладку ошибки и возвращают к вкладке, из которой открывали, —
+    /// а не к соседке по полосе.
+    /// </summary>
+    [Theory]
+    [InlineData("escape")]
+    [InlineData("close")]
+    public async Task ClosingTheErrorTabReturnsToThePreviousTab(string how)
+    {
+        var harness = CreateHarness();
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
+        var first = harness.ViewModel.OpenDocuments.ActiveTab!;
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "second.md"));
+        await harness.ViewModel.OpenDocuments.ActivateCommand.ExecuteAsync(first);
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "missing.md"));
+        var errorTab = harness.ViewModel.OpenDocuments.ActiveTab!;
+
+        if (how == "escape")
+        {
+            await harness.ViewModel.ClearErrorCommand.ExecuteAsync(null);
+        }
+        else
+        {
+            await harness.ViewModel.OpenDocuments.CloseCommand.ExecuteAsync(errorTab);
+        }
+
+        Assert.Equal(["first.md", "second.md"], harness.ViewModel.OpenDocuments.Tabs.Select(tab => tab.Title));
+        Assert.Same(first, harness.ViewModel.OpenDocuments.ActiveTab);
+        Assert.True(harness.ViewModel.IsViewer);
+        Assert.Equal("# first", harness.ViewModel.Document!.Content);
+    }
+
+    /// <summary>Единственная вкладка ошибки закрывается на стартовый экран, в папке — на «Документ не выбран».</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ClosingTheOnlyErrorTabReturnsToTheEmptyScreen(bool inFolder)
+    {
+        var harness = CreateHarness();
+        if (inFolder)
+        {
+            await harness.ViewModel.OpenFolderPathAsync(Root);
+            await harness.ViewModel.OpenDocuments.CloseCommand.ExecuteAsync(harness.ViewModel.OpenDocuments.ActiveTab);
+        }
+
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "missing.md"));
+        Assert.True(harness.ViewModel.IsError);
+
+        await harness.ViewModel.ClearErrorCommand.ExecuteAsync(null);
+
+        Assert.Empty(harness.ViewModel.OpenDocuments.Tabs);
+        Assert.False(harness.ViewModel.IsError);
+        Assert.Equal(!inFolder, harness.ViewModel.IsWelcome);
+        Assert.Equal(inFolder, harness.ViewModel.IsEmptyDocumentSurface);
+    }
+
+    /// <summary>Файл не Markdown: своё пояснение и нет «Повторить» — повтор ничего не изменит.</summary>
+    [Fact]
+    public async Task UnsupportedFileShowsSupportedTypesAndNoRetry()
+    {
+        var harness = CreateHarness();
+
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "report.pdf"));
+
+        Assert.Equal("report.pdf", harness.ViewModel.OpenDocuments.ActiveTab!.Title);
+        Assert.Equal(LoadErrorKind.UnsupportedType, harness.ViewModel.ErrorKind);
+        Assert.Equal("This isn't Markdown", harness.ViewModel.ErrorTitle);
+        Assert.Equal("MarkMello opens .md, .markdown and .txt files.", harness.ViewModel.ErrorDescription);
+        Assert.False(harness.ViewModel.ShowsLoadErrorRetry);
+    }
+
+    [Fact]
+    public async Task AccessDeniedAndReadFailureExplainThemselves()
+    {
+        var harness = CreateHarness();
+
+        harness.Loader.NextException = new UnauthorizedAccessException();
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "secret.md"));
+
+        Assert.Equal(LoadErrorKind.AccessDenied, harness.ViewModel.ErrorKind);
+        Assert.Equal("Access denied", harness.ViewModel.ErrorTitle);
+        Assert.Equal("MarkMello doesn't have permission to read this file.", harness.ViewModel.ErrorDescription);
+        Assert.True(harness.ViewModel.ShowsLoadErrorRetry);
+
+        harness.Loader.NextException = new IOException("The disk is busy.");
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "busy.md"));
+
+        Assert.Equal(LoadErrorKind.ReadFailure, harness.ViewModel.ErrorKind);
+        Assert.Equal("Couldn't read the file", harness.ViewModel.ErrorTitle);
+        Assert.Equal("The disk is busy.", harness.ViewModel.ErrorDescription);
+        Assert.True(harness.ViewModel.ShowsLoadErrorRetry);
+        Assert.Equal(["secret.md", "busy.md"], harness.ViewModel.OpenDocuments.Tabs.Select(tab => tab.Title));
+    }
+
+    /// <summary>
+    /// Путь на экране ошибки копируют: на macOS и Linux он сокращается до ~, как в тултипе
+    /// вкладки, а на Windows остаётся полным — ~ там ни Проводник, ни cmd не поймут.
+    /// </summary>
+    [Theory]
+    [InlineData("macOS", true)]
+    [InlineData("Linux", true)]
+    [InlineData("Windows", false)]
+    public async Task ErrorPathIsShortenedOnlyWhereTildeWorks(string platformName, bool shortened)
+    {
+        var harness = CreateHarness(homeDirectory: TestPaths.At("docs"), platformName: platformName);
+        var missing = TestPaths.At("docs", "missing.md");
+
+        await harness.ViewModel.OpenPathAsync(missing);
+
+        Assert.Equal(
+            shortened ? "~" + Path.DirectorySeparatorChar + "missing.md" : missing,
+            harness.ViewModel.ErrorPath);
+    }
+
+    /// <summary>
+    /// Повторное открытие уже открытого файла не удалось: ошибка встаёт поверх его вкладки —
+    /// она становится активной, — и «Повторить» перечитывает её, а не вкладку, с которой
+    /// открывали. Раньше ошибка вставала над чужой вкладкой, и повтор перечитывал её.
+    /// </summary>
+    [Fact]
+    public async Task FailedReopenOfABackgroundTabShowsTheErrorOverThatTab()
+    {
+        var harness = CreateHarness();
+        var first = TestPaths.At("docs", "first.md");
+        await harness.ViewModel.OpenPathAsync(first);
+        var firstTab = harness.ViewModel.OpenDocuments.ActiveTab!;
+        harness.ViewModel.ToggleEditModeCommand.Execute(null);
+        await harness.ViewModel.ToggleEditModeCommand.ExecuteAsync(null);
+        Assert.NotNull(firstTab.EditorSession);
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "second.md"));
+
+        harness.Loader.NextException = new UnauthorizedAccessException();
+        await harness.ViewModel.OpenPathAsync(first);
+
+        Assert.Equal(2, harness.ViewModel.OpenDocuments.Tabs.Count);
+        Assert.Same(firstTab, harness.ViewModel.OpenDocuments.ActiveTab);
+        Assert.False(firstTab.IsLoadError);
+        Assert.True(harness.ViewModel.IsError);
+        Assert.Equal(LoadErrorKind.AccessDenied, harness.ViewModel.ErrorKind);
+
+        harness.Loader.Sources[first] = new MarkdownSource(first, "first.md", "# first again");
+        await harness.ViewModel.RetryLoadCommand.ExecuteAsync(null);
+
+        Assert.True(harness.ViewModel.IsViewer);
+        Assert.Same(firstTab, harness.ViewModel.OpenDocuments.ActiveTab);
+        Assert.Equal(first, harness.ViewModel.CurrentDocumentPath);
+        Assert.Equal("# first again", harness.ViewModel.Document!.Content);
+    }
+
+    /// <summary>
+    /// Папка, открытая поверх вкладки ошибки, открывает свой README.md рядом с ней: вкладка
+    /// ошибки — не документ. Раньше README не открывался, а экран ошибки оставался без текстов.
+    /// </summary>
+    [Fact]
+    public async Task OpeningAFolderOverAnErrorTabOpensItsReadme()
+    {
+        var harness = CreateHarness();
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("outside", "missing.md"));
+
+        await harness.ViewModel.OpenFolderPathAsync(Root);
+
+        Assert.Equal(["missing.md", "README.md"], harness.ViewModel.OpenDocuments.Tabs.Select(tab => tab.Title));
+        Assert.True(harness.ViewModel.IsViewer);
+        Assert.Equal("# readme", harness.ViewModel.Document!.Content);
+
+        await harness.ViewModel.OpenDocuments.ActivateCommand.ExecuteAsync(harness.ViewModel.OpenDocuments.Tabs[0]);
+
+        Assert.True(harness.ViewModel.IsError);
+        Assert.Equal("Couldn't find that file", harness.ViewModel.ErrorTitle);
+    }
+
+    /// <summary>
+    /// Ошибка папки поверх вкладки ошибки: Esc снимает ошибку папки и возвращает экран
+    /// вкладки, а не закрывает вкладку файла.
+    /// </summary>
+    [Fact]
+    public async Task EscapeDismissesAFolderErrorOverAnErrorTab()
+    {
+        var harness = CreateHarness();
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "missing.md"));
+
+        await harness.ViewModel.OpenFolderPathAsync(TestPaths.At("gone"));
+        Assert.Equal(LoadErrorKind.Folder, harness.ViewModel.ErrorKind);
+
+        await harness.ViewModel.ClearErrorCommand.ExecuteAsync(null);
+
+        Assert.Single(harness.ViewModel.OpenDocuments.Tabs);
+        Assert.True(harness.ViewModel.IsError);
+        Assert.Equal(LoadErrorKind.NotFound, harness.ViewModel.ErrorKind);
+        Assert.Equal("Couldn't find that file", harness.ViewModel.ErrorTitle);
+    }
+
+    /// <summary>Вкладка ошибки — след попытки, а не документ: в сессию папки она не пишется.</summary>
+    [Fact]
+    public async Task ErrorTabIsNotStoredInTheSession()
+    {
+        var harness = CreateHarness();
+        await harness.ViewModel.OpenFolderPathAsync(Root);
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
+
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "missing.md"));
+
+        var session = await WaitForSessionAsync(
+            harness.Settings,
+            state => state.OpenDocumentPaths.Contains(TestPaths.At("docs", "first.md")));
+
+        Assert.Equal([TestPaths.At("docs", "README.md"), TestPaths.At("docs", "first.md")], session.OpenDocumentPaths);
+        Assert.DoesNotContain(TestPaths.At("docs", "missing.md"), session.OpenDocumentPaths);
+        Assert.Null(session.ActiveDocumentPath);
+    }
+
+    /// <summary>Вторая строка слоя перетаскивания говорит, что случится при отпускании (A-Drop).</summary>
+    [Fact]
+    public async Task DropTargetDescribesWhereTheItemWillOpen()
+    {
+        var harness = CreateHarness();
+        var notes = TestPaths.At("notes");
+
+        Assert.Equal("release-notes.md will open in a new tab", harness.ViewModel.DescribeDropTarget(TestPaths.At("docs", "release-notes.md"), isDirectory: false));
+        Assert.Equal("Folder notes will open in this window", harness.ViewModel.DescribeDropTarget(notes, isDirectory: true));
+
+        await harness.ViewModel.OpenFolderPathAsync(Root);
+
+        Assert.Equal("Folder notes will open in a new window", harness.ViewModel.DescribeDropTarget(notes, isDirectory: true));
+
+        harness.Launcher.OpenFolders.Add(notes);
+
+        Assert.Equal("Folder notes is already open in another window", harness.ViewModel.DescribeDropTarget(notes, isDirectory: true));
+    }
+
+    /// <summary>Список файлов недоступен до отпускания: слой есть, а второй строки нет.</summary>
+    [Fact]
+    public void DropTargetWithoutAKnownItemShowsNoDetails()
+    {
+        var harness = CreateHarness();
+
+        harness.ViewModel.ShowDropTarget(TestPaths.At("notes"), isDirectory: true);
+        Assert.True(harness.ViewModel.IsDragHovering);
+        Assert.True(harness.ViewModel.IsDropTargetFolder);
+        Assert.True(harness.ViewModel.HasDropTargetDetails);
+
+        harness.ViewModel.HideDropTarget();
+        harness.ViewModel.ShowDropTarget(null, isDirectory: false);
+
+        Assert.True(harness.ViewModel.IsDragHovering);
+        Assert.False(harness.ViewModel.IsDropTargetFolder);
+        Assert.False(harness.ViewModel.HasDropTargetDetails);
+
+        harness.ViewModel.HideDropTarget();
+
+        Assert.False(harness.ViewModel.IsDragHovering);
+    }
+
+    private static async Task<WorkspaceSessionState> WaitForSessionAsync(
+        InMemorySettingsStore settings,
+        Func<WorkspaceSessionState, bool> predicate)
+    {
+        for (var attempt = 0; attempt < 60 && !predicate(settings.Session); attempt++)
+        {
+            await Task.Delay(25);
+        }
+
+        return settings.Session;
+    }
+
     /// <summary>Две грязные вкладки папки и одна грязная вкладка вне её.</summary>
     private static async Task<TabsTestHarness> CreateHarnessWithDirtyFolderTabsAsync()
     {
@@ -533,11 +873,14 @@ public sealed class DocumentTabsShellTests
         harness.ViewModel.EditorSession!.SourceText = text;
     }
 
-    private static TabsTestHarness CreateHarness(WorkspaceSessionState? session = null, string? homeDirectory = null)
+    private static TabsTestHarness CreateHarness(
+        WorkspaceSessionState? session = null,
+        string? homeDirectory = null,
+        string platformName = "Windows")
     {
         var platform = homeDirectory is null
-            ? new FakePlatformServices()
-            : new FakePlatformServices { HomeDirectory = homeDirectory };
+            ? new FakePlatformServices { PlatformName = platformName }
+            : new FakePlatformServices { HomeDirectory = homeDirectory, PlatformName = platformName };
 
         var fileSystem = new FakeWorkspaceFileSystem();
         fileSystem.AddDirectory(
@@ -552,6 +895,8 @@ public sealed class DocumentTabsShellTests
         loader.Sources[TestPaths.At("outside", "notes.md")] = new MarkdownSource(TestPaths.At("outside", "notes.md"), "notes.md", "# notes");
 
         var filePicker = new StubFilePicker();
+        var launcher = new RecordingWindowLauncher();
+        var settings = new InMemorySettingsStore { Session = session ?? WorkspaceSessionState.Empty };
 
         var viewModel = new ShellViewModel(
             new OpenDocumentUseCase(loader),
@@ -559,7 +904,7 @@ public sealed class DocumentTabsShellTests
             filePicker,
             new StubCommandLineActivation(),
             new LocalizationService(AppLanguage.English),
-            new InMemorySettingsStore { Session = session ?? WorkspaceSessionState.Empty },
+            settings,
             new RecordingThemeService(),
             new RecordingStartupMetrics(),
             new RenderMarkdownDocumentUseCase(new TestMarkdownRenderer(), new FakeDiagramRenderService()),
@@ -570,11 +915,16 @@ public sealed class DocumentTabsShellTests
             new WorkspaceFileOperationsUseCase(fileSystem, platform),
             platform,
             static () => new FakeWorkspaceWatcher(),
-            new RecordingWindowLauncher(),
+            launcher,
             fileExists: path => fileSystem.Exists(path));
 
-        return new TabsTestHarness(loader, filePicker, viewModel);
+        return new TabsTestHarness(loader, filePicker, launcher, settings, viewModel);
     }
 
-    private sealed record TabsTestHarness(CountingDocumentLoader Loader, StubFilePicker FilePicker, ShellViewModel ViewModel);
+    private sealed record TabsTestHarness(
+        CountingDocumentLoader Loader,
+        StubFilePicker FilePicker,
+        RecordingWindowLauncher Launcher,
+        InMemorySettingsStore Settings,
+        ShellViewModel ViewModel);
 }

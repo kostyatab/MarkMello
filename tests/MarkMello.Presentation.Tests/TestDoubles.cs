@@ -349,5 +349,7 @@ internal sealed class RecordingWindowLauncher : MarkMello.Presentation.Services.
         return true;
     }
 
+    public bool IsFolderOpen(string folderPath) => OpenFolders.Contains(folderPath);
+
     public void OpenFolderInNewWindow(string folderPath) => NewWindowFolders.Add(folderPath);
 }

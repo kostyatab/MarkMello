@@ -51,6 +51,73 @@ public sealed class ExternalChangesTests
 
         Assert.True(harness.ViewModel.ShowsExternalChangeBanner);
         Assert.Equal("# my edits", harness.ViewModel.EditorSession!.SourceText);
+
+        // Полоса называет файл (A-External): вкладок с правками может быть несколько.
+        Assert.Same(harness.ViewModel, harness.ViewModel.ExternalChangeContent);
+        Assert.Equal("first.md changed on disk.", harness.ViewModel.ExternalChangeTitle);
+        Assert.Equal("Load from disk", harness.ViewModel.ExternalChangeReload);
+        Assert.Equal("Your edits will be lost", harness.ViewModel.ExternalChangeReloadTooltip);
+    }
+
+    /// <summary>
+    /// Две вкладки с правками изменены снаружи: полоса при переходе между ними называет файл
+    /// активной вкладки. Флаг полосы при этом не меняется, и без явного уведомления она
+    /// называла бы прошлый файл, а «Загрузить с диска» выбросила бы правки этого.
+    /// </summary>
+    [Fact]
+    public async Task BannerNamesTheActiveTabWhenSwitchingBetweenChangedTabs()
+    {
+        var harness = await CreateAsync();
+        await harness.ViewModel.OpenPathAsync(FirstPath);
+        var first = harness.ViewModel.OpenDocuments.ActiveTab!;
+        harness.ViewModel.ToggleEditModeCommand.Execute(null);
+        harness.ViewModel.EditorSession!.SourceText = "# first edits";
+        await harness.ViewModel.OpenPathAsync(SecondPath);
+        harness.ViewModel.ToggleEditModeCommand.Execute(null);
+        harness.ViewModel.EditorSession!.SourceText = "# second edits";
+
+        await harness.ViewModel.ApplyWorkspaceChangesAsync(
+            [new WorkspaceChange(WorkspaceChangeKind.Changed, FirstPath),
+             new WorkspaceChange(WorkspaceChangeKind.Changed, SecondPath)]);
+        Assert.Equal("second.md changed on disk.", harness.ViewModel.ExternalChangeTitle);
+
+        var notified = new List<string?>();
+        harness.ViewModel.PropertyChanged += (_, e) => notified.Add(e.PropertyName);
+
+        await harness.ViewModel.OpenDocuments.ActivateCommand.ExecuteAsync(first);
+
+        Assert.True(harness.ViewModel.ShowsExternalChangeBanner);
+        Assert.Contains(nameof(ShellViewModel.ExternalChangeTitle), notified);
+        Assert.Equal("first.md changed on disk.", harness.ViewModel.ExternalChangeTitle);
+    }
+
+    /// <summary>
+    /// Чистую активную вкладку не удалось перечитать после чужого сохранения: ошибка встаёт
+    /// поверх, а вкладка остаётся документом со снимком и позицией. Esc возвращает к тексту;
+    /// раньше вкладка превращалась в ошибку, и Esc закрывал сам документ.
+    /// </summary>
+    [Fact]
+    public async Task FailedSilentReloadKeepsTheTabAsADocument()
+    {
+        var harness = await CreateAsync();
+        await harness.ViewModel.OpenPathAsync(FirstPath);
+        var first = harness.ViewModel.OpenDocuments.ActiveTab!;
+        harness.ViewModel.ReportScrollOffset(300);
+
+        harness.Loader.NextException = new IOException("The file is in use.");
+        await harness.ViewModel.ApplyWorkspaceChangesAsync(
+            [new WorkspaceChange(WorkspaceChangeKind.Changed, FirstPath)]);
+
+        Assert.True(harness.ViewModel.IsError);
+        Assert.Same(first, harness.ViewModel.OpenDocuments.ActiveTab);
+        Assert.False(first.IsLoadError);
+        Assert.Equal(300, first.ScrollOffset);
+
+        await harness.ViewModel.ClearErrorCommand.ExecuteAsync(null);
+
+        Assert.Same(first, Assert.Single(harness.ViewModel.OpenDocuments.Tabs));
+        Assert.True(harness.ViewModel.IsViewer);
+        Assert.Equal("# first", harness.ViewModel.Document!.Content);
     }
 
     [Fact]
@@ -111,9 +178,10 @@ public sealed class ExternalChangesTests
     }
 
     /// <summary>
-    /// Фоновую вкладку не удалось перечитать при возврате: ошибка встаёт поверх неё самой.
-    /// Сессия и правки вкладки, с которой ушли, остаются там, а не переезжают в shell
-    /// поверх вкладки с ошибкой, и Esc показывает её последний снимок, а не чужой документ.
+    /// Фоновую вкладку не удалось перечитать при возврате: ошибка встаёт поверх неё самой,
+    /// а вкладка с её снимком остаётся — это документ, а не неудачное открытие. Сессия и
+    /// правки вкладки, с которой ушли, остаются там, а не переезжают в shell поверх вкладки
+    /// с ошибкой, и Esc показывает её последний снимок, а не чужой документ.
     /// </summary>
     [Fact]
     public async Task FailedRereadOfABackgroundTabLeavesThePreviousTabsEditsInPlace()
@@ -136,6 +204,7 @@ public sealed class ExternalChangesTests
 
         Assert.True(harness.ViewModel.IsError);
         Assert.Same(first, harness.ViewModel.OpenDocuments.ActiveTab);
+        Assert.False(first.IsLoadError);
         Assert.Null(harness.ViewModel.EditorSession);
         Assert.False(harness.ViewModel.IsEditMode);
         Assert.Null(first.EditorSession);
@@ -143,8 +212,9 @@ public sealed class ExternalChangesTests
         Assert.True(second.IsEditMode);
         Assert.True(second.IsDirty);
 
-        harness.ViewModel.ClearErrorCommand.Execute(null);
+        await harness.ViewModel.ClearErrorCommand.ExecuteAsync(null);
 
+        Assert.Equal(2, harness.ViewModel.OpenDocuments.Tabs.Count);
         Assert.True(harness.ViewModel.IsViewer);
         Assert.Equal("# first", harness.ViewModel.Document!.Content);
         Assert.Equal(FirstPath, harness.ViewModel.CurrentDocumentPath);

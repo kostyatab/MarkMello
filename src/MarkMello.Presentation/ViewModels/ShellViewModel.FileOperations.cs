@@ -198,6 +198,9 @@ public partial class ShellViewModel
         }
 
         OpenDocuments.Refresh();
+
+        // Полоса «изменён на диске» называет файл по имени — оно могло смениться.
+        OnPropertyChanged(nameof(ExternalChangeTitle));
     }
 
     /// <summary>

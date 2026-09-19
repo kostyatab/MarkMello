@@ -230,9 +230,18 @@ internal sealed class CountingDocumentLoader : IDocumentLoader
 
     public int LoadCount { get; private set; }
 
+    /// <summary>Ошибка следующего чтения — отказ в доступе, сбой диска.</summary>
+    public Exception? NextException { get; set; }
+
     public Task<MarkMello.Domain.MarkdownSource> LoadAsync(string path, CancellationToken cancellationToken = default)
     {
         LoadCount++;
+
+        if (NextException is { } exception)
+        {
+            NextException = null;
+            return Task.FromException<MarkMello.Domain.MarkdownSource>(exception);
+        }
 
         return Sources.TryGetValue(path, out var source)
             ? Task.FromResult(source)

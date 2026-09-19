@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using MarkMello.Application.UseCases;
 using MarkMello.Domain;
 
 namespace MarkMello.Presentation.ViewModels;
@@ -105,18 +106,50 @@ public sealed partial class DocumentTabViewModel : ObservableObject, IDisposable
 
     public MarkdownSource? Document { get; private set; }
 
+    /// <summary>
+    /// Файл не открылся: вкладка показывает экран ошибки вместо документа. Такая вкладка
+    /// не пишется в сессию, а Esc и ✕ её закрывают.
+    /// </summary>
+    public OpenDocumentResult? LoadError { get; private set; }
+
+    public bool IsLoadError => LoadError is not null;
+
+    /// <summary>
+    /// Вкладка, которая была активной до неудачного открытия: закрытие вкладки ошибки
+    /// возвращает к ней, а не к соседке по полосе.
+    /// </summary>
+    public DocumentTabViewModel? ReturnTab { get; private set; }
+
     public RenderedMarkdownDocument RenderedDocument { get; private set; } = RenderedMarkdownDocument.Empty;
 
     public void ApplyDocument(MarkdownSource? document, RenderedMarkdownDocument rendered)
     {
         Document = document;
         RenderedDocument = rendered;
+        LoadError = null;
+        ReturnTab = null;
 
         if (document is not null)
         {
             Path = document.Path;
             Title = document.FileName;
         }
+    }
+
+    /// <summary>
+    /// Файл вкладки не прочитался. Снимок документа уходит: показывать старый текст
+    /// под экраном ошибки значило бы выдавать его за содержимое файла.
+    /// </summary>
+    public void ApplyLoadError(OpenDocumentResult error, DocumentTabViewModel? returnTab)
+    {
+        ArgumentNullException.ThrowIfNull(error);
+
+        LoadError = error;
+        ReturnTab = ReferenceEquals(returnTab, this) ? null : returnTab;
+        Document = null;
+        RenderedDocument = RenderedMarkdownDocument.Empty;
+        ScrollOffset = 0;
+        NeedsReload = false;
     }
 
     /// <summary>Путь сменился после «Сохранить как»: вкладка следует за файлом.</summary>

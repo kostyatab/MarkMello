@@ -21,6 +21,9 @@ public sealed partial class IconMarkupTests
     private const double LucideGridSize = 24;
     private const string DividerClass = "mm-setting-divider";
 
+    // Пунктирная рамка слоя перетаскивания (A-Drop) — обводка, но не иконка.
+    private const string DropFrameClass = "mm-drop-frame";
+
     private static readonly XNamespace AvaloniaNamespace = "https://github.com/avaloniaui";
 
     // Геометрия и холст во view — всегда самописная иконка.
@@ -116,6 +119,7 @@ public sealed partial class IconMarkupTests
     [InlineData("""<Grid Width="14" Height="14"><Ellipse Width="6" Height="6" Stroke="Black"/></Grid>""")]
     [InlineData("""<Ellipse Width="6" Height="6"><Ellipse.Stroke><SolidColorBrush Color="Black"/></Ellipse.Stroke></Ellipse>""")]
     [InlineData("""<Rectangle Width="8" Height="8" Stroke="Black"/>""")]
+    [InlineData("""<Ellipse Classes="mm-drop-frame" Width="8" Height="8" Stroke="Black"/>""")]
     [InlineData("""<Line StartPoint="7,0" EndPoint="7,2" Stroke="Black"/>""")]
     [InlineData("""<views:LucideIcon Data="M0,0 L1,1"/>""")]
     [InlineData("""<views:LucideIcon><views:LucideIcon.Data><StreamGeometry>M0,0 L1,1</StreamGeometry></views:LucideIcon.Data></views:LucideIcon>""")]
@@ -130,6 +134,7 @@ public sealed partial class IconMarkupTests
     [InlineData("""<Ellipse Classes="mm-tab-dirty" Width="6" Height="6"/>""")]
     [InlineData("""<Ellipse Width="5" Height="5" Fill="{DynamicResource MmAccentBrush}"/>""")]
     [InlineData("""<Line Classes="mm-setting-divider" StartPoint="0,0" EndPoint="1,0"/>""")]
+    [InlineData("""<Rectangle Classes="mm-drop-frame" Stroke="Black" StrokeDashArray="4,3"/>""")]
     public void TheGuardLetsLucideIconsDotsAndDividersThrough(string markup)
     {
         Assert.Empty(FindHandDrawnIcons(View(markup), "SomeView.axaml"));
@@ -189,8 +194,9 @@ public sealed partial class IconMarkupTests
     {
         // Линия — всегда обводка; вне иконок это только разделитель.
         "Line" => !HasClass(element, DividerClass),
-        "Ellipse" or "Rectangle" => element.Attribute("Stroke") is not null
-            || element.Element(AvaloniaNamespace + (element.Name.LocalName + ".Stroke")) is not null,
+        "Ellipse" or "Rectangle" => (element.Attribute("Stroke") is not null
+            || element.Element(AvaloniaNamespace + (element.Name.LocalName + ".Stroke")) is not null)
+            && !(element.Name.LocalName == "Rectangle" && HasClass(element, DropFrameClass)),
         _ => false
     };
 

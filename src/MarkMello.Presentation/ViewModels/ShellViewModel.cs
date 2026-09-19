@@ -193,6 +193,21 @@ public partial class ShellViewModel : ObservableObject
     [ObservableProperty]
     private bool _isDragHovering;
 
+    /// <summary>
+    /// Вторая строка слоя перетаскивания (A-Drop): что случится при отпускании. Пустая,
+    /// если список файлов до отпускания недоступен — тогда обещать нечего.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasDropTargetDetails))]
+    private string _dropTargetDetails = string.Empty;
+
+    [ObservableProperty]
+    private bool _isDropTargetFolder;
+
+    private string? _describedDropPath;
+
+    public bool HasDropTargetDetails => !string.IsNullOrEmpty(DropTargetDetails);
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSettingsOpen))]
     [NotifyPropertyChangedFor(nameof(IsAppMenuOpen))]
@@ -272,7 +287,39 @@ public partial class ShellViewModel : ObservableObject
     private string _errorTitle = string.Empty;
 
     [ObservableProperty]
-    private string _errorDetails = string.Empty;
+    [NotifyPropertyChangedFor(nameof(HasErrorDescription))]
+    private string _errorDescription = string.Empty;
+
+    /// <summary>Путь неудачного открытия — отдельной строкой, чтобы его можно было скопировать.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasErrorPath))]
+    private string _errorPath = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsNotFoundError))]
+    [NotifyPropertyChangedFor(nameof(IsAccessDeniedError))]
+    [NotifyPropertyChangedFor(nameof(IsUnsupportedTypeError))]
+    [NotifyPropertyChangedFor(nameof(IsGenericError))]
+    [NotifyPropertyChangedFor(nameof(ShowsLoadErrorRetry))]
+    private LoadErrorKind _errorKind;
+
+    public bool HasErrorDescription => !string.IsNullOrEmpty(ErrorDescription);
+
+    public bool HasErrorPath => !string.IsNullOrEmpty(ErrorPath);
+
+    public bool IsNotFoundError => ErrorKind == LoadErrorKind.NotFound;
+
+    public bool IsAccessDeniedError => ErrorKind == LoadErrorKind.AccessDenied;
+
+    public bool IsUnsupportedTypeError => ErrorKind == LoadErrorKind.UnsupportedType;
+
+    public bool IsGenericError => ErrorKind is LoadErrorKind.ReadFailure or LoadErrorKind.Folder;
+
+    /// <summary>
+    /// «Повторить» есть у ошибок, которые могут пройти сами: файл вернули, права выдали.
+    /// Не-Markdown от повтора Markdown не станет, а ошибка папки повторяется её же открытием.
+    /// </summary>
+    public bool ShowsLoadErrorRetry => ErrorKind is LoadErrorKind.NotFound or LoadErrorKind.AccessDenied or LoadErrorKind.ReadFailure;
 
     [ObservableProperty]
     private bool _isCheckingForUpdates;
@@ -1278,10 +1325,11 @@ public partial class ShellViewModel : ObservableObject
 
     /// <summary>
     /// Esc закрывает верхний слой: сначала модальный диалог — под ним могут остаться
-    /// открытыми поиск или карточка, — потом их, потом экран ошибки.
+    /// открытыми поиск или карточка, — потом их, потом экран ошибки. Вкладка ошибки
+    /// при этом закрывается целиком: без файла ей нечего показывать.
     /// </summary>
     [RelayCommand]
-    private void ClearError()
+    private async Task ClearErrorAsync()
     {
         if (IsDirtyPromptOpen)
         {
@@ -1307,12 +1355,43 @@ public partial class ShellViewModel : ObservableObject
             return;
         }
 
-        if (State == ViewState.LoadError)
+        if (State != ViewState.LoadError)
         {
-            State = Document is null ? ViewState.NoDocument : ViewState.Viewing;
-            ClearLoadError();
-            RefreshWindowTitle();
+            return;
         }
+
+        // Ошибка папки поверх вкладки ошибки снимается сама, а вкладка остаётся.
+        if (ErrorKind != LoadErrorKind.Folder && OpenDocuments.ActiveTab is { IsLoadError: true } errorTab)
+        {
+            await CloseTabAsync(errorTab).ConfigureAwait(true);
+            return;
+        }
+
+        DismissOverlayError();
+    }
+
+    /// <summary>
+    /// Снимает ошибку, вставшую поверх вкладки (ошибка папки, неудачное перечитывание):
+    /// под ней снова виден документ. Если под ней вкладка ошибки — возвращается её экран.
+    /// </summary>
+    private void DismissOverlayError()
+    {
+        if (OpenDocuments.ActiveTab is { LoadError: { } tabError })
+        {
+            SetLoadError(tabError);
+            RefreshWindowTitle();
+            return;
+        }
+
+        if (State != ViewState.LoadError)
+        {
+            ClearLoadError();
+            return;
+        }
+
+        State = Document is null && EditorSession is null ? ViewState.NoDocument : ViewState.Viewing;
+        ClearLoadError();
+        RefreshWindowTitle();
     }
 
     public async Task OpenDroppedFileAsync(string path)
@@ -1608,10 +1687,10 @@ public partial class ShellViewModel : ObservableObject
     private async Task LoadDocumentAsync(string path, bool preserveEditModeAfterLoad)
     {
         var result = await _openDocument.ExecuteAsync(path).ConfigureAwait(true);
-        ApplyOpenResult(result, preserveEditModeAfterLoad);
+        await ApplyOpenResultAsync(result, preserveEditModeAfterLoad).ConfigureAwait(true);
     }
 
-    private void ApplyOpenResult(OpenDocumentResult result, bool preserveEditModeAfterLoad)
+    private async Task ApplyOpenResultAsync(OpenDocumentResult result, bool preserveEditModeAfterLoad)
     {
         switch (result)
         {
@@ -1623,7 +1702,7 @@ public partial class ShellViewModel : ObservableObject
             case OpenDocumentResult.AccessDenied:
             case OpenDocumentResult.ReadError:
             case OpenDocumentResult.UnsupportedType:
-                FailOpenResult(result);
+                await FailOpenResultAsync(result).ConfigureAwait(true);
                 break;
         }
     }
@@ -1732,19 +1811,87 @@ public partial class ShellViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Неудачное открытие закрывает document surface экраном ошибки, но ничего не отбирает
-    /// у активной вкладки: сессия, режим правки и несохранённый текст принадлежат ей, `Esc`
-    /// возвращает к ней, а закрытие окна по-прежнему спросит о правках. Сбрасывать сессию
-    /// здесь нельзя: вкладка ещё держит её, поэтому shell её не выбросит, а синхронизация
-    /// снимет её с вкладки — правки пропадут вместе с вопросом о них.
+    /// Неудачное открытие получает свою вкладку с экраном ошибки (A-LoadError): у ошибки
+    /// есть имя файла, а у пользователя — куда вернуться. Прежняя активная вкладка уходит
+    /// в фон вместе с сессией, режимом правки и несохранённым текстом — как при обычном
+    /// переключении, — и закрытие вкладки ошибки возвращает к ней.
+    ///
+    /// Вкладка, в которой документ уже открыт, в ошибку не превращается: не перечиталась
+    /// она по F5 или после чужого сохранения, а её снимок, позиция, сессия и место в сессии
+    /// папки остаются ценными. Тогда ошибка встаёт поверх самой этой вкладки — она сначала
+    /// становится активной, чтобы «Повторить» перечитал именно её, — и `Esc` возвращает
+    /// к её тексту.
     /// </summary>
-    private void FailOpenResult(OpenDocumentResult result)
+    private async Task FailOpenResultAsync(OpenDocumentResult result)
     {
         CloseOverlayCore();
-        SetLoadError(result);
-        RefreshWindowTitle();
-        UpdateCommandStates();
+
+        var path = GetFailedPath(result);
+        var existing = OpenDocuments.FindByPath(path);
+        if (string.IsNullOrEmpty(path) || existing is { IsLoadError: false })
+        {
+            if (existing is not null && !ReferenceEquals(OpenDocuments.ActiveTab, existing))
+            {
+                // Файл только что не прочитался — перечитывать его при показе вкладки незачем.
+                existing.NeedsReload = false;
+                await RestoreTabAsync(existing).ConfigureAwait(true);
+            }
+
+            SetLoadError(result);
+            RefreshWindowTitle();
+            UpdateCommandStates();
+            return;
+        }
+
+        var previous = OpenDocuments.ActiveTab;
+        var tab = existing ?? OpenDocuments.Add(new DocumentTabViewModel(path, Path.GetFileName(path)));
+
+        // Повтор, который снова не удался, оставляет вкладке прежнюю точку возврата.
+        tab.ApplyLoadError(result, ReferenceEquals(previous, tab) ? tab.ReturnTab : previous);
+        ApplyWorkspaceMembership(tab);
+        ShowLoadErrorTab(tab, result);
+        OpenDocuments.Refresh();
+        RefreshTabState();
     }
+
+    /// <summary>
+    /// Делает вкладку ошибки активной. Сессия прошлой вкладки остаётся у неё: зеркалирование
+    /// shell → вкладка на это время выключено, как при восстановлении любой вкладки.
+    /// </summary>
+    private void ShowLoadErrorTab(DocumentTabViewModel tab, OpenDocumentResult error)
+    {
+        _isRestoringTab = true;
+        try
+        {
+            OpenDocuments.Activate(tab);
+            IsEditMode = false;
+            EditorSession = null;
+            Document = null;
+            RenderedDocument = RenderedMarkdownDocument.Empty;
+            _currentPath = tab.Path;
+            ReadingProgress = 0;
+            SetLoadError(error);
+
+            SyncWorkspaceActiveDocument();
+            RefreshWindowTitle();
+            UpdateCommandStates();
+            UpdateTabCommandStates();
+            SyncExternalChangeBanner();
+        }
+        finally
+        {
+            _isRestoringTab = false;
+        }
+    }
+
+    private static string? GetFailedPath(OpenDocumentResult result) => result switch
+    {
+        OpenDocumentResult.NotFound notFound => notFound.Path,
+        OpenDocumentResult.AccessDenied denied => denied.Path,
+        OpenDocumentResult.ReadError read => read.Path,
+        OpenDocumentResult.UnsupportedType unsupported => unsupported.Path,
+        _ => null
+    };
 
     private async Task RunWithDirtyCheckAsync(PendingDirtyActionKind kind, Func<Task> action)
     {

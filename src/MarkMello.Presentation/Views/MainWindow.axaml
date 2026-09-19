@@ -102,35 +102,40 @@
       <Setter Property="Opacity" Value="1" />
     </Style>
 
+    <!-- Полоса «изменён на диске» (A-External): под строкой окна во всю ширину области
+         документа — текст под ней остаётся видимым целиком. -->
     <Style Selector="Border.mm-external-change">
-      <Setter Property="Padding" Value="14,8" />
-      <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="8" />
-      <Setter Property="BoxShadow" Value="0 12 40 -8 #29383C28" />
-      <Setter Property="ZIndex" Value="4" />
+      <Setter Property="Height" Value="44" />
+      <Setter Property="Padding" Value="16,0,10,0" />
+      <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
     </Style>
     <Style Selector="Border.mm-external-change TextBlock">
       <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
-      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="FontSize" Value="13" />
       <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
     </Style>
 
     <Style Selector="Button.mm-external-change-action">
-      <Setter Property="Padding" Value="10,4" />
-      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="MinHeight" Value="28" />
+      <Setter Property="Padding" Value="12,0" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
       <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="CornerRadius" Value="7" />
       <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
-      <Setter Property="FontSize" Value="12" />
-      <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
     </Style>
     <Style Selector="Button.mm-external-change-action:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource MmSurfaceHoverBrush}" />
-      <Setter Property="TextBlock.Foreground" Value="{DynamicResource MmTextBrush}" />
+      <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
     </Style>
+
 
     <Style Selector="Border.mm-progress">
       <Setter Property="Opacity" Value="0" />
@@ -185,7 +190,7 @@
                     ResizeDirection="Columns" />
 
       <Grid Grid.Column="2"
-            RowDefinitions="Auto,*">
+            RowDefinitions="Auto,Auto,*">
 
         <!-- Строка окна: вкладки и постоянный блок кнопок справа вместо тайтлбара
              и строки вкладок (ADR-0009 Rules 1–2). Отступы по краям зависят от
@@ -343,7 +348,47 @@
                 Classes="mm-window-row-divider"
                 IsVisible="{Binding IsDocumentScrolled}" />
 
-      <Panel Grid.Row="1"
+        <!-- Файл изменился на диске, а во вкладке есть правки: полоса висит до выбора -->
+        <ContentControl Grid.Row="1"
+                        Content="{Binding ExternalChangeContent}">
+          <ContentControl.ContentTemplate>
+            <DataTemplate x:DataType="vm:ShellViewModel">
+              <Border Classes="mm-external-change">
+                <Grid ColumnDefinitions="Auto,*,Auto"
+                      ColumnSpacing="10"
+                      AutomationProperties.LiveSetting="Polite">
+                  <views:LucideIcon Data="{DynamicResource LucideCircleAlertGeometry}"
+                                    Width="16"
+                                    Height="16"
+                                    VerticalAlignment="Center"
+                                    Foreground="{DynamicResource MmAccentBrush}" />
+                  <TextBlock Grid.Column="1"
+                             VerticalAlignment="Center"
+                             TextTrimming="CharacterEllipsis">
+                    <Run Text="{Binding ExternalChangeTitle}"
+                         FontWeight="SemiBold" />
+                    <Run Text="{Binding ExternalChangeMessage}"
+                         Foreground="{DynamicResource MmTextSoftBrush}" />
+                  </TextBlock>
+                  <StackPanel Grid.Column="2"
+                              Orientation="Horizontal"
+                              Spacing="10"
+                              VerticalAlignment="Center">
+                    <Button Classes="mm-external-change-action"
+                            Content="{Binding ExternalChangeReload}"
+                            ToolTip.Tip="{Binding ExternalChangeReloadTooltip}"
+                            Command="{Binding ReloadExternalChangeCommand}" />
+                    <Button Classes="mm-external-change-action"
+                            Content="{Binding ExternalChangeKeep}"
+                            Command="{Binding KeepExternalChangeCommand}" />
+                  </StackPanel>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ContentControl.ContentTemplate>
+        </ContentControl>
+
+      <Panel Grid.Row="2"
              Name="BodyPanel">
 
         <views:WelcomeView IsVisible="{Binding IsWelcome}" />
@@ -425,34 +470,6 @@
           </ContentControl>
         </Panel>
 
-        <!-- Файл изменился на диске, а во вкладке есть правки: решает пользователь -->
-        <ContentControl Content="{Binding ExternalChangeContent}"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Top"
-                        Margin="0,14,0,0">
-          <ContentControl.ContentTemplate>
-            <DataTemplate x:DataType="vm:ShellViewModel">
-        <Border Classes="mm-external-change"
-                HorizontalAlignment="Center"
-                VerticalAlignment="Top"
-                Margin="0,14,0,0">
-          <StackPanel Orientation="Horizontal"
-                      Spacing="12"
-                      VerticalAlignment="Center">
-            <TextBlock Text="{Binding ExternalChangeTitle}"
-                       VerticalAlignment="Center" />
-            <Button Classes="mm-external-change-action"
-                    Content="{Binding ExternalChangeReload}"
-                    Command="{Binding ReloadExternalChangeCommand}" />
-            <Button Classes="mm-external-change-action"
-                    Content="{Binding ExternalChangeKeep}"
-                    Command="{Binding KeepExternalChangeCommand}" />
-          </StackPanel>
-        </Border>
-            </DataTemplate>
-          </ContentControl.ContentTemplate>
-        </ContentControl>
-
         <Border Classes="mm-status"
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Bottom"
@@ -472,24 +489,71 @@
                        Foreground="{DynamicResource MmTextSoftBrush}" />
           </StackPanel>
         </Border>
-
-        <Border IsVisible="{Binding IsDragHovering}"
-                IsHitTestVisible="False"
-                Background="{DynamicResource MmAccentSoftBrush}"
-                BorderBrush="{DynamicResource MmAccentBrush}"
-                BorderThickness="2"
-                CornerRadius="10"
-                Margin="12">
-          <TextBlock Text="{Binding DragDropHint}"
-                     FontFamily="{DynamicResource MmDocumentSansFontFamily}"
-                     FontSize="14"
-                     Foreground="{DynamicResource MmAccentBrush}"
-                     HorizontalAlignment="Center"
-                     VerticalAlignment="Center" />
-        </Border>
       </Panel>
 
       </Grid>
+
+      <!-- Слой перетаскивания — на всё окно, вместе с сайдбаром и строкой: файл можно
+           отпустить где угодно. Вторая строка говорит, куда он откроется. -->
+      <Panel Grid.Column="0"
+             Grid.ColumnSpan="3"
+             IsVisible="{Binding IsDragHovering}"
+             IsHitTestVisible="False"
+             AutomationProperties.LiveSetting="Polite">
+        <Border Background="{DynamicResource MmBackgroundBrush}"
+                Opacity="0.86" />
+        <!-- Пунктирная рамка — не иконка: класс mm-drop-frame guard-тест иконок пропускает -->
+        <Rectangle Classes="mm-drop-frame"
+                   Margin="10"
+                   RadiusX="14"
+                   RadiusY="14"
+                   Stroke="{DynamicResource MmAccentBrush}"
+                   StrokeThickness="2"
+                   StrokeDashArray="4,3" />
+        <StackPanel HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Margin="24,0">
+          <Border Width="60"
+                  Height="60"
+                  CornerRadius="16"
+                  HorizontalAlignment="Center"
+                  Background="{DynamicResource MmAccentSoftBrush}">
+            <Panel>
+              <views:LucideIcon Data="{DynamicResource LucideFileDownGeometry}"
+                                Width="28"
+                                Height="28"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Foreground="{DynamicResource MmAccentBrush}"
+                                IsVisible="{Binding !IsDropTargetFolder}" />
+              <views:LucideIcon Data="{DynamicResource LucideFolderDownGeometry}"
+                                Width="28"
+                                Height="28"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Foreground="{DynamicResource MmAccentBrush}"
+                                IsVisible="{Binding IsDropTargetFolder}" />
+            </Panel>
+          </Border>
+          <TextBlock Text="{Binding DragDropHint}"
+                     Margin="0,18,0,0"
+                     FontFamily="{DynamicResource MmDocumentSansFontFamily}"
+                     FontSize="18"
+                     FontWeight="SemiBold"
+                     TextAlignment="Center"
+                     HorizontalAlignment="Center"
+                     Foreground="{DynamicResource MmTextBrush}" />
+          <TextBlock Text="{Binding DropTargetDetails}"
+                     IsVisible="{Binding HasDropTargetDetails}"
+                     Margin="0,6,0,0"
+                     FontFamily="{DynamicResource MmDocumentSansFontFamily}"
+                     FontSize="13.5"
+                     TextWrapping="Wrap"
+                     TextAlignment="Center"
+                     HorizontalAlignment="Center"
+                     Foreground="{DynamicResource MmTextSoftBrush}" />
+        </StackPanel>
+      </Panel>
 
       <!-- Модальные диалоги (ADR-0009 Rule 10): один скрим на всё окно — сайдбар,
            вкладки и строку. Карточки создаются в момент вопроса, а не на старте. -->

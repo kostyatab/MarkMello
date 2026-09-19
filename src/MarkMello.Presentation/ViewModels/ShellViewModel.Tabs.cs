@@ -113,6 +113,12 @@ public partial class ShellViewModel
 
     private async Task RestoreTabAsync(DocumentTabViewModel tab)
     {
+        if (tab.LoadError is { } error)
+        {
+            ShowLoadErrorTab(tab, error);
+            return;
+        }
+
         _isRestoringTab = true;
         try
         {
@@ -144,7 +150,7 @@ public partial class ShellViewModel
 
         // Файл поменялся, пока вкладка была в фоне: показываем актуальное содержимое, а не снимок.
         // Перечитываем после восстановления: shell уже отпустил сессию прошлой вкладки, и если
-        // файл не прочтётся, ошибка встанет поверх этой вкладки и её снимка, а не чужой правки.
+        // файл не прочтётся, ошибкой станет эта вкладка, а не чужая правка.
         if (tab is { NeedsReload: true, Path: { } stalePath, EditorSession: null })
         {
             tab.NeedsReload = false;
@@ -172,6 +178,22 @@ public partial class ShellViewModel
             ClearLoadError();
             RefreshWindowTitle();
         }
+    }
+
+    /// <summary>
+    /// «Повторить» на экране ошибки: вкладка ошибки перечитывает свой путь и при успехе
+    /// показывает документ в себе же; ошибка поверх вкладки с правками — как F5.
+    /// </summary>
+    [RelayCommand]
+    private async Task RetryLoadAsync()
+    {
+        if (OpenDocuments.ActiveTab is { IsLoadError: true, Path: { } path })
+        {
+            await LoadDocumentAsync(path, preserveEditModeAfterLoad: false).ConfigureAwait(true);
+            return;
+        }
+
+        await ReloadAsync().ConfigureAwait(true);
     }
 
     /// <summary>
@@ -209,6 +231,11 @@ public partial class ShellViewModel
         var wasActive = ReferenceEquals(OpenDocuments.ActiveTab, tab);
         var session = tab.EditorSession;
 
+        // Вкладка ошибки закрывается туда, откуда пользователь пытался открыть файл.
+        var returnTab = tab.ReturnTab is { } candidate && OpenDocuments.Tabs.Contains(candidate)
+            ? candidate
+            : null;
+
         if (wasActive && ReferenceEquals(EditorSession, session))
         {
             // Снимаем сессию с shell до удаления вкладки, иначе она останется подписанной.
@@ -235,7 +262,7 @@ public partial class ShellViewModel
             return;
         }
 
-        if (OpenDocuments.ActiveTab is { } next)
+        if ((returnTab ?? OpenDocuments.ActiveTab) is { } next)
         {
             // Remove уже перевёл активность на соседа — восстанавливаем его содержимое.
             OpenDocuments.Activate(null);

@@ -19,6 +19,12 @@ public interface IWindowLauncher
     /// </summary>
     bool TryFocusWindowWithFolder(string folderPath);
 
+    /// <summary>
+    /// Открыта ли папка в каком-нибудь окне. Ничего не активирует: слой перетаскивания
+    /// спрашивает заранее, чтобы сказать, что случится при отпускании.
+    /// </summary>
+    bool IsFolderOpen(string folderPath);
+
     /// <summary>Открывает новое окно и показывает в нём указанную папку.</summary>
     void OpenFolderInNewWindow(string folderPath);
 }
@@ -38,28 +44,34 @@ public sealed class WindowLauncher : IWindowLauncher
 
     public bool TryFocusWindowWithFolder(string folderPath)
     {
-        if (string.IsNullOrWhiteSpace(folderPath) || GetLifetime() is not { } lifetime)
+        if (FindWindowWithFolder(folderPath) is not { } window)
         {
             return false;
         }
 
-        foreach (var window in lifetime.Windows)
+        window.Activate();
+        return true;
+    }
+
+    public bool IsFolderOpen(string folderPath) => FindWindowWithFolder(folderPath) is not null;
+
+    private static Window? FindWindowWithFolder(string folderPath)
+    {
+        if (string.IsNullOrWhiteSpace(folderPath) || GetLifetime() is not { } lifetime)
         {
-            if (window.DataContext is not ShellViewModel { Workspace: { } workspace })
-            {
-                continue;
-            }
-
-            if (!PathsMatch(workspace.Folder.RootPath, folderPath))
-            {
-                continue;
-            }
-
-            window.Activate();
-            return true;
+            return null;
         }
 
-        return false;
+        foreach (var window in lifetime.Windows)
+        {
+            if (window.DataContext is ShellViewModel { Workspace: { } workspace }
+                && PathsMatch(workspace.Folder.RootPath, folderPath))
+            {
+                return window;
+            }
+        }
+
+        return null;
     }
 
     public void OpenFolderInNewWindow(string folderPath)

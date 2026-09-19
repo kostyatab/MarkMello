@@ -519,31 +519,46 @@ public partial class MainWindow : Window
 
     // ---------- Drag & drop ----------
 
-    private void OnDragEnter(object? sender, DragEventArgs e)
-    {
-        if (TryGetDroppedTarget(e) is not null)
-        {
-            _viewModel.IsDragHovering = true;
-            e.DragEffects = DragDropEffects.Copy;
-        }
-    }
+    private void OnDragEnter(object? sender, DragEventArgs e) => UpdateDropTarget(e);
 
     private void OnDragOver(object? sender, DragEventArgs e)
     {
-        e.DragEffects = TryGetDroppedTarget(e) is not null
-            ? DragDropEffects.Copy
-            : DragDropEffects.None;
+        UpdateDropTarget(e);
         e.Handled = true;
+    }
+
+    /// <summary>
+    /// Слой на всё окно говорит, что случится при отпускании (A-Drop). Бывает, что список
+    /// файлов платформа отдаёт только при отпускании: тогда слой есть, а второй строки нет.
+    /// </summary>
+    private void UpdateDropTarget(DragEventArgs e)
+    {
+        if (TryGetDroppedTarget(e) is { } target)
+        {
+            _viewModel.ShowDropTarget(target.Path, target.IsDirectory);
+            e.DragEffects = DragDropEffects.Copy;
+            return;
+        }
+
+        if (e.DataTransfer.TryGetFiles() is null && e.DataTransfer.Contains(DataFormat.File))
+        {
+            _viewModel.ShowDropTarget(null, isDirectory: false);
+            e.DragEffects = DragDropEffects.Copy;
+            return;
+        }
+
+        _viewModel.HideDropTarget();
+        e.DragEffects = DragDropEffects.None;
     }
 
     private void OnDragLeave(object? sender, DragEventArgs e)
     {
-        _viewModel.IsDragHovering = false;
+        _viewModel.HideDropTarget();
     }
 
     private async void OnDrop(object? sender, DragEventArgs e)
     {
-        _viewModel.IsDragHovering = false;
+        _viewModel.HideDropTarget();
 
         var target = TryGetDroppedTarget(e);
         if (target is not { } dropped)
