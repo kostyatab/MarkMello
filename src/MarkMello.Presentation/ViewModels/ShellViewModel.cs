@@ -1609,11 +1609,16 @@ public partial class ShellViewModel : ObservableObject
         UpdateCommandStates();
     }
 
+    /// <summary>
+    /// Неудачное открытие закрывает document surface экраном ошибки, но ничего не отбирает
+    /// у активной вкладки: сессия, режим правки и несохранённый текст принадлежат ей, `Esc`
+    /// возвращает к ней, а закрытие окна по-прежнему спросит о правках. Сбрасывать сессию
+    /// здесь нельзя: вкладка ещё держит её, поэтому shell её не выбросит, а синхронизация
+    /// снимет её с вкладки — правки пропадут вместе с вопросом о них.
+    /// </summary>
     private void FailOpenResult(OpenDocumentResult result)
     {
         CloseOverlayCore();
-        IsEditMode = false;
-        EditorSession = null;
         SetLoadError(result);
         RefreshWindowTitle();
         UpdateCommandStates();

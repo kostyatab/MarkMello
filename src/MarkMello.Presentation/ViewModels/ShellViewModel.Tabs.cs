@@ -111,18 +111,6 @@ public partial class ShellViewModel
 
     private async Task RestoreTabAsync(DocumentTabViewModel tab)
     {
-        // Файл поменялся, пока вкладка была в фоне: показываем актуальное содержимое, а не снимок.
-        if (tab is { NeedsReload: true, Path: { } stalePath, EditorSession: null })
-        {
-            tab.NeedsReload = false;
-            OpenDocuments.Activate(tab);
-            var offset = tab.ScrollOffset;
-            await LoadDocumentAsync(stalePath, preserveEditModeAfterLoad: false).ConfigureAwait(true);
-            _pendingScrollOffset = offset;
-            SyncExternalChangeBanner();
-            return;
-        }
-
         _isRestoringTab = true;
         try
         {
@@ -150,6 +138,17 @@ public partial class ShellViewModel
         finally
         {
             _isRestoringTab = false;
+        }
+
+        // Файл поменялся, пока вкладка была в фоне: показываем актуальное содержимое, а не снимок.
+        // Перечитываем после восстановления: shell уже отпустил сессию прошлой вкладки, и если
+        // файл не прочтётся, ошибка встанет поверх этой вкладки и её снимка, а не чужой правки.
+        if (tab is { NeedsReload: true, Path: { } stalePath, EditorSession: null })
+        {
+            tab.NeedsReload = false;
+            var offset = tab.ScrollOffset;
+            await LoadDocumentAsync(stalePath, preserveEditModeAfterLoad: false).ConfigureAwait(true);
+            _pendingScrollOffset = offset;
         }
     }
 

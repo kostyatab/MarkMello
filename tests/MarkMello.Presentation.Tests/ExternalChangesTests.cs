@@ -110,6 +110,47 @@ public sealed class ExternalChangesTests
         Assert.Equal("# first changed", harness.ViewModel.Document!.Content);
     }
 
+    /// <summary>
+    /// Фоновую вкладку не удалось перечитать при возврате: ошибка встаёт поверх неё самой.
+    /// Сессия и правки вкладки, с которой ушли, остаются там, а не переезжают в shell
+    /// поверх вкладки с ошибкой, и Esc показывает её последний снимок, а не чужой документ.
+    /// </summary>
+    [Fact]
+    public async Task FailedRereadOfABackgroundTabLeavesThePreviousTabsEditsInPlace()
+    {
+        var harness = await CreateAsync();
+        await harness.ViewModel.OpenPathAsync(FirstPath);
+        var first = harness.ViewModel.OpenDocuments.ActiveTab!;
+
+        await harness.ViewModel.OpenPathAsync(SecondPath);
+        harness.ViewModel.ToggleEditModeCommand.Execute(null);
+        var second = harness.ViewModel.OpenDocuments.ActiveTab!;
+        var secondSession = harness.ViewModel.EditorSession!;
+        secondSession.SourceText = "# second edited";
+
+        await harness.ViewModel.ApplyWorkspaceChangesAsync(
+            [new WorkspaceChange(WorkspaceChangeKind.Changed, FirstPath)]);
+        harness.Loader.Sources.Remove(FirstPath);
+
+        await harness.ViewModel.OpenDocuments.ActivateCommand.ExecuteAsync(first);
+
+        Assert.True(harness.ViewModel.IsError);
+        Assert.Same(first, harness.ViewModel.OpenDocuments.ActiveTab);
+        Assert.Null(harness.ViewModel.EditorSession);
+        Assert.False(harness.ViewModel.IsEditMode);
+        Assert.Null(first.EditorSession);
+        Assert.Same(secondSession, second.EditorSession);
+        Assert.True(second.IsEditMode);
+        Assert.True(second.IsDirty);
+
+        harness.ViewModel.ClearErrorCommand.Execute(null);
+
+        Assert.True(harness.ViewModel.IsViewer);
+        Assert.Equal("# first", harness.ViewModel.Document!.Content);
+        Assert.Equal(FirstPath, harness.ViewModel.CurrentDocumentPath);
+        Assert.True(harness.ViewModel.TryQueueCloseRequest());
+    }
+
     [Fact]
     public async Task ExternallyDeletedCleanTabCloses()
     {
