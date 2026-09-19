@@ -397,6 +397,120 @@ public sealed class DocumentTabsShellTests
         Assert.Equal("# first edited", harness.ViewModel.EditorSession!.SourceText);
     }
 
+    /// <summary>
+    /// Черновик ⌘N — такая же вкладка со своими правками (ADR-0009 Rule 3). Раньше его
+    /// сессия приписывалась вкладке, активной до ⌘N, а сам черновик оставался без неё:
+    /// открытие другого файла выбрасывало набранный текст. ⌘O поверх грязного черновика
+    /// пока спрашивает о правках, поэтому файл приходит так, как из Finder.
+    /// </summary>
+    [Fact]
+    public async Task DraftKeepsItsTextWhenAnotherDocumentOpensOverIt()
+    {
+        var harness = CreateHarness();
+        await harness.ViewModel.CreateNewDocumentCommand.ExecuteAsync(null);
+        var draft = harness.ViewModel.OpenDocuments.ActiveTab!;
+        harness.ViewModel.EditorSession!.SourceText = "# draft";
+
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
+
+        Assert.True(draft.IsDirty);
+
+        await harness.ViewModel.OpenDocuments.ActivateCommand.ExecuteAsync(draft);
+
+        Assert.True(harness.ViewModel.IsEditMode);
+        Assert.True(harness.ViewModel.IsDirty);
+        Assert.Equal("# draft", harness.ViewModel.EditorSession!.SourceText);
+    }
+
+    /// <summary>Пустой черновик после ⌘O тоже возвращается редактором, а не пустым экраном.</summary>
+    [Fact]
+    public async Task DraftStaysInEditModeAfterOpeningAFileOverIt()
+    {
+        var harness = CreateHarness();
+        harness.FilePicker.OpenPath = TestPaths.At("docs", "first.md");
+        await harness.ViewModel.CreateNewDocumentCommand.ExecuteAsync(null);
+        var draft = harness.ViewModel.OpenDocuments.ActiveTab!;
+        var draftSession = harness.ViewModel.EditorSession;
+
+        await harness.ViewModel.OpenFileCommand.ExecuteAsync(null);
+        Assert.Equal(TestPaths.At("docs", "first.md"), harness.ViewModel.CurrentDocumentPath);
+
+        await harness.ViewModel.OpenDocuments.ActivateCommand.ExecuteAsync(draft);
+
+        Assert.True(harness.ViewModel.IsEditMode);
+        Assert.Same(draftSession, harness.ViewModel.EditorSession);
+        Assert.Equal("Untitled.md", harness.ViewModel.FileName);
+    }
+
+    /// <summary>
+    /// ⌘N из правки документа не забирает у его вкладки сессию: раньше вкладка получала
+    /// сессию черновика и при возврате показывала пустой редактор вместо своего текста.
+    /// ⌘N поверх грязной правки пока спрашивает о ней, поэтому правки здесь набраны
+    /// после ⌘N — важно, что они попадают в сессию своей вкладки, а не черновика.
+    /// </summary>
+    [Fact]
+    public async Task NewDocumentLeavesThePreviousTabItsOwnSession()
+    {
+        var harness = CreateHarness();
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
+        harness.ViewModel.ToggleEditModeCommand.Execute(null);
+        var first = harness.ViewModel.OpenDocuments.ActiveTab!;
+        var firstSession = harness.ViewModel.EditorSession!;
+
+        await harness.ViewModel.CreateNewDocumentCommand.ExecuteAsync(null);
+        var draft = harness.ViewModel.OpenDocuments.ActiveTab!;
+        var draftSession = harness.ViewModel.EditorSession!;
+
+        Assert.NotSame(first, draft);
+        Assert.Same(firstSession, first.EditorSession);
+        Assert.True(first.IsEditMode);
+        Assert.Same(draftSession, draft.EditorSession);
+        Assert.True(draft.IsEditMode);
+
+        await harness.ViewModel.OpenDocuments.ActivateCommand.ExecuteAsync(first);
+        harness.ViewModel.EditorSession!.SourceText = "# first edited";
+        await harness.ViewModel.OpenDocuments.ActivateCommand.ExecuteAsync(draft);
+        await harness.ViewModel.OpenDocuments.ActivateCommand.ExecuteAsync(first);
+
+        Assert.Same(firstSession, harness.ViewModel.EditorSession);
+        Assert.True(harness.ViewModel.IsEditMode);
+        Assert.Equal("# first edited", harness.ViewModel.EditorSession.SourceText);
+        Assert.Equal(TestPaths.At("docs", "first.md"), harness.ViewModel.CurrentDocumentPath);
+        Assert.Equal(string.Empty, draftSession.SourceText);
+    }
+
+    /// <summary>
+    /// Окно ищет несохранённое по сессиям вкладок. Раньше у черновика её не было,
+    /// и окно с набранным в нём текстом закрывалось без вопроса.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ClosingWindowAsksAboutADirtyDraft(bool draftInBackground)
+    {
+        var harness = CreateHarness();
+        var closeRequests = 0;
+        harness.ViewModel.CloseRequested += (_, _) => closeRequests++;
+
+        await harness.ViewModel.CreateNewDocumentCommand.ExecuteAsync(null);
+        var draft = harness.ViewModel.OpenDocuments.ActiveTab!;
+        harness.ViewModel.EditorSession!.SourceText = "# draft";
+
+        if (draftInBackground)
+        {
+            await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
+        }
+
+        Assert.True(harness.ViewModel.TryQueueCloseRequest());
+        Assert.True(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.Same(draft, harness.ViewModel.OpenDocuments.ActiveTab);
+        Assert.Equal("# draft", harness.ViewModel.EditorSession!.SourceText);
+
+        await harness.ViewModel.ConfirmDirtyDiscardCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, closeRequests);
+    }
+
     /// <summary>Две грязные вкладки папки и одна грязная вкладка вне её.</summary>
     private static async Task<TabsTestHarness> CreateHarnessWithDirtyFolderTabsAsync()
     {
@@ -437,10 +551,12 @@ public sealed class DocumentTabsShellTests
         loader.Sources[TestPaths.At("docs", "second.md")] = new MarkdownSource(TestPaths.At("docs", "second.md"), "second.md", "# second");
         loader.Sources[TestPaths.At("outside", "notes.md")] = new MarkdownSource(TestPaths.At("outside", "notes.md"), "notes.md", "# notes");
 
+        var filePicker = new StubFilePicker();
+
         var viewModel = new ShellViewModel(
             new OpenDocumentUseCase(loader),
             new SaveDocumentUseCase(new RecordingDocumentSaver()),
-            new StubFilePicker(),
+            filePicker,
             new StubCommandLineActivation(),
             new LocalizationService(AppLanguage.English),
             new InMemorySettingsStore { Session = session ?? WorkspaceSessionState.Empty },
@@ -457,8 +573,8 @@ public sealed class DocumentTabsShellTests
             new RecordingWindowLauncher(),
             fileExists: path => fileSystem.Exists(path));
 
-        return new TabsTestHarness(loader, viewModel);
+        return new TabsTestHarness(loader, filePicker, viewModel);
     }
 
-    private sealed record TabsTestHarness(CountingDocumentLoader Loader, ShellViewModel ViewModel);
+    private sealed record TabsTestHarness(CountingDocumentLoader Loader, StubFilePicker FilePicker, ShellViewModel ViewModel);
 }

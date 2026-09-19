@@ -1381,6 +1381,12 @@ public partial class ShellViewModel : ObservableObject
         ReadingProgress = 0;
         ClearLoadError();
         CloseOverlayCore();
+
+        // Вкладку черновика заводим до того, как трогаем EditorSession и режим: иначе
+        // сессия черновика припишется предыдущей вкладке вместо её собственной, а сам
+        // черновик останется без сессии и потеряет текст при первом же переключении.
+        TrackNewDocumentTab();
+
         EditorSession = new EditorSessionViewModel(
             GetUntitledFileName(),
             string.Empty,
@@ -1399,7 +1405,6 @@ public partial class ShellViewModel : ObservableObject
         EditorSession.UpdateReadingPreferences(ReadingPreferences);
         EditorSession.SetStatusMessage(string.Empty);
         IsEditMode = true;
-        TrackNewDocumentTab();
         RefreshWindowTitle();
         UpdateCommandStates();
     }
