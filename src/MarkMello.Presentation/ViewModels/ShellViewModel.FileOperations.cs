@@ -71,7 +71,24 @@ public partial class ShellViewModel
             }
         }
 
+        DeletePromptMessage = WithUnsavedChangesWarning(DeletePromptMessage, node.Path);
         IsDeletePromptOpen = true;
+    }
+
+    /// <summary>
+    /// Вкладки под удаляемым путём закроются без диалога «Сохранить»: сохранять файл, который
+    /// сейчас исчезнет, бессмысленно. Поэтому потерю правок называем прямо в подтверждении —
+    /// по строке на каждый файл.
+    /// </summary>
+    private string WithUnsavedChangesWarning(string message, string path)
+    {
+        var warnings = OpenDocuments.Tabs
+            .Where(tab => tab.EditorSession?.IsDirty == true
+                && tab.Path is { } tabPath
+                && IsSameOrUnder(tabPath, path))
+            .Select(tab => Format("DeleteUnsavedChangesWarning", tab.Title));
+
+        return string.Join('\n', warnings.Prepend(message));
     }
 
     [RelayCommand]
@@ -103,7 +120,7 @@ public partial class ShellViewModel
             case WorkspaceMutationResult.TrashUnavailable:
                 // Ничего не удалено: переспрашиваем уже про безвозвратное удаление.
                 IsPermanentDeletePrompt = true;
-                DeletePromptMessage = _localization["DeletePermanentBody"];
+                DeletePromptMessage = WithUnsavedChangesWarning(_localization["DeletePermanentBody"], node.Path);
                 break;
 
             default:
@@ -178,7 +195,7 @@ public partial class ShellViewModel
     {
         foreach (var tab in OpenDocuments.Tabs.ToList())
         {
-            if (tab.Path is { } tabPath && (PathsMatch(tabPath, path) || IsUnderDirectory(tabPath, path)))
+            if (tab.Path is { } tabPath && IsSameOrUnder(tabPath, path))
             {
                 await RemoveTabAsync(tab).ConfigureAwait(true);
             }
@@ -192,6 +209,9 @@ public partial class ShellViewModel
         => left is not null
             && right is not null
             && string.Equals(left, right, PathComparison);
+
+    private static bool IsSameOrUnder(string path, string target)
+        => PathsMatch(path, target) || IsUnderDirectory(path, target);
 
     private static bool IsUnderDirectory(string path, string directory)
         => path.StartsWith(

@@ -249,6 +249,56 @@ public sealed class WorkspaceFileOperationsTests
         Assert.DoesNotContain(harness.Workspace.Roots, candidate => candidate.Name == "first.md");
     }
 
+    /// <summary>
+    /// Вкладка удаляемого файла закрывается без диалога «Сохранить», поэтому о потере
+    /// правок говорит само подтверждение удаления.
+    /// </summary>
+    [Fact]
+    public async Task DeletingAFileWithUnsavedChangesWarnsAboutThem()
+    {
+        var harness = await CreateAsync();
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
+        harness.ViewModel.ToggleEditModeCommand.Execute(null);
+        harness.ViewModel.EditorSession!.SourceText = "# first edited";
+        var node = harness.Workspace.Roots.Single(candidate => candidate.Name == "first.md");
+
+        await harness.Workspace.RequestDeleteCommand.ExecuteAsync(node);
+
+        Assert.Contains("Unsaved changes in \"first.md\" will be lost.", harness.ViewModel.DeletePromptMessage);
+
+        await harness.ViewModel.ConfirmDeleteCommand.ExecuteAsync(null);
+
+        Assert.False(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.Empty(harness.ViewModel.OpenDocuments.Tabs);
+    }
+
+    [Fact]
+    public async Task DeletingAFolderNamesOnlyTheDirtyFilesInsideIt()
+    {
+        var harness = await CreateAsync();
+        harness.Platform.TrashResult = TrashResult.Unsupported;
+
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "adr", "adr_0001.md"));
+        harness.ViewModel.ToggleEditModeCommand.Execute(null);
+        harness.ViewModel.EditorSession!.SourceText = "# adr edited";
+
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
+        harness.ViewModel.ToggleEditModeCommand.Execute(null);
+        harness.ViewModel.EditorSession!.SourceText = "# first edited";
+
+        var node = harness.Workspace.Roots.Single(candidate => candidate.Name == "adr");
+        await harness.Workspace.RequestDeleteCommand.ExecuteAsync(node);
+
+        Assert.Contains("Unsaved changes in \"adr_0001.md\" will be lost.", harness.ViewModel.DeletePromptMessage);
+        Assert.DoesNotContain("first.md", harness.ViewModel.DeletePromptMessage);
+
+        // Переспрос про безвозвратное удаление не теряет предупреждение.
+        await harness.ViewModel.ConfirmDeleteCommand.ExecuteAsync(null);
+
+        Assert.True(harness.ViewModel.IsPermanentDeletePrompt);
+        Assert.Contains("Unsaved changes in \"adr_0001.md\" will be lost.", harness.ViewModel.DeletePromptMessage);
+    }
+
     [Fact]
     public async Task RevealAsksThePlatformForTheRealPath()
     {
@@ -275,6 +325,7 @@ public sealed class WorkspaceFileOperationsTests
 
         var loader = new StubDocumentLoader();
         loader.Sources[TestPaths.At("docs", "first.md")] = new MarkdownSource(TestPaths.At("docs", "first.md"), "first.md", "# first");
+        loader.Sources[TestPaths.At("docs", "adr", "adr_0001.md")] = new MarkdownSource(TestPaths.At("docs", "adr", "adr_0001.md"), "adr_0001.md", "# adr");
         loader.Sources[TestPaths.At("docs", "meeting.md")] = new MarkdownSource(TestPaths.At("docs", "meeting.md"), "meeting.md", string.Empty);
         loader.Sources[TestPaths.At("docs", "renamed.md")] = new MarkdownSource(TestPaths.At("docs", "renamed.md"), "renamed.md", "# first");
 

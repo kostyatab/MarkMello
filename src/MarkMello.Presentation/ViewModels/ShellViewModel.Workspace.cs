@@ -151,22 +151,19 @@ public partial class ShellViewModel
     {
         CloseOverlayCore();
 
-        var workspace = Workspace;
-        if (workspace is null)
+        if (Workspace is null)
         {
             return;
         }
 
-        // Вкладки этой папки уходят вместе с ней; файлы, открытые поверх папки,
-        // остаются — окно просто возвращается в обычный single-file режим (ADR-0007 Rule 3).
-        if (OpenDocuments.ActiveTab is { BelongsToWorkspace: true } && RequiresDirtyResolution)
-        {
-            await RunWithDirtyCheckAsync(PendingDirtyActionKind.CloseFile, CloseWorkspaceCoreAsync)
-                .ConfigureAwait(true);
-            return;
-        }
-
-        await CloseWorkspaceCoreAsync().ConfigureAwait(true);
+        // Вкладки этой папки уходят вместе с ней, поэтому спрашиваем о каждой грязной из них,
+        // а не только об активной; файлы, открытые поверх папки, остаются — окно просто
+        // возвращается в обычный single-file режим (ADR-0007 Rule 3).
+        await ResolveDirtyTabsThenAsync(
+                PendingDirtyActionKind.CloseFile,
+                static tab => tab.BelongsToWorkspace,
+                CloseWorkspaceCoreAsync)
+            .ConfigureAwait(true);
     }
 
     private async Task CloseWorkspaceCoreAsync()

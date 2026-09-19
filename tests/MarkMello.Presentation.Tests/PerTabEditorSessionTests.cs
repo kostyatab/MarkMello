@@ -99,6 +99,52 @@ public sealed class PerTabEditorSessionTests
         Assert.True(harness.ViewModel.IsDirtyPromptOpen);
     }
 
+    /// <summary>
+    /// Раньше окно спрашивало только про первую грязную вкладку и закрывалось сразу после
+    /// ответа, молча теряя правки остальных.
+    /// </summary>
+    [Fact]
+    public async Task ClosingWindowAsksAboutEveryDirtyTabInTurn()
+    {
+        var harness = await CreateHarnessWithTwoDirtyTabsAsync();
+        var closeRequests = 0;
+        harness.ViewModel.CloseRequested += (_, _) => closeRequests++;
+
+        Assert.True(harness.ViewModel.TryQueueCloseRequest());
+        Assert.True(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.Equal(@"C:\docs\first.md", harness.ViewModel.CurrentDocumentPath);
+
+        await harness.ViewModel.ConfirmDirtyDiscardCommand.ExecuteAsync(null);
+
+        Assert.Equal(0, closeRequests);
+        Assert.True(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.Equal(@"C:\docs\second.md", harness.ViewModel.CurrentDocumentPath);
+
+        await harness.ViewModel.ConfirmDirtyDiscardCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, closeRequests);
+        Assert.False(harness.ViewModel.IsDirtyPromptOpen);
+    }
+
+    [Fact]
+    public async Task CancellingOnAnyDirtyTabKeepsTheWindowOpen()
+    {
+        var harness = await CreateHarnessWithTwoDirtyTabsAsync();
+        var closeRequests = 0;
+        harness.ViewModel.CloseRequested += (_, _) => closeRequests++;
+
+        harness.ViewModel.TryQueueCloseRequest();
+        await harness.ViewModel.ConfirmDirtyDiscardCommand.ExecuteAsync(null);
+        harness.ViewModel.CancelDirtyPromptCommand.Execute(null);
+
+        Assert.Equal(0, closeRequests);
+        Assert.False(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.True(harness.ViewModel.OpenDocuments.Tabs[1].IsDirty);
+
+        // Следующая попытка закрыть окно снова спрашивает про оставшиеся правки.
+        Assert.True(harness.ViewModel.TryQueueCloseRequest());
+    }
+
     [Fact]
     public async Task CleanTabsDoNotBlockClosingTheWindow()
     {
@@ -107,6 +153,21 @@ public sealed class PerTabEditorSessionTests
         await harness.ViewModel.OpenPathAsync(@"C:\docs\second.md");
 
         Assert.False(harness.ViewModel.TryQueueCloseRequest());
+    }
+
+    private static async Task<EditorTestHarness> CreateHarnessWithTwoDirtyTabsAsync()
+    {
+        var harness = CreateHarness();
+
+        await harness.ViewModel.OpenPathAsync(@"C:\docs\first.md");
+        harness.ViewModel.ToggleEditModeCommand.Execute(null);
+        harness.ViewModel.EditorSession!.SourceText = "# first edited";
+
+        await harness.ViewModel.OpenPathAsync(@"C:\docs\second.md");
+        harness.ViewModel.ToggleEditModeCommand.Execute(null);
+        harness.ViewModel.EditorSession!.SourceText = "# second edited";
+
+        return harness;
     }
 
     private static EditorTestHarness CreateHarness()

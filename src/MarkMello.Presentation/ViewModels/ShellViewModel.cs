@@ -1136,21 +1136,17 @@ public partial class ShellViewModel : ObservableObject
             return true;
         }
 
-        // Грязной может быть любая вкладка, а не только активная: показываем её пользователю
-        // и спрашиваем про неё, после разрешения запрос на закрытие повторяется — так окно
-        // проходит по всем несохранённым вкладкам по очереди.
-        if (FindFirstDirtyTab() is not { } dirtyTab)
+        // Грязной может быть любая вкладка, а не только активная. Окно проходит по всем
+        // несохранённым вкладкам по очереди и закрывается, только когда вопросов не осталось.
+        // Сюда же приходит ⌘Q на macOS: TryShutdown закрывает окна через тот же Closing.
+        if (FindFirstDirtyTab() is null)
         {
             return false;
         }
 
-        if (!ReferenceEquals(OpenDocuments.ActiveTab, dirtyTab))
-        {
-            _ = RestoreTabAsync(dirtyTab);
-        }
-
-        QueueDirtyAction(
+        _ = ResolveDirtyTabsThenAsync(
             PendingDirtyActionKind.CloseWindow,
+            static _ => true,
             () =>
             {
                 CloseRequested?.Invoke(this, EventArgs.Empty);

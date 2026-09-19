@@ -312,7 +312,42 @@ public partial class ShellViewModel
 
     /// <summary>Первая вкладка с несохранёнными правками — с неё начинается закрытие окна.</summary>
     private DocumentTabViewModel? FindFirstDirtyTab()
-        => OpenDocuments.Tabs.FirstOrDefault(static tab => tab.EditorSession?.IsDirty == true);
+        => FindFirstDirtyTab(static _ => true);
+
+    private DocumentTabViewModel? FindFirstDirtyTab(Func<DocumentTabViewModel, bool> scope)
+        => OpenDocuments.Tabs.FirstOrDefault(tab => tab.EditorSession?.IsDirty == true && scope(tab));
+
+    /// <summary>
+    /// Операция над несколькими вкладками сразу (закрытие окна, папки) спрашивает о каждой
+    /// грязной по очереди: вкладка показывается, диалог решает её судьбу, и обход повторяется,
+    /// пока грязных не останется. Только тогда выполняется сама операция; «Отмена» на любой
+    /// вкладке сбрасывает отложенное действие, а с ним и всю операцию (ADR-0007 Rule 11).
+    /// </summary>
+    private async Task ResolveDirtyTabsThenAsync(
+        PendingDirtyActionKind kind,
+        Func<DocumentTabViewModel, bool> scope,
+        Func<Task> action)
+    {
+        if (IsDirtyPromptOpen)
+        {
+            return;
+        }
+
+        if (FindFirstDirtyTab(scope) is not { } dirtyTab)
+        {
+            await action().ConfigureAwait(true);
+            return;
+        }
+
+        // Диалог работает с активной сессией, поэтому сначала показываем ту вкладку,
+        // о правках которой спрашиваем.
+        if (!ReferenceEquals(OpenDocuments.ActiveTab, dirtyTab))
+        {
+            await RestoreTabAsync(dirtyTab).ConfigureAwait(true);
+        }
+
+        QueueDirtyAction(kind, () => ResolveDirtyTabsThenAsync(kind, scope, action));
+    }
 
     private void RefreshTabState()
     {

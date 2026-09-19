@@ -192,6 +192,72 @@ public sealed class DocumentTabsShellTests
         Assert.Equal(["notes.md"], harness.ViewModel.OpenDocuments.Tabs.Select(tab => tab.Title));
     }
 
+    /// <summary>
+    /// Раньше «Закрыть папку» спрашивала только про активную вкладку, а фоновые грязные
+    /// вкладки папки закрывались молча. Вкладка вне папки остаётся и не спрашивается.
+    /// </summary>
+    [Fact]
+    public async Task ClosingFolderAsksAboutEveryDirtyTabOfItInTurn()
+    {
+        var harness = await CreateHarnessWithDirtyFolderTabsAsync();
+
+        await harness.ViewModel.CloseFolderCommand.ExecuteAsync(null);
+
+        Assert.True(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.Equal(TestPaths.At("docs", "README.md"), harness.ViewModel.CurrentDocumentPath);
+
+        await harness.ViewModel.ConfirmDirtyDiscardCommand.ExecuteAsync(null);
+
+        Assert.NotNull(harness.ViewModel.Workspace);
+        Assert.True(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.Equal(TestPaths.At("docs", "first.md"), harness.ViewModel.CurrentDocumentPath);
+
+        await harness.ViewModel.ConfirmDirtyDiscardCommand.ExecuteAsync(null);
+
+        Assert.False(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.Null(harness.ViewModel.Workspace);
+        var outside = Assert.Single(harness.ViewModel.OpenDocuments.Tabs);
+        Assert.Equal("notes.md", outside.Title);
+        Assert.True(outside.IsDirty);
+    }
+
+    [Fact]
+    public async Task CancellingOnAnyFolderTabKeepsTheFolderOpen()
+    {
+        var harness = await CreateHarnessWithDirtyFolderTabsAsync();
+
+        await harness.ViewModel.CloseFolderCommand.ExecuteAsync(null);
+        await harness.ViewModel.ConfirmDirtyDiscardCommand.ExecuteAsync(null);
+        harness.ViewModel.CancelDirtyPromptCommand.Execute(null);
+
+        Assert.False(harness.ViewModel.IsDirtyPromptOpen);
+        Assert.NotNull(harness.ViewModel.Workspace);
+        Assert.Equal(3, harness.ViewModel.OpenDocuments.Tabs.Count);
+        Assert.True(harness.ViewModel.OpenDocuments.Tabs.Single(tab => tab.Title == "first.md").IsDirty);
+    }
+
+    /// <summary>Две грязные вкладки папки и одна грязная вкладка вне её.</summary>
+    private static async Task<TabsTestHarness> CreateHarnessWithDirtyFolderTabsAsync()
+    {
+        var harness = CreateHarness();
+        await harness.ViewModel.OpenFolderPathAsync(Root);
+        EditActiveTab(harness, "# readme edited");
+
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
+        EditActiveTab(harness, "# first edited");
+
+        await harness.ViewModel.OpenPathAsync(TestPaths.At("outside", "notes.md"));
+        EditActiveTab(harness, "# notes edited");
+
+        return harness;
+    }
+
+    private static void EditActiveTab(TabsTestHarness harness, string text)
+    {
+        harness.ViewModel.ToggleEditModeCommand.Execute(null);
+        harness.ViewModel.EditorSession!.SourceText = text;
+    }
+
     private static TabsTestHarness CreateHarness()
     {
         var fileSystem = new FakeWorkspaceFileSystem();
