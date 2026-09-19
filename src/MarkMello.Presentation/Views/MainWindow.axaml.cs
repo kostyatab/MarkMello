@@ -22,10 +22,12 @@ public partial class MainWindow : Window
     private const double DefaultWindowWidth = 1280;
     private const double DefaultWindowHeight = 840;
     private const double WindowRowHeight = 44;
+    // На macOS строка совпадает с системным тулбаром unified, и светофор стоит по её центру.
+    private const double MacOsWindowRowHeight = 52;
     private const double WindowRowLeadingInset = 8;
     private const double WindowRowTrailingInset = 10;
-    // Светофор macOS в строке окна: 16 до первой кнопки, 52 на три кнопки, 12 до содержимого.
-    private const double MacOsTrafficLightsInset = 80;
+    // Светофор macOS в строке окна: 19 до первой кнопки, 60 на три кнопки, 12 до содержимого.
+    private const double MacOsTrafficLightsInset = 91;
     private const double OverlayCardTopInset = 6;
     private const double OverlayCardTrailingInset = 12;
     private const int WindowPlacementMarginPixels = 8;
@@ -106,7 +108,8 @@ public partial class MainWindow : Window
     /// - Windows: extended client area + BorderOnly keeps the native resize border
     ///   while the XAML layout draws the window row with its own window buttons.
     /// - macOS: keep native decorations, but extend the client area under our layout.
-    ///   BorderOnly/None still have problematic drag behaviour in 12.0.x.
+    ///   BorderOnly/None still have problematic drag behaviour in 12.0.x. An empty
+    ///   unified toolbar puts the traffic lights where system windows have them.
     /// - Linux: keep native chrome because window manager behaviour varies widely.
     /// </summary>
     private void ConfigurePlatformChrome()
@@ -122,14 +125,27 @@ public partial class MainWindow : Window
         else if (OperatingSystem.IsMacOS())
         {
             ExtendClientAreaToDecorationsHint = true;
-            ExtendClientAreaTitleBarHeightHint = WindowRowHeight;
+            ExtendClientAreaTitleBarHeightHint = MacOsWindowRowHeight;
             WindowDecorations = global::Avalonia.Controls.WindowDecorations.Full;
+            MacOSWindowToolbar.Attach(this);
         }
         // Linux: let the window manager draw its native chrome.
     }
 
+    /// <summary>
+    /// Высота строки окна и шапки сайдбара (ADR-0009 Rule 1). На macOS это высота
+    /// системного тулбара unified: светофор стоит по её центру, как у Finder и Почты.
+    /// </summary>
+    internal static double CalculateWindowRowHeight(bool isMacOS)
+        => isMacOS ? MacOsWindowRowHeight : WindowRowHeight;
+
     private void ApplyWindowRowLayout()
     {
+        if (this.FindControl<Border>("WindowRow") is { } row)
+        {
+            row.Height = CalculateWindowRowHeight(OperatingSystem.IsMacOS());
+        }
+
         if (this.FindControl<Grid>("WindowRowContent") is { } rowContent)
         {
             rowContent.Margin = CalculateWindowRowPadding(

@@ -365,11 +365,11 @@
   </UserControl.Styles>
 
   <Border Classes="mm-sidebar">
-    <Grid RowDefinitions="44,Auto,Auto,*,Auto">
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
 
-      <!-- Шапка 44 px — продолжение строки окна: пустое место тянет окно, на macOS
-           слева стоит светофор. Сторону кнопки и отступы по платформе ставит
-           code-behind. -->
+      <!-- Шапка — продолжение строки окна: пустое место тянет окно, на macOS
+           слева стоит светофор. Высоту строки окна, сторону кнопки и отступы
+           по платформе ставит code-behind. -->
       <Border Grid.Row="0"
               Name="SidebarHeader"
               Classes="mm-window-drag"

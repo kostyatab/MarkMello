@@ -66,10 +66,10 @@
   </Window.KeyBindings>
 
   <Window.Styles>
-    <!-- Строка окна 44 px (ADR-0009 Rule 1): фон документа, без текста заголовка.
+    <!-- Строка окна (ADR-0009 Rule 1): фон документа, без текста заголовка. Высоту —
+         44 px, на macOS 52 по системному тулбару — ставит code-behind.
          Пустое место строки тянет окно — класс mm-window-drag. -->
     <Style Selector="Border.mm-window-row">
-      <Setter Property="Height" Value="44" />
       <Setter Property="Background" Value="{DynamicResource MmBackgroundBrush}" />
     </Style>
     <!-- Линия под строкой — только когда документ прокручен: наверху документа
@@ -181,8 +181,8 @@
       </Grid.ColumnDefinitions>
 
       <!-- ContentControl, а не сам контрол: в single-file режиме сайдбара не должно
-           быть в визуальном дереве вообще (ADR-0007 Rule 3). Его шапка 44 px — продолжение
-           строки окна: на macOS в ней светофор, и она тоже тянет окно. -->
+           быть в визуальном дереве вообще (ADR-0007 Rule 3). Его шапка — продолжение
+           строки окна той же высоты: на macOS в ней светофор, и она тоже тянет окно. -->
       <ContentControl Grid.Column="0"
                       IsVisible="{Binding ShowsSidebar}"
                       Content="{Binding SidebarContent}">
@@ -200,7 +200,7 @@
                     ResizeDirection="Columns" />
 
       <Grid Grid.Column="2"
-            RowDefinitions="44,*">
+            RowDefinitions="Auto,*">
 
         <!-- Строка окна: вкладки и постоянный блок кнопок справа вместо тайтлбара
              и строки вкладок (ADR-0009 Rules 1–2). Отступы по краям зависят от

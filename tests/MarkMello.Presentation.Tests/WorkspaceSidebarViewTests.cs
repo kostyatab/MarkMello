@@ -202,6 +202,7 @@ public sealed class WorkspaceSidebarViewTests
             var toggle = sidebar.GetControl<Button>("SidebarToggleButton");
 
             Assert.Contains(MainWindow.WindowDragClass, header.Classes);
+            Assert.Equal(MainWindow.CalculateWindowRowHeight(OperatingSystem.IsMacOS()), header.Height);
             Assert.Equal("Hide file panel (Ctrl+B)", ToolTip.GetTip(toggle));
 
             toggle.Command!.Execute(null);

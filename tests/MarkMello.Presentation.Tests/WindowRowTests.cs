@@ -158,7 +158,7 @@ public sealed class WindowRowTests
     }
 
     /// <summary>
-    /// Одна строка вместо тайтлбара и строки вкладок: высота 44, текста заголовка
+    /// Одна строка вместо тайтлбара и строки вкладок: высота 44 (на macOS 52), текста заголовка
     /// в ней нет (он остаётся в <see cref="Window.Title"/> для Dock и панели задач),
     /// плавающих групп кнопок над документом тоже нет.
     /// </summary>
@@ -173,7 +173,7 @@ public sealed class WindowRowTests
             window.UpdateLayout();
 
             var row = window.GetControl<Border>("WindowRow");
-            Assert.Equal(44, row.Bounds.Height);
+            Assert.Equal(MainWindow.CalculateWindowRowHeight(OperatingSystem.IsMacOS()), row.Bounds.Height);
             Assert.Equal("README.md — MarkMello", window.Title);
             Assert.DoesNotContain(
                 window.GetVisualDescendants().OfType<TextBlock>(),

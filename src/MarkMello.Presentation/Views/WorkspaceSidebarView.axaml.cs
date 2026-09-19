@@ -37,7 +37,9 @@ public partial class WorkspaceSidebarView : UserControl
     {
         InitializeComponent();
 
-        var (padding, alignment) = CalculateHeaderLayout(OperatingSystem.IsMacOS());
+        var isMacOS = OperatingSystem.IsMacOS();
+        var (padding, alignment) = CalculateHeaderLayout(isMacOS);
+        SidebarHeader.Height = MainWindow.CalculateWindowRowHeight(isMacOS);
         SidebarHeader.Padding = padding;
         SidebarToggleButton.HorizontalAlignment = alignment;
 

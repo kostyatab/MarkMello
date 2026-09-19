@@ -11,13 +11,24 @@ public sealed class MainWindowPlacementTests
     /// тогда строка оставляет ему место (ADR-0009 Rule 1).
     /// </summary>
     [Theory]
-    [InlineData(false, 80)]
+    [InlineData(false, 91)]
     [InlineData(true, 8)]
     public void WindowRowReservesTheTrafficLightsOnMacOSOnlyWithoutTheSidebar(bool showsSidebar, double leading)
     {
         var padding = MainWindow.CalculateWindowRowPadding(isMacOS: true, isWindows: false, showsSidebar);
 
         Assert.Equal(new Thickness(leading, 0, 10, 0), padding);
+    }
+
+    /// <summary>
+    /// На macOS строка окна высотой с системный тулбар unified: светофор стоит по её центру.
+    /// </summary>
+    [Theory]
+    [InlineData(true, 52)]
+    [InlineData(false, 44)]
+    public void WindowRowMatchesTheSystemToolbarOnMacOS(bool isMacOS, double height)
+    {
+        Assert.Equal(height, MainWindow.CalculateWindowRowHeight(isMacOS));
     }
 
     /// <summary>Кнопки окна Windows прижаты к правому краю, на Linux рамку рисует оконный менеджер.</summary>
