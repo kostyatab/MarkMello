@@ -4,8 +4,13 @@ using MarkMello.Presentation.Views.Markdown;
 
 namespace MarkMello.Presentation.Tests;
 
+[Collection(AvaloniaHeadlessTestGroup.Name)]
 public sealed class MarkdownHeadingAnchorSluggerTests
 {
+    private readonly AvaloniaHeadlessFixture _fixture;
+
+    public MarkdownHeadingAnchorSluggerTests(AvaloniaHeadlessFixture fixture) => _fixture = fixture;
+
     [Fact]
     public void CreateAnchorKeepsCyrillicLettersAndUsesHyphensForSpaces()
     {
@@ -26,19 +31,22 @@ public sealed class MarkdownHeadingAnchorSluggerTests
     }
 
     [Fact]
-    public void DocumentViewRegistersDuplicateHeadingAnchorsWithStableNumericSuffix()
+    public Task DocumentViewRegistersDuplicateHeadingAnchorsWithStableNumericSuffix()
     {
-        var view = new MarkdownDocumentView
+        return _fixture.Session.Dispatch(() =>
         {
-            Document = new RenderedMarkdownDocument(
-            [
-                new MarkdownHeadingBlock(2, [new MarkdownTextInline("Раздел")]),
-                new MarkdownHeadingBlock(2, [new MarkdownTextInline("Раздел")])
-            ]),
-            ReadingPreferences = ReadingPreferences.Default
-        };
+            var view = new MarkdownDocumentView
+            {
+                Document = new RenderedMarkdownDocument(
+                [
+                    new MarkdownHeadingBlock(2, [new MarkdownTextInline("Раздел")]),
+                    new MarkdownHeadingBlock(2, [new MarkdownTextInline("Раздел")])
+                ]),
+                ReadingPreferences = ReadingPreferences.Default
+            };
 
-        Assert.True(view.HasHeadingAnchor("#раздел"));
-        Assert.True(view.HasHeadingAnchor("#раздел-1"));
+            Assert.True(view.HasHeadingAnchor("#раздел"));
+            Assert.True(view.HasHeadingAnchor("#раздел-1"));
+        }, CancellationToken.None);
     }
 }
