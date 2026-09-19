@@ -16,14 +16,14 @@
                FontFamily="{DynamicResource MmDocumentSerifFontFamily}"
                FontSize="20"
                HorizontalAlignment="Center"
-               Foreground="{DynamicResource MmTextFaintBrush}" />
+               Foreground="{DynamicResource MmTextSoftBrush}" />
     <TextBlock Text="{Binding EmptySurfaceHint}"
                FontFamily="{DynamicResource MmDocumentSansFontFamily}"
                FontSize="13"
                LineHeight="21"
                TextAlignment="Center"
                TextWrapping="Wrap"
-               Foreground="{DynamicResource MmTextFaintBrush}" />
+               Foreground="{DynamicResource MmTextSoftBrush}" />
   </StackPanel>
 
 </UserControl>

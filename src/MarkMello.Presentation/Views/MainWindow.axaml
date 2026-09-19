@@ -465,10 +465,10 @@
                       IsVisible="{Binding ShowsReadingStatus}">
             <TextBlock Text="{Binding WordCountStatusLabel}"
                        FontSize="11"
-                       Foreground="{DynamicResource MmTextFaintBrush}" />
+                       Foreground="{DynamicResource MmTextSoftBrush}" />
             <TextBlock Text="{Binding ReadTimeStatusLabel}"
                        FontSize="11"
-                       Foreground="{DynamicResource MmTextFaintBrush}" />
+                       Foreground="{DynamicResource MmTextSoftBrush}" />
           </StackPanel>
         </Border>
 
