@@ -3,11 +3,23 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using MarkMello.Presentation.ViewModels;
 
 namespace MarkMello.Presentation.Views;
 
+/// <summary>
+/// Карточка поиска под кнопкой поиска. Создаётся заново при каждом открытии, поэтому
+/// переходы по совпадениям — всплывающие события: окно ловит их у себя и не держит
+/// ссылку на конкретный экземпляр карточки.
+/// </summary>
 public partial class FindBarView : UserControl
 {
+    public static readonly RoutedEvent<RoutedEventArgs> FindNextRequestedEvent =
+        RoutedEvent.Register<FindBarView, RoutedEventArgs>(nameof(FindNextRequested), RoutingStrategies.Bubble);
+
+    public static readonly RoutedEvent<RoutedEventArgs> FindPreviousRequestedEvent =
+        RoutedEvent.Register<FindBarView, RoutedEventArgs>(nameof(FindPreviousRequested), RoutingStrategies.Bubble);
+
     private TextBox? _findInput;
 
     public FindBarView()
@@ -15,11 +27,17 @@ public partial class FindBarView : UserControl
         InitializeComponent();
     }
 
-    public event EventHandler? FindNextRequested;
+    public event EventHandler<RoutedEventArgs>? FindNextRequested
+    {
+        add => AddHandler(FindNextRequestedEvent, value);
+        remove => RemoveHandler(FindNextRequestedEvent, value);
+    }
 
-    public event EventHandler? FindPreviousRequested;
-
-    public event EventHandler? CloseRequested;
+    public event EventHandler<RoutedEventArgs>? FindPreviousRequested
+    {
+        add => AddHandler(FindPreviousRequestedEvent, value);
+        remove => RemoveHandler(FindPreviousRequestedEvent, value);
+    }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
@@ -41,7 +59,7 @@ public partial class FindBarView : UserControl
     {
         if (e.Key == Key.Escape)
         {
-            CloseRequested?.Invoke(this, EventArgs.Empty);
+            (DataContext as ShellViewModel)?.CloseFindBarCommand.Execute(null);
             e.Handled = true;
             return;
         }
@@ -51,24 +69,15 @@ public partial class FindBarView : UserControl
             return;
         }
 
-        if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
-        {
-            FindPreviousRequested?.Invoke(this, EventArgs.Empty);
-        }
-        else
-        {
-            FindNextRequested?.Invoke(this, EventArgs.Empty);
-        }
-
+        RaiseEvent(new RoutedEventArgs(e.KeyModifiers.HasFlag(KeyModifiers.Shift)
+            ? FindPreviousRequestedEvent
+            : FindNextRequestedEvent));
         e.Handled = true;
     }
 
     private void OnPreviousClick(object? sender, RoutedEventArgs e)
-        => FindPreviousRequested?.Invoke(this, EventArgs.Empty);
+        => RaiseEvent(new RoutedEventArgs(FindPreviousRequestedEvent));
 
     private void OnNextClick(object? sender, RoutedEventArgs e)
-        => FindNextRequested?.Invoke(this, EventArgs.Empty);
-
-    private void OnCloseClick(object? sender, RoutedEventArgs e)
-        => CloseRequested?.Invoke(this, EventArgs.Empty);
+        => RaiseEvent(new RoutedEventArgs(FindNextRequestedEvent));
 }

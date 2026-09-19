@@ -9,89 +9,124 @@
              x:DataType="vm:ShellViewModel">
 
   <UserControl.Styles>
-    <Style Selector="Border.mm-find-bar">
-      <Setter Property="Padding" Value="10,8" />
-      <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="10" />
-      <Setter Property="BoxShadow" Value="0 14 40 -10 #25000033" />
-    </Style>
-
+    <!-- Поле без своей рамки и фона: рамка у карточки. Шаблон Fluent красит фон,
+         рамку и текст в :pointerover и :focus сам, поэтому они сброшены и там.
+         Поле занимает всю высоту карточки, чтобы клик выше или ниже текста тоже
+         ставил в него курсор; текст держит по центру VerticalContentAlignment. -->
     <Style Selector="TextBox.mm-find-input">
-      <Setter Property="Width" Value="240" />
-      <Setter Property="Height" Value="28" />
-      <Setter Property="Padding" Value="8,2" />
-      <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
       <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
       <Setter Property="CaretBrush" Value="{DynamicResource MmTextBrush}" />
       <Setter Property="SelectionBrush" Value="{DynamicResource MmAccentSoftBrush}" />
       <Setter Property="PlaceholderForeground" Value="{DynamicResource MmTextFaintBrush}" />
       <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
       <Setter Property="FontSize" Value="13" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
       <Setter Property="FocusAdorner" Value="{x:Null}" />
     </Style>
+    <Style Selector="TextBox.mm-find-input /template/ Border#PART_BorderElement, TextBox.mm-find-input:pointerover /template/ Border#PART_BorderElement, TextBox.mm-find-input:focus /template/ Border#PART_BorderElement">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="TextBox.mm-find-input:pointerover, TextBox.mm-find-input:focus">
+      <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+    </Style>
 
     <Style Selector="TextBlock.mm-find-counter">
-      <Setter Property="MinWidth" Value="52" />
-      <Setter Property="TextAlignment" Value="Right" />
-      <Setter Property="FontFamily" Value="{DynamicResource MmDocumentMonoFontFamily}" />
-      <Setter Property="FontSize" Value="11" />
-      <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
+      <Setter Property="Margin" Value="0,0,6,0" />
+      <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
       <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- Кнопки карточки 28×28, радиус 7: без рамки, под курсором — заливка кнопок строки -->
+    <Style Selector="Button.mm-find-button">
+      <Setter Property="Width" Value="28" />
+      <Setter Property="Height" Value="28" />
+      <Setter Property="MinWidth" Value="28" />
+      <Setter Property="MinHeight" Value="28" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.mm-find-button:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+    </Style>
+    <Style Selector="Button.mm-find-button:pressed /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource MmTabActiveBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
     </Style>
   </UserControl.Styles>
 
-  <Border Classes="mm-find-bar">
-    <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto,Auto"
-          ColumnSpacing="8"
-          VerticalAlignment="Center">
+  <!-- Карточка поиска по A-CollapsedFind: под кнопкой поиска, одной строкой 392×42.
+       Поверхность и отступы — стиль mm-find-card в Themes/Controls.axaml. -->
+  <Border Classes="mm-find-card"
+          Width="392"
+          Height="42">
+    <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto"
+          ColumnSpacing="2">
       <views:LucideIcon Data="{DynamicResource LucideSearchGeometry}"
                         Foreground="{DynamicResource MmTextSoftBrush}"
-                        Width="12"
-                        Height="12"
+                        Width="14"
+                        Height="14"
                         VerticalAlignment="Center" />
 
       <TextBox Grid.Column="1"
                Name="FindInput"
                Classes="mm-find-input"
+               Margin="6,0,0,0"
                PlaceholderText="{Binding FindPlaceholder}"
                Text="{Binding FindQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                KeyDown="OnFindInputKeyDown" />
 
-      <TextBlock Grid.Column="3"
+      <TextBlock Grid.Column="2"
                  Classes="mm-find-counter"
                  Text="{Binding FindResultLabel}" />
 
-      <Button Grid.Column="4"
-              Classes="topbar-ghost"
+      <Button Grid.Column="3"
+              Classes="mm-find-button"
               Click="OnPreviousClick"
               ToolTip.Tip="{Binding FindPreviousTooltip}">
         <views:LucideIcon Data="{DynamicResource LucideArrowUpGeometry}"
-                          Width="12"
-                          Height="12" />
+                          Width="14"
+                          Height="14" />
       </Button>
 
-      <Button Grid.Column="5"
-              Classes="topbar-ghost"
+      <Button Grid.Column="4"
+              Classes="mm-find-button"
               Click="OnNextClick"
               ToolTip.Tip="{Binding FindNextTooltip}">
         <views:LucideIcon Data="{DynamicResource LucideArrowDownGeometry}"
-                          Width="12"
-                          Height="12" />
+                          Width="14"
+                          Height="14" />
       </Button>
 
+      <Border Grid.Column="5"
+              Width="1"
+              Height="16"
+              Margin="4,0"
+              VerticalAlignment="Center"
+              Background="{DynamicResource MmBorderBrush}" />
+
       <Button Grid.Column="6"
-              Classes="topbar-ghost"
-              Click="OnCloseClick"
+              Classes="mm-find-button"
+              Command="{Binding CloseFindBarCommand}"
               ToolTip.Tip="{Binding FindCloseTooltip}">
         <views:LucideIcon Data="{DynamicResource LucideXGeometry}"
-                          Width="12"
-                          Height="12" />
+                          Width="14"
+                          Height="14" />
       </Button>
     </Grid>
   </Border>

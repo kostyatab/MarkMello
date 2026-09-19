@@ -169,6 +169,7 @@ public partial class ShellViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(FindResultLabel))]
+    [NotifyPropertyChangedFor(nameof(FindOverlayContent))]
     private bool _isFindBarOpen;
 
     [ObservableProperty]
@@ -298,6 +299,12 @@ public partial class ShellViewModel : ObservableObject
     /// На стартовом экране, в пустой папке и на ошибке справа остаётся одно меню ⋯.
     /// </summary>
     public bool ShowsFindToggle => IsViewer;
+
+    /// <summary>
+    /// Карточка поиска под кнопкой поиска: создаётся по ⌘F, а не на старте, и заново при
+    /// каждом открытии — поле получает фокус, как только карточка появляется.
+    /// </summary>
+    public object? FindOverlayContent => IsFindBarOpen ? this : null;
 
     /// <summary>
     /// Активный документ прокручен вниз от начала — под строкой окна появляется линия
@@ -934,6 +941,13 @@ public partial class ShellViewModel : ObservableObject
         if (IsFindBarOpen)
         {
             IsFindBarOpen = false;
+            return;
+        }
+
+        // Карточка раскрывается под кнопкой поиска, а без документа кнопки нет —
+        // и искать не в чем.
+        if (!ShowsFindToggle)
+        {
             return;
         }
 

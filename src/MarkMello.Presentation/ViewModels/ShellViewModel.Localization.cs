@@ -259,10 +259,10 @@ public partial class ShellViewModel
     public string DirtyPromptSave => _localization["DirtyPromptSave"];
     public string DragDropHint => _localization["DragDropHint"];
     public string EditToggleTooltip => _localization.Format("EditToggleTooltip", CommandShortcut(Key.E));
-    public string FindCloseTooltip => _localization["FindCloseTooltip"];
-    public string FindNextTooltip => _localization["FindNextTooltip"];
+    public string FindCloseTooltip => _localization.Format("FindCloseTooltip", KeyShortcut(Key.Escape));
+    public string FindNextTooltip => _localization.Format("FindNextTooltip", KeyShortcut(Key.Enter));
     public string FindPlaceholder => _localization["FindPlaceholder"];
-    public string FindPreviousTooltip => _localization["FindPreviousTooltip"];
+    public string FindPreviousTooltip => _localization.Format("FindPreviousTooltip", KeyShortcut(Key.Enter, KeyModifiers.Shift));
     public string FindToggleTooltip => _localization.Format("FindToggleTooltip", CommandShortcut(Key.F));
 
     /// <summary>«+» после вкладок — то же, что сочетание, поэтому оно и стоит в подсказке.</summary>
@@ -339,6 +339,10 @@ public partial class ShellViewModel
 
     private string CommandShortcut(Key key, KeyModifiers extra = KeyModifiers.None)
         => ShortcutLabel.Format(ShortcutLabel.Command(key, _platform.PlatformName, extra), _platform.PlatformName);
+
+    /// <summary>Сочетание без командной клавиши — например, ↵ и ⇧↵ в поле поиска.</summary>
+    private string KeyShortcut(Key key, KeyModifiers modifiers = KeyModifiers.None)
+        => ShortcutLabel.Format(new KeyGesture(key, modifiers), _platform.PlatformName);
 
     public string WordCountStatusLabel => _localization.Format("StatusWordCount", WordCount);
 

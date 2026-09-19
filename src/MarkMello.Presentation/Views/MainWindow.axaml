@@ -343,14 +343,25 @@
                 Background="{DynamicResource MmAccentBrush}"
                 IsHitTestVisible="False" />
 
-        <!-- Карточки Aa, меню ⋯ и настройки раскрываются под строкой у правого края —
-             одно правило на всю строку (ADR-0009 Rule 2). Правый отступ держит хост:
+        <!-- Карточки поиска, Aa, меню ⋯ и настройки раскрываются под строкой у правого
+             края — одно правило на всю строку (ADR-0009 Rule 2). Правый отступ держит хост:
              на Windows справа от кнопок строки стоят ещё кнопки окна, и его ставит
              code-behind по их ширине. -->
         <Panel Name="OverlayCardHost"
                HorizontalAlignment="Right"
                VerticalAlignment="Top"
                Margin="0,6,12,0">
+          <ContentControl Name="FindBarHost"
+                          HorizontalAlignment="Right"
+                          VerticalAlignment="Top"
+                          Content="{Binding FindOverlayContent}">
+            <ContentControl.ContentTemplate>
+              <DataTemplate x:DataType="vm:ShellViewModel">
+                <views:FindBarView />
+              </DataTemplate>
+            </ContentControl.ContentTemplate>
+          </ContentControl>
+
           <ContentControl Name="AppMenuPanel"
                           HorizontalAlignment="Right"
                           VerticalAlignment="Top"
@@ -395,15 +406,6 @@
             </ContentControl.ContentTemplate>
           </ContentControl>
         </Panel>
-
-        <ContentControl Name="FindBarHost"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Top"
-                        Margin="0,14,0,0"
-                        IsVisible="{Binding IsFindBarOpen}"
-                        ZIndex="3">
-          <views:FindBarView />
-        </ContentControl>
 
         <!-- Файл изменился на диске, а во вкладке есть правки: решает пользователь -->
         <ContentControl Content="{Binding ExternalChangeContent}"

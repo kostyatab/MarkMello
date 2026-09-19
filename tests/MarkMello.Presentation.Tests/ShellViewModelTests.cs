@@ -106,23 +106,43 @@ public sealed class ShellViewModelTests
     }
 
     [Fact]
-    public void ToggleFindBarCommandOpensAndClosesFindBar()
+    public async Task ToggleFindBarCommandOpensAndClosesFindBar()
     {
         var harness = CreateHarness();
+        await OpenSampleAsync(harness);
+        Assert.Null(harness.ViewModel.FindOverlayContent);
 
         harness.ViewModel.ToggleFindBarCommand.Execute(null);
 
         Assert.True(harness.ViewModel.IsFindBarOpen);
+        Assert.Same(harness.ViewModel, harness.ViewModel.FindOverlayContent);
 
         harness.ViewModel.ToggleFindBarCommand.Execute(null);
 
         Assert.False(harness.ViewModel.IsFindBarOpen);
+        Assert.Null(harness.ViewModel.FindOverlayContent);
+    }
+
+    /// <summary>
+    /// Карточка поиска раскрывается под кнопкой поиска, а без документа кнопки нет:
+    /// ⌘F на стартовом экране ничего не открывает.
+    /// </summary>
+    [Fact]
+    public void ToggleFindBarCommandDoesNothingWithoutADocument()
+    {
+        var harness = CreateHarness();
+
+        harness.ViewModel.ToggleFindBarCommand.Execute(null);
+
+        Assert.False(harness.ViewModel.IsFindBarOpen);
+        Assert.Null(harness.ViewModel.FindOverlayContent);
     }
 
     [Fact]
-    public void OpeningAppMenuClosesFindBar()
+    public async Task OpeningAppMenuClosesFindBar()
     {
         var harness = CreateHarness();
+        await OpenSampleAsync(harness);
         harness.ViewModel.ToggleFindBarCommand.Execute(null);
         Assert.True(harness.ViewModel.IsFindBarOpen);
 
@@ -133,9 +153,10 @@ public sealed class ShellViewModelTests
     }
 
     [Fact]
-    public void ClearErrorCommandClosesFindBarFirst()
+    public async Task ClearErrorCommandClosesFindBarFirst()
     {
         var harness = CreateHarness();
+        await OpenSampleAsync(harness);
         harness.ViewModel.ToggleFindBarCommand.Execute(null);
         Assert.True(harness.ViewModel.IsFindBarOpen);
 
@@ -668,6 +689,23 @@ public sealed class ShellViewModelTests
         Assert.Equal(toggleSidebar, viewModel.ToggleSidebarShortcut);
     }
 
+    [Theory]
+    [InlineData("macOS", "Previous match (⇧↵)", "Next match (↵)", "Close search (⎋)")]
+    [InlineData("Windows", "Previous match (Shift+Enter)", "Next match (Enter)", "Close search (Esc)")]
+    [InlineData("Linux", "Previous match (Shift+Enter)", "Next match (Enter)", "Close search (Esc)")]
+    public void FindCardShortcutLabelsFollowPlatform(
+        string platformName,
+        string previousTooltip,
+        string nextTooltip,
+        string closeTooltip)
+    {
+        var viewModel = CreateHarness(platformName: platformName).ViewModel;
+
+        Assert.Equal(previousTooltip, viewModel.FindPreviousTooltip);
+        Assert.Equal(nextTooltip, viewModel.FindNextTooltip);
+        Assert.Equal(closeTooltip, viewModel.FindCloseTooltip);
+    }
+
     [Fact]
     public void ShortcutTooltipsKeepShortcutAfterLanguageChange()
     {
@@ -677,6 +715,8 @@ public sealed class ShellViewModelTests
 
         Assert.Equal("Переключить режим редактирования (⌘E)", viewModel.EditToggleTooltip);
         Assert.Equal("Найти в документе (⌘F)", viewModel.FindToggleTooltip);
+        Assert.Equal("Предыдущее совпадение (⇧↵)", viewModel.FindPreviousTooltip);
+        Assert.Equal("Закрыть поиск (⎋)", viewModel.FindCloseTooltip);
         Assert.Equal("Вид: тема, шрифт, размер", viewModel.ReadingSettingsTooltip);
         Assert.Equal("Меньше (⌘-)", viewModel.ReadingSizeDecreaseTooltip);
         Assert.Equal("Больше (⌘+)", viewModel.ReadingSizeIncreaseTooltip);

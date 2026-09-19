@@ -46,7 +46,6 @@ public partial class MainWindow : Window
     private bool _isConvertingWindowsNativeMaximize;
     private bool _pendingWindowsStartupMaximize;
     private bool _allowConfirmedClose;
-    private FindBarView? _findBar;
     private IFindHost? _findHost;
 
     public MainWindow()
@@ -80,8 +79,9 @@ public partial class MainWindow : Window
         SyncOverlayWindowClasses();
         UpdateTitleBarMaximizeVisuals();
         UpdateWindowBorder();
-        AttachFindBar();
 
+        AddHandler(FindBarView.FindNextRequestedEvent, OnFindBarFindNextRequested);
+        AddHandler(FindBarView.FindPreviousRequestedEvent, OnFindBarFindPreviousRequested);
         AddHandler(DragDrop.DragEnterEvent, OnDragEnter);
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
         AddHandler(DragDrop.DragLeaveEvent, OnDragLeave);
@@ -152,7 +152,7 @@ public partial class MainWindow : Window
             0);
 
     /// <summary>
-    /// Карточки строки — меню ⋯, Aa и настройки — раскрываются под своей кнопкой
+    /// Карточки строки — поиск, Aa, меню ⋯ и настройки — раскрываются под своей кнопкой
     /// у правого края (ADR-0009 Rule 2). На Windows правее кнопок строки стоят ещё
     /// кнопки окна, поэтому карточки отступают на их ширину: она приходит из самой
     /// разметки, чтобы отступ не разъезжался с размерами кнопок.
@@ -277,31 +277,7 @@ public partial class MainWindow : Window
         return false;
     }
 
-    // ---------- Find bar (Ctrl+F) ----------
-
-    private void AttachFindBar()
-    {
-        _findBar = this.FindControl<ContentControl>("FindBarHost")?.Content as FindBarView;
-        if (_findBar is null)
-        {
-            return;
-        }
-
-        _findBar.FindNextRequested += OnFindBarFindNextRequested;
-        _findBar.FindPreviousRequested += OnFindBarFindPreviousRequested;
-        _findBar.CloseRequested += OnFindBarCloseRequested;
-    }
-
-    private void DetachFindBar()
-    {
-        if (_findBar is not null)
-        {
-            _findBar.FindNextRequested -= OnFindBarFindNextRequested;
-            _findBar.FindPreviousRequested -= OnFindBarFindPreviousRequested;
-            _findBar.CloseRequested -= OnFindBarCloseRequested;
-            _findBar = null;
-        }
-    }
+    // ---------- Find card (Ctrl+F) ----------
 
     private IFindHost? ResolveFindHost()
     {
@@ -350,20 +326,19 @@ public partial class MainWindow : Window
         _viewModel.FindMatchCount = host?.MatchCount ?? 0;
     }
 
-    private void OnFindBarFindNextRequested(object? sender, EventArgs e)
+    private void OnFindBarFindNextRequested(object? sender, RoutedEventArgs e)
     {
         ResolveFindHost()?.FindNext();
         SyncFindCountersFromHost();
+        e.Handled = true;
     }
 
-    private void OnFindBarFindPreviousRequested(object? sender, EventArgs e)
+    private void OnFindBarFindPreviousRequested(object? sender, RoutedEventArgs e)
     {
         ResolveFindHost()?.FindPrevious();
         SyncFindCountersFromHost();
+        e.Handled = true;
     }
-
-    private void OnFindBarCloseRequested(object? sender, EventArgs e)
-        => _viewModel.IsFindBarOpen = false;
 
     private void OnFindHostStateChanged(object? sender, EventArgs e)
         => SyncFindCountersFromHost();
@@ -382,7 +357,6 @@ public partial class MainWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
-        DetachFindBar();
         DetachFindHost();
 
         if (_windowsWndProcHookCallback is not null)

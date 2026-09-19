@@ -195,12 +195,25 @@
     <Setter Property="TextAlignment" Value="Center" />
   </Style>
 
-  <Style Selector="Border.mm-settings-panel">
+  <!--
+    Поверхность карточек под строкой окна (ADR-0009 Rule 2) — поиска, Aa, меню ⋯
+    и настроек: одна на всех, чтобы карточки не расходились при правке палитры.
+  -->
+  <Style Selector="Border.mm-settings-panel, Border.mm-find-card">
     <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="12" />
     <Setter Property="BoxShadow" Value="0 12 40 -8 #383C2814" />
+  </Style>
+
+  <!-- Карточка поиска по A-CollapsedFind: одна строка под кнопкой поиска -->
+  <Style Selector="Border.mm-find-card">
+    <Setter Property="Padding" Value="12,0,6,0" />
+    <Setter Property="CornerRadius" Value="10" />
+  </Style>
+
+  <Style Selector="Border.mm-settings-panel">
+    <Setter Property="CornerRadius" Value="12" />
     <Setter Property="ClipToBounds" Value="True" />
     <Setter Property="RenderTransformOrigin" Value="100%,0%" />
     <Setter Property="Opacity" Value="0" />
