@@ -491,7 +491,7 @@
         <ContentControl Content="{Binding DeletePromptContent}">
           <ContentControl.ContentTemplate>
             <DataTemplate x:DataType="vm:ShellViewModel">
-        <Grid Background="#47201915">
+        <Grid Background="{DynamicResource MmScrimBrush}">
           <Border Classes="mm-dialog-card"
                   Width="420"
                   HorizontalAlignment="Center"
@@ -527,7 +527,7 @@
         </ContentControl>
 
         <Grid IsVisible="{Binding IsDirtyPromptOpen}"
-              Background="#66000000">
+              Background="{DynamicResource MmScrimBrush}">
           <Border Classes="mm-dialog-card"
                   Width="420"
                   HorizontalAlignment="Center"
