@@ -424,6 +424,7 @@
           <ContentControl Name="FindBarHost"
                           HorizontalAlignment="Right"
                           VerticalAlignment="Top"
+                          ClipToBounds="False"
                           Content="{Binding FindOverlayContent}">
             <ContentControl.ContentTemplate>
               <DataTemplate x:DataType="vm:ShellViewModel">
@@ -435,6 +436,7 @@
           <ContentControl Name="AppMenuPanel"
                           HorizontalAlignment="Right"
                           VerticalAlignment="Top"
+                          ClipToBounds="False"
                           Content="{Binding AppMenuOverlayContent}">
             <ContentControl.ContentTemplate>
               <DataTemplate x:DataType="vm:ShellViewModel">
@@ -446,6 +448,7 @@
           <ContentControl Name="SettingsPanel"
                           HorizontalAlignment="Right"
                           VerticalAlignment="Top"
+                          ClipToBounds="False"
                           Content="{Binding ReadingSettingsOverlayContent}">
             <ContentControl.ContentTemplate>
               <DataTemplate x:DataType="vm:ShellViewModel">

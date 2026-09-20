@@ -298,9 +298,9 @@
     <Setter Property="CornerRadius" Value="10" />
   </Style>
 
+  <!-- ClipToBounds карточке не ставим: он режет и её собственную тень -->
   <Style Selector="Border.mm-settings-panel">
     <Setter Property="CornerRadius" Value="12" />
-    <Setter Property="ClipToBounds" Value="True" />
     <Setter Property="RenderTransformOrigin" Value="100%,0%" />
     <Setter Property="Opacity" Value="0" />
     <Setter Property="IsHitTestVisible" Value="False" />

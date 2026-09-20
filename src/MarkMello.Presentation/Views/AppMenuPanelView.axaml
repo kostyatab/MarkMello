@@ -5,6 +5,7 @@
              xmlns:vm="using:MarkMello.Presentation.ViewModels"
              mc:Ignorable="d"
              x:Class="MarkMello.Presentation.Views.AppMenuPanelView"
+             ClipToBounds="False"
              x:DataType="vm:ShellViewModel">
   <!-- Меню ⋯ по A-Menu (ADR-0009 Rule 4): только команды с сочетаниями и вход в настройки.
        Без папки её пункты скрыты, неприменимые команды гаснут по CanExecute. -->

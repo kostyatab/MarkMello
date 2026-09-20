@@ -6,6 +6,7 @@
              xmlns:views="using:MarkMello.Presentation.Views"
              mc:Ignorable="d"
              x:Class="MarkMello.Presentation.Views.ReadingSettingsPanelView"
+             ClipToBounds="False"
              x:DataType="vm:ShellViewModel">
       <!-- Карточка Aa по A-SetAa: тема, шрифт, размер и остальное чтение в одном месте -->
       <Border Classes="mm-settings-panel mm-popover-right mm-reading-panel mm-view-card"
