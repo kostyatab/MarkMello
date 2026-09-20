@@ -423,6 +423,52 @@ public sealed class MarkdownDocumentTextMapTests
         Assert.Equal(default, fragment);
     }
 
+    /// <summary>
+    /// MM-48: front matter — отдельный тип блока, но в карте он остаётся таблицей
+    /// без строки заголовка: тот же текст, те же пути и тот же вид фрагментов,
+    /// чтобы выделение, поиск и копирование не изменились.
+    /// </summary>
+    [Fact]
+    public void FrontMatterGoesIntoTheMapLikeATableWithoutAHeaderRow()
+    {
+        var entries = new MarkdownFrontMatterBlock(
+        [
+            new MarkdownFrontMatterEntry("id", "MM-48"),
+            new MarkdownFrontMatterEntry("empty", string.Empty)
+        ]);
+        var asTable = new MarkdownTableBlock(
+            [],
+            [
+                [
+                    new MarkdownTableCell([new MarkdownStrongInline([new MarkdownTextInline("id")])]),
+                    new MarkdownTableCell([new MarkdownTextInline("MM-48")])
+                ],
+                [
+                    new MarkdownTableCell([new MarkdownStrongInline([new MarkdownTextInline("empty")])]),
+                    new MarkdownTableCell([])
+                ]
+            ]);
+
+        var textMap = MarkdownDocumentTextMap.Create(new RenderedMarkdownDocument([entries]));
+        var before = MarkdownDocumentTextMap.Create(new RenderedMarkdownDocument([asTable]));
+
+        Assert.Equal("id\tMM-48\nempty\t\n\n", textMap.Text);
+        Assert.Equal(before.Text, textMap.Text);
+        Assert.Equal(
+            before.Fragments.Select(static fragment => (fragment.Key, fragment.Kind, fragment.Range)),
+            textMap.Fragments.Select(static fragment => (fragment.Key, fragment.Kind, fragment.Range)));
+
+        Assert.Collection(
+            textMap.Fragments,
+            fragment => AssertFragment(textMap.Text, fragment, "b0.r0.c0", MarkdownDocumentTextFragmentKind.TableCell, "id"),
+            fragment => AssertFragment(textMap.Text, fragment, "b0.r0.c1", MarkdownDocumentTextFragmentKind.TableCell, "MM-48"),
+            fragment => AssertFragment(textMap.Text, fragment, "b0.r1.c0", MarkdownDocumentTextFragmentKind.TableCell, "empty"));
+
+        Assert.Equal(
+            MarkdownDocumentTextMap.ExtractPlainText(asTable),
+            MarkdownDocumentTextMap.ExtractPlainText(entries));
+    }
+
     private static void AssertFragment(
         string fullText,
         MarkdownDocumentTextFragment fragment,

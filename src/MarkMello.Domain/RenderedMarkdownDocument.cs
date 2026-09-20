@@ -165,6 +165,23 @@ public enum MarkdownTableColumnAlignment
 }
 
 /// <summary>
+/// YAML front matter в начале файла, разобранный в плоские пары <c>key: value</c>.
+/// Отдельный тип, а не <see cref="MarkdownTableBlock"/> без строки заголовка:
+/// вид метаданных должен меняться независимо от вида таблиц. Front matter, который
+/// в плоские пары не укладывается, остаётся <see cref="MarkdownCodeBlock"/>.
+/// </summary>
+/// <param name="Entries">Пары в порядке исходника.</param>
+public sealed record MarkdownFrontMatterBlock(IReadOnlyList<MarkdownFrontMatterEntry> Entries) : MarkdownBlock;
+
+/// <param name="Key">Ключ — текст до первого двоеточия.</param>
+/// <param name="Value">
+/// Значение как есть, без YAML-семантики; пустая строка, когда значения нет
+/// (<c>key:</c>). Разметки в ключе и значении не бывает по построению, поэтому
+/// обычные строки, а не inlines.
+/// </param>
+public sealed record MarkdownFrontMatterEntry(string Key, string Value);
+
+/// <summary>
 /// Block-level image. Emitted when a markdown source paragraph contains
 /// exactly one image node (e.g. a standalone ![alt](url) line) or a block
 /// of HTML whose sole meaningful content is a &lt;img&gt; tag. Rendered as

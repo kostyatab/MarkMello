@@ -682,7 +682,8 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
 
     /// <summary>
     /// YAML front matter в начале файла. Плоские пары <c>key: value</c> становятся
-    /// таблицей без строки заголовка (ключ — жирным), как в preview VS Code.
+    /// <see cref="MarkdownFrontMatterBlock"/> — viewer рисует его таблицей без строки
+    /// заголовка (ключ — жирным), как в preview VS Code.
     /// Всё, что сложнее (вложенность, списки блоком, многострочные значения
     /// <c>|</c> и <c>&gt;</c>), уходит блоком кода целиком — текст не теряется.
     /// Пустой front matter не даёт блока вовсе.
@@ -698,8 +699,8 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
             return null;
         }
 
-        return TryParseFlatFrontMatter(text) is { } rows
-            ? new MarkdownTableBlock([], rows)
+        return TryParseFlatFrontMatter(text) is { } entries
+            ? new MarkdownFrontMatterBlock(entries)
             : new MarkdownCodeBlock(null, text);
     }
 
@@ -708,9 +709,9 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
     /// без YAML-семантики: кавычки не снимаются, <c>[a, b]</c> остаётся строкой.
     /// Возвращает <c>null</c>, если хоть одна строка под плоскую пару не подходит.
     /// </summary>
-    private static List<IReadOnlyList<MarkdownTableCell>>? TryParseFlatFrontMatter(string text)
+    private static List<MarkdownFrontMatterEntry>? TryParseFlatFrontMatter(string text)
     {
-        var rows = new List<IReadOnlyList<MarkdownTableCell>>();
+        var entries = new List<MarkdownFrontMatterEntry>();
 
         foreach (var line in text.Split('\n'))
         {
@@ -751,15 +752,10 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
                 return null;
             }
 
-            rows.Add([
-                new MarkdownTableCell([
-                    new MarkdownStrongInline([new MarkdownTextInline(line[..separator].Trim())])
-                ]),
-                new MarkdownTableCell(value.Length == 0 ? [] : [new MarkdownTextInline(value)])
-            ]);
+            entries.Add(new MarkdownFrontMatterEntry(line[..separator].Trim(), value));
         }
 
-        return rows.Count == 0 ? null : rows;
+        return entries.Count == 0 ? null : entries;
     }
 
     private static string ExtractCode(CodeBlock codeBlock)

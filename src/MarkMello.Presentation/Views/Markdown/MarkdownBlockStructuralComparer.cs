@@ -58,6 +58,10 @@ internal sealed class MarkdownBlockStructuralComparer : IEqualityComparer<Markdo
                 && table.ColumnAlignments.SequenceEqual(other.ColumnAlignments)
                 && CellsEqual(table.Header, other.Header)
                 && RowsEqual(table.Rows, other.Rows),
+            // Пары front matter — обычные строки, поэтому record-равенство записи
+            // сравнивает их по значению, в отличие от ячеек таблицы.
+            MarkdownFrontMatterBlock frontMatter => y is MarkdownFrontMatterBlock other
+                && frontMatter.Entries.SequenceEqual(other.Entries),
             MarkdownImageBlock image => y is MarkdownImageBlock other
                 && string.Equals(image.Url, other.Url, StringComparison.Ordinal)
                 && string.Equals(image.AltText, other.AltText, StringComparison.Ordinal)
@@ -127,6 +131,15 @@ internal sealed class MarkdownBlockStructuralComparer : IEqualityComparer<Markdo
                 foreach (var row in table.Rows)
                 {
                     AddCells(ref hash, row);
+                }
+
+                break;
+            case MarkdownFrontMatterBlock frontMatter:
+                hash.Add(frontMatter.Entries.Count);
+                foreach (var entry in frontMatter.Entries)
+                {
+                    hash.Add(entry.Key, StringComparer.Ordinal);
+                    hash.Add(entry.Value, StringComparer.Ordinal);
                 }
 
                 break;

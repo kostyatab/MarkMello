@@ -147,6 +147,7 @@ public sealed class MarkdownDocumentTextMap
             MarkdownDiagramBlock => string.Empty,
             MarkdownCodeBlock code => code.Code,
             MarkdownTableBlock table => ExtractPlainText(table),
+            MarkdownFrontMatterBlock frontMatter => ExtractPlainText(frontMatter),
             MarkdownFootnotesBlock footnotes => string.Join(Environment.NewLine, footnotes.Footnotes.Select(static footnote =>
                 GetFootnoteMarkerText(footnote.Number) + string.Join(Environment.NewLine, footnote.Blocks.Select(ExtractPlainText)))),
             _ => block.ToString() ?? string.Empty
@@ -169,6 +170,15 @@ public sealed class MarkdownDocumentTextMap
 
         return string.Join(Environment.NewLine, lines);
     }
+
+    /// <summary>
+    /// Тот же текст, что у таблицы без строки заголовка: ключ и значение через
+    /// табуляцию, пары через перевод строки.
+    /// </summary>
+    private static string ExtractPlainText(MarkdownFrontMatterBlock frontMatter)
+        => string.Join(
+            Environment.NewLine,
+            frontMatter.Entries.Select(static entry => entry.Key + "\t" + entry.Value));
 
     private static void AppendPlainText(IReadOnlyList<MarkdownInline> inlines, StringBuilder builder)
     {
@@ -365,6 +375,11 @@ public sealed class MarkdownDocumentTextMap
                     AppendBlockSeparator(doubleBreak: true);
                     return;
 
+                case MarkdownFrontMatterBlock frontMatter:
+                    AppendFrontMatter(frontMatter, path);
+                    AppendBlockSeparator(doubleBreak: true);
+                    return;
+
                 case MarkdownImageBlock:
                     // Image blocks participate in vertical rhythm but not in
                     // the text stream. Copying "para above, image, para below"
@@ -403,6 +418,27 @@ public sealed class MarkdownDocumentTextMap
                 }
 
                 AppendTableRow(table.Rows[rowIndex], $"{path}.r{rowIndex}.c");
+            }
+        }
+
+        /// <summary>
+        /// Front matter идёт в карту как таблица без строки заголовка: те же пути
+        /// фрагментов и тот же вид <see cref="MarkdownDocumentTextFragmentKind.TableCell"/>,
+        /// чтобы выделение, поиск и копирование не отличались от табличных.
+        /// </summary>
+        private void AppendFrontMatter(MarkdownFrontMatterBlock frontMatter, string path)
+        {
+            for (var entryIndex = 0; entryIndex < frontMatter.Entries.Count; entryIndex++)
+            {
+                if (_text.Length > 0 && _text[^1] != '\n')
+                {
+                    _text.Append('\n');
+                }
+
+                var entry = frontMatter.Entries[entryIndex];
+                AppendTextFragment($"{path}.r{entryIndex}.c0", MarkdownDocumentTextFragmentKind.TableCell, entry.Key);
+                _text.Append('\t');
+                AppendTextFragment($"{path}.r{entryIndex}.c1", MarkdownDocumentTextFragmentKind.TableCell, entry.Value);
             }
         }
 

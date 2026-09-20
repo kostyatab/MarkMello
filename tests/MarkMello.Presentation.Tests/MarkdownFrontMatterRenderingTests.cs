@@ -11,7 +11,7 @@ namespace MarkMello.Presentation.Tests;
 public sealed class MarkdownFrontMatterRenderingTests
 {
     [Fact]
-    public void FlatFrontMatterBecomesATableWithoutAHeaderRow()
+    public void FlatFrontMatterBecomesItsOwnBlockOfKeyValuePairs()
     {
         var document = Render("""
             ---
@@ -25,35 +25,42 @@ public sealed class MarkdownFrontMatterRenderingTests
 
         Assert.Equal(2, document.Blocks.Count);
 
-        var table = Assert.IsType<MarkdownTableBlock>(document.Blocks[0]);
-        Assert.Empty(table.Header);
+        var frontMatter = Assert.IsType<MarkdownFrontMatterBlock>(document.Blocks[0]);
         Assert.Equal(
             [("id", "MM-46"), ("title", "YAML front matter"), ("type", "bug")],
-            table.Rows.Select(ReadPair));
+            frontMatter.Entries.Select(ReadPair));
 
         var heading = Assert.IsType<MarkdownHeadingBlock>(document.Blocks[1]);
         Assert.Equal(1, heading.Level);
     }
 
+    /// <summary>
+    /// MM-48: front matter отличим от обычной таблицы по типу блока, а не по
+    /// пустой строке заголовка — вид метаданных можно менять, не трогая таблицы.
+    /// </summary>
     [Fact]
-    public void TheKeyColumnIsBoldAndTheValueIsPlainText()
+    public void FrontMatterAndAnOrdinaryTableAreDifferentBlockTypes()
     {
-        var table = RenderTable("""
+        var frontMatter = Assert.Single(Render("""
             ---
-            id: MM-46
+            id: MM-48
             ---
-            """);
+            """).Blocks);
 
-        var row = Assert.Single(table.Rows);
-        var strong = Assert.IsType<MarkdownStrongInline>(Assert.Single(row[0].Inlines));
-        Assert.Equal("id", Assert.IsType<MarkdownTextInline>(Assert.Single(strong.Inlines)).Text);
-        Assert.IsType<MarkdownTextInline>(Assert.Single(row[1].Inlines));
+        var table = Assert.Single(Render("""
+            | id |
+            |----|
+            | MM-48 |
+            """).Blocks);
+
+        Assert.IsType<MarkdownFrontMatterBlock>(frontMatter);
+        Assert.IsType<MarkdownTableBlock>(table);
     }
 
     [Fact]
     public void AValueIsTakenAsIsWithoutYamlSemantics()
     {
-        var table = RenderTable("""
+        var frontMatter = RenderFrontMatter("""
             ---
             tags: [a, b]
             title: "Ссылки: внешние"
@@ -63,7 +70,7 @@ public sealed class MarkdownFrontMatterRenderingTests
 
         Assert.Equal(
             [("tags", "[a, b]"), ("title", "\"Ссылки: внешние\""), ("empty", "")],
-            table.Rows.Select(ReadPair));
+            frontMatter.Entries.Select(ReadPair));
     }
 
     [Theory]
@@ -132,11 +139,11 @@ public sealed class MarkdownFrontMatterRenderingTests
 
     /// <summary>
     /// Front matter без единой строки Markdig за front matter не считает — обе
-    /// строки остаются горизонтальными линиями. Нам важно, что пустой таблицы
-    /// и пустого блока кода на этом месте нет.
+    /// строки остаются горизонтальными линиями. Нам важно, что пустого блока
+    /// метаданных и пустого блока кода на этом месте нет.
     /// </summary>
     [Fact]
-    public void EmptyFrontMatterProducesNeitherATableNorAnEmptyBlock()
+    public void EmptyFrontMatterProducesNeitherAMetadataBlockNorAnEmptyBlock()
     {
         var document = Render("""
             ---
@@ -145,7 +152,7 @@ public sealed class MarkdownFrontMatterRenderingTests
             Текст.
             """);
 
-        Assert.DoesNotContain(document.Blocks, static block => block is MarkdownTableBlock or MarkdownCodeBlock);
+        Assert.DoesNotContain(document.Blocks, static block => block is MarkdownFrontMatterBlock or MarkdownCodeBlock);
         Assert.IsType<MarkdownParagraphBlock>(document.Blocks[^1]);
     }
 
@@ -219,19 +226,11 @@ public sealed class MarkdownFrontMatterRenderingTests
         Assert.Equal("Подвал", Assert.IsType<MarkdownTextInline>(Assert.Single(paragraph.Inlines)).Text);
     }
 
-    private static (string Key, string Value) ReadPair(IReadOnlyList<MarkdownTableCell> row)
-    {
-        var strong = Assert.IsType<MarkdownStrongInline>(Assert.Single(row[0].Inlines));
+    private static (string Key, string Value) ReadPair(MarkdownFrontMatterEntry entry)
+        => (entry.Key, entry.Value);
 
-        return (
-            Assert.IsType<MarkdownTextInline>(Assert.Single(strong.Inlines)).Text,
-            row[1].Inlines.Count == 0
-                ? string.Empty
-                : Assert.IsType<MarkdownTextInline>(Assert.Single(row[1].Inlines)).Text);
-    }
-
-    private static MarkdownTableBlock RenderTable(string markdown)
-        => Assert.IsType<MarkdownTableBlock>(Assert.Single(Render(markdown).Blocks));
+    private static MarkdownFrontMatterBlock RenderFrontMatter(string markdown)
+        => Assert.IsType<MarkdownFrontMatterBlock>(Assert.Single(Render(markdown).Blocks));
 
     private static RenderedMarkdownDocument Render(string markdown)
         => new MarkdigMarkdownDocumentRenderer().Render(markdown);

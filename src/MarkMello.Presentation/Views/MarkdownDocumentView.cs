@@ -1402,6 +1402,7 @@ public sealed class MarkdownDocumentView : UserControl
             MarkdownHorizontalRuleBlock => BuildHorizontalRule(),
             MarkdownCodeBlock code => BuildCodeBlock(code, path),
             MarkdownTableBlock table => BuildTable(table, path),
+            MarkdownFrontMatterBlock frontMatter => BuildFrontMatter(frontMatter, path),
             MarkdownImageBlock image => BuildImageBlock(image),
             MarkdownDiagramBlock diagram => BuildDiagramBlock(diagram),
             MarkdownFootnotesBlock footnotes => BuildFootnotes(footnotes, path),
@@ -2026,14 +2027,35 @@ public sealed class MarkdownDocumentView : UserControl
     }
 
     private Control BuildTable(MarkdownTableBlock table, string path)
+        => BuildTableLayout(table, table.Header, table.Rows, table.GetColumnAlignment, path);
+
+    /// <summary>
+    /// Front matter рисуется той же табличной раскладкой, что и обычная таблица:
+    /// строки без шапки, ключ жирным, колонки по левому краю. Вид метаданных
+    /// живёт здесь и от вида таблиц больше не зависит.
+    /// </summary>
+    private Control BuildFrontMatter(MarkdownFrontMatterBlock frontMatter, string path)
+        => BuildTableLayout(
+            frontMatter,
+            [],
+            MarkdownFrontMatterRows.Create(frontMatter),
+            static _ => MarkdownTableColumnAlignment.Left,
+            path);
+
+    private Control BuildTableLayout(
+        MarkdownBlock block,
+        IReadOnlyList<MarkdownTableCell> header,
+        IReadOnlyList<IReadOnlyList<MarkdownTableCell>> rows,
+        Func<int, MarkdownTableColumnAlignment> columnAlignment,
+        string path)
     {
         var columnCount = Math.Max(
-            table.Header.Count,
-            table.Rows.Count == 0 ? 0 : table.Rows.Max(static row => row.Count));
+            header.Count,
+            rows.Count == 0 ? 0 : rows.Max(static row => row.Count));
 
         if (columnCount == 0)
         {
-            return BuildFallback(table);
+            return BuildFallback(block);
         }
 
         var panel = new MarkdownTablePanel(columnCount);
@@ -2043,10 +2065,10 @@ public sealed class MarkdownDocumentView : UserControl
         var bodyCellFontSize = ReadingPreferences.FontSize * 0.92;
         var headerCellFontSize = ReadingPreferences.FontSize * 0.85;
 
-        if (table.Header.Count > 0)
+        if (header.Count > 0)
         {
             AddTableRow(
-                panel, table, table.Header,
+                panel, columnAlignment, header,
                 isHeader: true, isLastDataRow: false,
                 pathPrefix: $"{path}.h",
                 fontFamily: sansFontFamily,
@@ -2054,13 +2076,13 @@ public sealed class MarkdownDocumentView : UserControl
                 bodyFontSize: bodyCellFontSize);
         }
 
-        for (var rowIndex = 0; rowIndex < table.Rows.Count; rowIndex++)
+        for (var rowIndex = 0; rowIndex < rows.Count; rowIndex++)
         {
             // The last data row gets no bottom border so the table does not
             // end on a line.
             AddTableRow(
-                panel, table, table.Rows[rowIndex],
-                isHeader: false, isLastDataRow: rowIndex == table.Rows.Count - 1,
+                panel, columnAlignment, rows[rowIndex],
+                isHeader: false, isLastDataRow: rowIndex == rows.Count - 1,
                 pathPrefix: $"{path}.r{rowIndex}.c",
                 fontFamily: sansFontFamily,
                 headerFontSize: headerCellFontSize,
@@ -2078,7 +2100,7 @@ public sealed class MarkdownDocumentView : UserControl
 
     private void AddTableRow(
         MarkdownTablePanel panel,
-        MarkdownTableBlock table,
+        Func<int, MarkdownTableColumnAlignment> columnAlignment,
         IReadOnlyList<MarkdownTableCell> cells,
         bool isHeader,
         bool isLastDataRow,
@@ -2092,7 +2114,7 @@ public sealed class MarkdownDocumentView : UserControl
             var cell = columnIndex < cells.Count
                 ? cells[columnIndex]
                 : new MarkdownTableCell(Array.Empty<MarkdownInline>());
-            var textAlignment = table.GetColumnAlignment(columnIndex) switch
+            var textAlignment = columnAlignment(columnIndex) switch
             {
                 MarkdownTableColumnAlignment.Center => TextAlignment.Center,
                 MarkdownTableColumnAlignment.Right => TextAlignment.Right,

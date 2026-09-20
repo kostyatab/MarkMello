@@ -1,5 +1,6 @@
 using System.Text;
 using MarkMello.Domain;
+using MarkMello.Presentation.Views.Markdown;
 
 namespace MarkMello.Presentation.Clipboard;
 
@@ -81,7 +82,11 @@ internal static class TelegramHtmlClipboardWriter
             MarkdownQuoteBlock quote => AppendQuote(builder, quote, path, context),
             MarkdownListBlock list => AppendList(builder, list, path, context),
             MarkdownCodeBlock code => AppendCodeBlock(builder, code, path, context),
-            MarkdownTableBlock table => AppendTable(builder, table, path, context),
+            MarkdownTableBlock table => AppendTable(builder, table.Header, table.Rows, path, context),
+            // Front matter копируется тем же табличным выводом, что и таблица
+            // без строки заголовка: результат не отличается от прежнего.
+            MarkdownFrontMatterBlock frontMatter =>
+                AppendTable(builder, [], MarkdownFrontMatterRows.Create(frontMatter), path, context),
             MarkdownFootnotesBlock footnotes => AppendFootnotes(builder, footnotes, path, context),
             _ => AppendTextFragment(builder, path, MarkdownDocumentTextMap.ExtractPlainText(block), context)
         };
@@ -231,19 +236,20 @@ internal static class TelegramHtmlClipboardWriter
 
     private static bool AppendTable(
         StringBuilder builder,
-        MarkdownTableBlock table,
+        IReadOnlyList<MarkdownTableCell> header,
+        IReadOnlyList<IReadOnlyList<MarkdownTableCell>> rows,
         string path,
         MarkdownSelectionFormatContext context)
     {
         var appended = false;
-        if (table.Header.Count > 0)
+        if (header.Count > 0)
         {
-            AppendTableRowWithSeparator(builder, table.Header, $"{path}.h", context, ref appended);
+            AppendTableRowWithSeparator(builder, header, $"{path}.h", context, ref appended);
         }
 
-        for (var rowIndex = 0; rowIndex < table.Rows.Count; rowIndex++)
+        for (var rowIndex = 0; rowIndex < rows.Count; rowIndex++)
         {
-            AppendTableRowWithSeparator(builder, table.Rows[rowIndex], $"{path}.r{rowIndex}.c", context, ref appended);
+            AppendTableRowWithSeparator(builder, rows[rowIndex], $"{path}.r{rowIndex}.c", context, ref appended);
         }
 
         return appended;
