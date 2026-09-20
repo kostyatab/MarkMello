@@ -264,12 +264,13 @@
 
   <!-- Keyboard hint pill -->
   <Style Selector="Border.kbd">
-    <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="3" />
+    <Setter Property="Background" Value="{DynamicResource MmKeyboardBackgroundBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource MmKeyboardBorderBrush}" />
+    <!-- Край снизу вдвое толще: плашка читается как крышка клавиши -->
+    <Setter Property="BorderThickness" Value="1,1,1,2" />
+    <Setter Property="CornerRadius" Value="4" />
     <Setter Property="Padding" Value="5,1" />
-    <Setter Property="MinHeight" Value="14" />
+    <Setter Property="MinHeight" Value="18" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
 
@@ -288,7 +289,7 @@
     <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="BoxShadow" Value="0 12 40 -8 #383C2814" />
+    <Setter Property="BoxShadow" Value="{DynamicResource MmCardShadow}" />
   </Style>
 
   <!-- Карточка поиска по A-CollapsedFind: одна строка под кнопкой поиска -->
@@ -328,12 +329,12 @@
   <!-- ✕ в шапке окна «Настройки» -->
   <Style Selector="Button.mm-settings-close">
     <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="Padding" Value="4" />
     <Setter Property="Width" Value="24" />
     <Setter Property="Height" Value="24" />
-    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="CornerRadius" Value="8" />
     <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="Cursor" Value="Hand" />
@@ -350,10 +351,10 @@
     </Setter>
   </Style>
   <Style Selector="Button.mm-settings-close:pressed /template/ ContentPresenter, Button.mm-settings-close:disabled /template/ ContentPresenter">
-    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
   </Style>
   <Style Selector="Button.mm-settings-close:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
+    <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
   </Style>
 
@@ -474,6 +475,12 @@
     <Setter Property="MinWidth" Value="200" />
     <Setter Property="MinHeight" Value="0" />
   </Style>
+  <!--
+    Тени у меню нет: попап — отдельное окно ОС ровно по размеру карточки, и
+    BoxShadow обрезается его краем (проверено на macOS 2026-09-20 в MM-44).
+    Чтобы тень поместилась, вокруг карточки пришлось бы оставить прозрачное
+    поле, а оно съедает клики рядом с меню и ломает закрытие по клику мимо.
+  -->
 
   <Style Selector="MenuItem">
     <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
@@ -521,7 +528,7 @@
   </Style>
 
   <Style Selector="Border.mm-card-segments">
-    <Setter Property="Background" Value="{DynamicResource MmSurfaceHoverBrush}" />
+    <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
     <Setter Property="CornerRadius" Value="9" />
     <Setter Property="Padding" Value="3" />
   </Style>
@@ -568,7 +575,7 @@
   </Style>
 
   <Style Selector="Border.mm-card-stepper">
-    <Setter Property="Background" Value="{DynamicResource MmSurfaceHoverBrush}" />
+    <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
     <Setter Property="CornerRadius" Value="9" />
     <Setter Property="Padding" Value="2" />
     <Setter Property="VerticalAlignment" Value="Center" />
@@ -1004,7 +1011,7 @@
     <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="12" />
-    <Setter Property="BoxShadow" Value="0 16 48 -10 #25000033" />
+    <Setter Property="BoxShadow" Value="{DynamicResource MmCardShadow}" />
   </Style>
 
   <!--
@@ -1202,8 +1209,11 @@
     <Setter Property="Background" Value="{DynamicResource MmTabBrush}" />
     <Setter Property="HorizontalAlignment" Value="Center" />
   </Style>
+  <!-- Крупный значок (24 px) рисуется тоньше остальных: при обводке 1.75 он
+       выглядел бы жирнее иконок кнопок -->
   <Style Selector="Border.mm-error-badge views|LucideIcon">
     <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+    <Setter Property="StrokeThickness" Value="1.5" />
     <Setter Property="HorizontalAlignment" Value="Center" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
@@ -1220,6 +1230,10 @@
 
   <!-- Кнопка блока обновлений в окне «Настройки» сидит на заливке вкладки — обычная
        кнопка берёт заливку наведения. Стоит после общих: из равных побеждает поздний. -->
+  <Style Selector="Border.mm-app-settings-update Button.mm-dialog-primary, Border.mm-app-settings-update Button.mm-dialog-secondary">
+    <Setter Property="Height" Value="30" />
+    <Setter Property="FontSize" Value="12.5" />
+  </Style>
   <Style Selector="Border.mm-app-settings-update Button.mm-dialog-secondary">
     <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
   </Style>

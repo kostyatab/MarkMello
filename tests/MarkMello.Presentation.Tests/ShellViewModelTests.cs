@@ -1074,7 +1074,7 @@ public sealed class ShellViewModelTests
         Assert.Equal(AppLanguage.Russian, harness.Settings.Language);
         Assert.True(harness.ViewModel.IsRussianLanguageSelected);
         Assert.Equal("Проверить", harness.ViewModel.UpdateActionLabel);
-        Assert.Equal("Слов: 0", harness.ViewModel.WordCountStatusLabel);
+        Assert.Equal("0 слов · 1 мин", harness.ViewModel.ReadingStatusLabel);
     }
 
     [Fact]
@@ -1095,7 +1095,7 @@ public sealed class ShellViewModelTests
             refreshedOptions.Single(option => option.Language == AppLanguage.Russian),
             harness.ViewModel.SelectedLanguageOption);
         Assert.Equal("Английский", refreshedOptions.Single(option => option.Language == AppLanguage.English).Label);
-        Assert.Equal("Слов: 0", harness.ViewModel.WordCountStatusLabel);
+        Assert.Equal("0 слов · 1 мин", harness.ViewModel.ReadingStatusLabel);
     }
 
 

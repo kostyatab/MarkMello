@@ -16,5 +16,11 @@ public interface ILocalizationService : INotifyPropertyChanged
 
     string Format(string key, params object?[] args);
 
+    /// <summary>
+    /// Строка с числительным: ключ дополняется формой — <c>One</c>, <c>Few</c> или
+    /// <c>Many</c> — по правилам текущего языка.
+    /// </summary>
+    string FormatPlural(string key, int count);
+
     void SetLanguage(AppLanguage language);
 }

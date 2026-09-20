@@ -249,7 +249,7 @@ public partial class ShellViewModel
 
         if (Workspace is { } workspace)
         {
-            workspace.PropertyChanged -= OnWorkspaceCountersChanged;
+            workspace.PropertyChanged -= OnWorkspaceStateChanged;
         }
 
         Workspace = null;
@@ -274,7 +274,7 @@ public partial class ShellViewModel
 
         // Подпись подвала живёт в shell, а считается по дереву: без подписки она
         // не менялась бы ни после создания файла, ни после удаления.
-        workspace.PropertyChanged += OnWorkspaceCountersChanged;
+        workspace.PropertyChanged += OnWorkspaceStateChanged;
 
         Workspace = workspace;
         IsSidebarCollapsed = false;
@@ -340,18 +340,12 @@ public partial class ShellViewModel
     /// Переименование в дереве: открытые вкладки этого файла (и файлов внутри папки)
     /// следуют за новым путём, иначе они указывали бы в пустоту (ADR-0007 Rule 7).
     /// </summary>
-    private void OnWorkspaceCountersChanged(object? sender, PropertyChangedEventArgs e)
+    private void OnWorkspaceStateChanged(object? sender, PropertyChangedEventArgs e)
     {
-        switch (e.PropertyName)
+        if (e.PropertyName == nameof(WorkspaceViewModel.ExpansionRevision))
         {
-            case nameof(WorkspaceViewModel.LoadedDocumentCount):
-                OnPropertyChanged(nameof(SidebarFooterLabel));
-                break;
-
-            case nameof(WorkspaceViewModel.ExpansionRevision):
-                // Раскрытые папки — часть сессии наравне с вкладками.
-                _ = PersistSessionAsync();
-                break;
+            // Раскрытые папки — часть сессии наравне с вкладками.
+            _ = PersistSessionAsync();
         }
     }
 

@@ -851,7 +851,11 @@ public partial class ShellViewModel : ObservableObject
 
     public int WordCount => EditorSession?.WordCount ?? CountWords(Document?.Content);
 
-    public int ReadTimeMinutes => Math.Max(1, (int)Math.Round(WordCount / 220.0));
+    /// <summary>
+    /// Оценка времени чтения: 200 слов в минуту с округлением вверх — как на холсте,
+    /// где 499 слов читаются «3 мин».
+    /// </summary>
+    public int ReadTimeMinutes => Math.Max(1, (int)Math.Ceiling(WordCount / 200.0));
 
     private bool _suppressStartupActivation;
 
@@ -2085,8 +2089,7 @@ public partial class ShellViewModel : ObservableObject
         OnPropertyChanged(nameof(TitleFileDisplayName));
         OnPropertyChanged(nameof(WordCount));
         OnPropertyChanged(nameof(ReadTimeMinutes));
-        OnPropertyChanged(nameof(WordCountStatusLabel));
-        OnPropertyChanged(nameof(ReadTimeStatusLabel));
+        OnPropertyChanged(nameof(ReadingStatusLabel));
         OnPropertyChanged(nameof(IsDirty));
         RaiseEditActionsChanged();
         SyncActiveTabDirtyState();

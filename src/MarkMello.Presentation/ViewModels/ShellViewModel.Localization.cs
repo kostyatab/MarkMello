@@ -128,7 +128,6 @@ public partial class ShellViewModel
         nameof(ExternalChangeReloadTooltip),
         nameof(ExternalChangeTitle),
         nameof(SidebarCreateTooltip),
-        nameof(SidebarFooterLabel),
         nameof(SidebarNewFile),
         nameof(SidebarNewFolder),
         nameof(SidebarOpenAnotherFolder),
@@ -155,29 +154,6 @@ public partial class ShellViewModel
     ];
 
     public string AppMenuCloseFolderLabel => _localization["AppMenuCloseFolderLabel"];
-
-    /// <summary>
-    /// Подвал сайдбара. Формулировка без согласования числительных: множественные формы
-    /// потребовали бы механизма выбора форм, которого в плоском словаре нет, а пользы
-    /// от «14 документов» против «Документов: 14» — ноль.
-    /// </summary>
-    public string SidebarFooterLabel
-    {
-        get
-        {
-            if (Workspace is not { } workspace)
-            {
-                return string.Empty;
-            }
-
-            var documents = _localization.Format("SidebarFooterDocuments", workspace.LoadedDocumentCount);
-            var dirty = OpenDocuments.Tabs.Count(static tab => tab is { BelongsToWorkspace: true, IsDirty: true });
-
-            return dirty == 0
-                ? documents
-                : documents + " · " + _localization.Format("SidebarFooterDirty", dirty);
-        }
-    }
 
     public string SidebarNewFile => _localization["SidebarNewFile"];
     public string SidebarNewFolder => _localization["SidebarNewFolder"];
@@ -366,9 +342,11 @@ public partial class ShellViewModel
     private string KeyShortcut(Key key, KeyModifiers modifiers = KeyModifiers.None)
         => ShortcutLabel.Format(new KeyGesture(key, modifiers), _platform.PlatformName);
 
-    public string WordCountStatusLabel => _localization.Format("StatusWordCount", WordCount);
-
-    public string ReadTimeStatusLabel => _localization.Format("StatusReadTime", ReadTimeMinutes);
+    /// <summary>Плашка под документом: «499 слов · 3 мин».</summary>
+    public string ReadingStatusLabel
+        => _localization.FormatPlural("StatusWords", WordCount)
+           + " · "
+           + _localization.Format("StatusReadMinutes", ReadTimeMinutes);
 
     [RelayCommand]
     private void SelectSystemLanguage() => ApplyLanguageSelection(AppLanguage.System);
@@ -453,8 +431,7 @@ public partial class ShellViewModel
         OnPropertyChanged(nameof(IsRussianLanguageSelected));
         OnPropertyChanged(nameof(LanguageOptions));
         OnPropertyChanged(nameof(SelectedLanguageOption));
-        OnPropertyChanged(nameof(WordCountStatusLabel));
-        OnPropertyChanged(nameof(ReadTimeStatusLabel));
+        OnPropertyChanged(nameof(ReadingStatusLabel));
         OnPropertyChanged(nameof(FontSizeLabel));
         OnPropertyChanged(nameof(LineHeightLabel));
 

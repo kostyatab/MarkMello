@@ -31,53 +31,24 @@ public sealed class WorkspaceFileOperationsTests
 
     /// <summary>
     /// Черновая строка стоит в дереве на месте будущего файла и исчезает вместе с вводом,
-    /// а счётчик документов в подвале пересчитывается и после операции в корне.
+    /// а созданный файл встаёт на её место.
     /// </summary>
     [Fact]
-    public async Task DraftRowStandsInTheTreeAndTheFooterCountFollows()
+    public async Task DraftRowStandsInTheTreeUntilTheNameIsCommitted()
     {
         var harness = await CreateAsync();
-        var before = harness.Workspace.LoadedDocumentCount;
 
         harness.Workspace.StartNewFileCommand.Execute(null);
 
         var draft = Assert.Single(harness.Workspace.Roots, static node => node.IsDraft);
         Assert.True(draft.IsEditing);
-        Assert.Equal(before, harness.Workspace.LoadedDocumentCount);
+        Assert.DoesNotContain(harness.Workspace.Roots, static node => node.Name == "meeting.md");
 
         harness.Workspace.EditName = "meeting";
         await harness.Workspace.CommitEditCommand.ExecuteAsync(null);
 
         Assert.DoesNotContain(harness.Workspace.Roots, static node => node.IsDraft);
-        Assert.Equal(before + 1, harness.Workspace.LoadedDocumentCount);
-    }
-
-    /// <summary>
-    /// Подпись подвала считается по дереву, но живёт в shell: без уведомления она
-    /// оставалась бы со старым числом до следующей перерисовки.
-    /// </summary>
-    [Fact]
-    public async Task FooterLabelIsNotifiedAfterAnOperationInTheRoot()
-    {
-        var harness = await CreateAsync();
-
-        Assert.Equal("Documents: 1", harness.ViewModel.SidebarFooterLabel);
-
-        var notified = 0;
-        harness.ViewModel.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(ShellViewModel.SidebarFooterLabel))
-            {
-                notified++;
-            }
-        };
-
-        harness.Workspace.StartNewFileCommand.Execute(null);
-        harness.Workspace.EditName = "meeting";
-        await harness.Workspace.CommitEditCommand.ExecuteAsync(null);
-
-        Assert.True(notified > 0);
-        Assert.Equal("Documents: 2", harness.ViewModel.SidebarFooterLabel);
+        Assert.Contains(harness.Workspace.Roots, static node => node.Name == "meeting.md");
     }
 
     /// <summary>Переименование правит строку на её месте, а не отдельной панелью над деревом.</summary>

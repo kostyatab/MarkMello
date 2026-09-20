@@ -27,7 +27,7 @@ public sealed class LocalizationService : ObservableObject, ILocalizationService
         ["TitleBarMaximize"] = "Maximize",
         ["TitleBarRestore"] = "Restore",
         ["TitleBarClose"] = "Close",
-        ["AppMenuTooltip"] = "App menu",
+        ["AppMenuTooltip"] = "Menu",
         ["EditToggleTooltip"] = "Toggle edit mode ({0})",
         ["EditDone"] = "Done",
         ["EditDoneTooltip"] = "Finish editing ({0})",
@@ -81,8 +81,10 @@ public sealed class LocalizationService : ObservableObject, ILocalizationService
         ["ReadingMinimapOff"] = "Off",
         ["ReadingMoreSettingsHint"] = "Language, updates, version",
         ["ReadingMoreSettingsLink"] = "Settings…",
-        ["StatusWordCount"] = "Words: {0:N0}",
-        ["StatusReadTime"] = "Read time: {0} min",
+        ["StatusWordsOne"] = "{0:N0} word",
+        ["StatusWordsFew"] = "{0:N0} words",
+        ["StatusWordsMany"] = "{0:N0} words",
+        ["StatusReadMinutes"] = "{0} min",
         ["DragDropHint"] = "Release to open",
         ["DropFileDetails"] = "{0} will open in a new tab",
         ["DropFolderNewWindowDetails"] = "Folder {0} will open in a new window",
@@ -184,8 +186,6 @@ public sealed class LocalizationService : ObservableObject, ILocalizationService
         ["TabDeletedSuffix"] = "(deleted)",
         ["SidebarHideTooltip"] = "Hide file panel ({0})",
         ["SidebarShowTooltip"] = "Show file panel ({0})",
-        ["SidebarFooterDocuments"] = "Documents: {0}",
-        ["SidebarFooterDirty"] = "Unsaved: {0}",
         ["SidebarNewFile"] = "New File",
         ["SidebarNewFolder"] = "New Folder",
         ["SidebarCreateTooltip"] = "New file or folder",
@@ -203,7 +203,7 @@ public sealed class LocalizationService : ObservableObject, ILocalizationService
         ["TreeReservedName"] = "This name is reserved by the system",
         ["TreeOperationFailed"] = "The operation failed",
         ["DeleteFileTitle"] = "Delete \"{0}\"?",
-        ["DeleteFileBody"] = "The file will be moved to the recycle bin. Its open tab will close.",
+        ["DeleteFileBody"] = "The file will be moved to the recycle bin. If it is open in a tab, that tab will close.",
         ["DeleteFolderTitle"] = "Delete folder \"{0}\"?",
         ["DeleteFolderBody"] = "The folder will be moved to the recycle bin.",
         ["DeleteFolderNonEmptyTitle"] = "Delete folder \"{0}\" and everything in it?",
@@ -226,7 +226,7 @@ public sealed class LocalizationService : ObservableObject, ILocalizationService
         ["TabClose"] = "Close tab",
         ["NewDocumentTooltip"] = "New document ({0})",
         ["EmptySurfaceTitle"] = "No document selected",
-        ["EmptySurfaceHint"] = "Pick a file on the left to open it in a tab.",
+        ["EmptySurfaceHint"] = "Pick a file on the left — it opens in a tab.",
         ["AppMenuCloseFolderLabel"] = "Close Folder",
         ["WelcomeOpenFolder"] = "Open Folder…",
         ["SidebarTooltip"] = "Files in this folder",
@@ -262,7 +262,7 @@ public sealed class LocalizationService : ObservableObject, ILocalizationService
         ["TitleBarMaximize"] = "Развернуть",
         ["TitleBarRestore"] = "Восстановить",
         ["TitleBarClose"] = "Закрыть",
-        ["AppMenuTooltip"] = "Меню приложения",
+        ["AppMenuTooltip"] = "Меню",
         ["EditToggleTooltip"] = "Переключить режим редактирования ({0})",
         ["EditDone"] = "Готово",
         ["EditDoneTooltip"] = "Закончить правку ({0})",
@@ -316,8 +316,10 @@ public sealed class LocalizationService : ObservableObject, ILocalizationService
         ["ReadingMinimapOff"] = "Выкл",
         ["ReadingMoreSettingsHint"] = "Язык, обновления, версия",
         ["ReadingMoreSettingsLink"] = "Настройки…",
-        ["StatusWordCount"] = "Слов: {0:N0}",
-        ["StatusReadTime"] = "Чтение: {0} мин",
+        ["StatusWordsOne"] = "{0:N0} слово",
+        ["StatusWordsFew"] = "{0:N0} слова",
+        ["StatusWordsMany"] = "{0:N0} слов",
+        ["StatusReadMinutes"] = "{0} мин",
         ["DragDropHint"] = "Отпустите, чтобы открыть",
         ["DropFileDetails"] = "{0} откроется в новой вкладке",
         ["DropFolderNewWindowDetails"] = "Папка {0} откроется в новом окне",
@@ -419,8 +421,6 @@ public sealed class LocalizationService : ObservableObject, ILocalizationService
         ["TabDeletedSuffix"] = "(удалён)",
         ["SidebarHideTooltip"] = "Скрыть панель файлов ({0})",
         ["SidebarShowTooltip"] = "Показать панель файлов ({0})",
-        ["SidebarFooterDocuments"] = "Документов: {0}",
-        ["SidebarFooterDirty"] = "Изменено: {0}",
         ["SidebarNewFile"] = "Новый файл",
         ["SidebarNewFolder"] = "Новая папка",
         ["SidebarCreateTooltip"] = "Новый файл или папка",
@@ -438,7 +438,7 @@ public sealed class LocalizationService : ObservableObject, ILocalizationService
         ["TreeReservedName"] = "Это имя занято системой",
         ["TreeOperationFailed"] = "Операция не удалась",
         ["DeleteFileTitle"] = "Удалить «{0}»?",
-        ["DeleteFileBody"] = "Файл будет перемещён в корзину. Открытая вкладка этого файла закроется.",
+        ["DeleteFileBody"] = "Файл будет перемещён в корзину. Если он открыт во вкладке, вкладка закроется.",
         ["DeleteFolderTitle"] = "Удалить папку «{0}»?",
         ["DeleteFolderBody"] = "Папка будет перемещена в корзину.",
         ["DeleteFolderNonEmptyTitle"] = "Удалить папку «{0}» и всё её содержимое?",
@@ -461,7 +461,7 @@ public sealed class LocalizationService : ObservableObject, ILocalizationService
         ["TabClose"] = "Закрыть вкладку",
         ["NewDocumentTooltip"] = "Новый документ ({0})",
         ["EmptySurfaceTitle"] = "Документ не выбран",
-        ["EmptySurfaceHint"] = "Выберите файл в списке слева, чтобы открыть его во вкладке.",
+        ["EmptySurfaceHint"] = "Выберите файл в списке слева — он откроется во вкладке.",
         ["AppMenuCloseFolderLabel"] = "Закрыть папку",
         ["WelcomeOpenFolder"] = "Открыть папку…",
         ["SidebarTooltip"] = "Файлы этой папки",
@@ -503,6 +503,9 @@ public sealed class LocalizationService : ObservableObject, ILocalizationService
 
     public string Format(string key, params object?[] args)
         => string.Format(_culture, ResolveString(key), args);
+
+    public string FormatPlural(string key, int count)
+        => string.Format(_culture, ResolveString(key + PluralForm(count)), count);
 
     public void SetLanguage(AppLanguage language)
     {
@@ -553,6 +556,29 @@ public sealed class LocalizationService : ObservableObject, ILocalizationService
         }
 
         return $"[[{key}]]";
+    }
+
+    /// <summary>
+    /// Форма числительного для ключа <c>&lt;key&gt;One|Few|Many</c>. В английском форм
+    /// две — единственное и остальное; в русском три, по последней цифре числа,
+    /// кроме одиннадцати-четырнадцати.
+    /// </summary>
+    private string PluralForm(int count)
+    {
+        if (_effectiveLanguage != AppLanguage.Russian)
+        {
+            return count == 1 ? "One" : "Many";
+        }
+
+        var withinHundred = Math.Abs(count) % 100;
+        var lastDigit = withinHundred % 10;
+
+        if (lastDigit == 1 && withinHundred != 11)
+        {
+            return "One";
+        }
+
+        return lastDigit is >= 2 and <= 4 && withinHundred is < 12 or > 14 ? "Few" : "Many";
     }
 
     private static AppLanguage NormalizeLanguage(AppLanguage language)

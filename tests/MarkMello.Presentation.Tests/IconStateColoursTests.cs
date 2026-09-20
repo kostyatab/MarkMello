@@ -48,10 +48,10 @@ public sealed class IconStateColoursTests
             ("welcome-secondary", false, ":pointerover", Text),
             ("welcome-secondary", false, ":pointerover :pressed", Text),
             // ✕ в шапке окна «Настройки».
-            ("mm-settings-close", false, "", Faint),
+            ("mm-settings-close", false, "", Soft),
             ("mm-settings-close", false, ":pointerover", Text),
             ("mm-settings-close", false, ":pointerover :pressed", Text),
-            ("mm-settings-close", false, ":pressed", Faint),
+            ("mm-settings-close", false, ":pressed", Soft),
             ("mm-editor-toolbar-button", false, "", Soft),
             ("mm-editor-toolbar-button", false, ":pointerover", Text),
             ("mm-editor-toolbar-button", false, ":pointerover :pressed", Text),

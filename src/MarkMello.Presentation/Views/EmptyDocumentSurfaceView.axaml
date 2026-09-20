@@ -10,16 +10,16 @@
   <!-- Папка открыта, вкладок нет: без иллюстрации, одна строка объяснения (макет 07) -->
   <StackPanel HorizontalAlignment="Center"
               VerticalAlignment="Center"
-              MaxWidth="320"
-              Spacing="10">
+              MaxWidth="360"
+              Spacing="8">
     <TextBlock Text="{Binding EmptySurfaceTitle}"
                FontFamily="{DynamicResource MmDocumentSerifFontFamily}"
-               FontSize="20"
+               FontSize="22"
                HorizontalAlignment="Center"
-               Foreground="{DynamicResource MmTextSoftBrush}" />
+               Foreground="{DynamicResource MmTextBrush}" />
     <TextBlock Text="{Binding EmptySurfaceHint}"
                FontFamily="{DynamicResource MmDocumentSansFontFamily}"
-               FontSize="13"
+               FontSize="13.5"
                LineHeight="21"
                TextAlignment="Center"
                TextWrapping="Wrap"

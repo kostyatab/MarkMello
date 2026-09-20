@@ -96,33 +96,6 @@ public sealed class SidebarChromeTests
     }
 
     [Fact]
-    public async Task FooterCountsWhatTheTreeHasLoaded()
-    {
-        var harness = await CreateAsync();
-
-        // Корень: README.md и first.md — каталог adr ещё не раскрыт.
-        Assert.Equal(2, harness.ViewModel.Workspace!.LoadedDocumentCount);
-        Assert.Equal("Documents: 2", harness.ViewModel.SidebarFooterLabel);
-
-        var adr = harness.ViewModel.Workspace.Roots.Single(node => node.Name == "adr");
-        await harness.ViewModel.Workspace.ExpandNodeAsync(adr);
-
-        Assert.Equal(3, harness.ViewModel.Workspace.LoadedDocumentCount);
-        Assert.Equal("Documents: 3", harness.ViewModel.SidebarFooterLabel);
-    }
-
-    [Fact]
-    public async Task FooterMentionsUnsavedDocumentsOfThisFolder()
-    {
-        var harness = await CreateAsync();
-        await harness.ViewModel.OpenPathAsync(TestPaths.At("docs", "first.md"));
-        harness.ViewModel.ToggleEditModeCommand.Execute(null);
-        harness.ViewModel.EditorSession!.SourceText = "# edited";
-
-        Assert.Equal("Documents: 2 · Unsaved: 1", harness.ViewModel.SidebarFooterLabel);
-    }
-
-    [Fact]
     public async Task EmptyStateDisappearsAsSoonAsADocumentOpens()
     {
         var harness = await CreateAsync();

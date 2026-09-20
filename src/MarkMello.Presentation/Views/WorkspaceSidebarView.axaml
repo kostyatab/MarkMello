@@ -21,7 +21,7 @@
 
     <Style Selector="Border.mm-sidebar">
       <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
       <Setter Property="BorderThickness" Value="0,0,1,0" />
     </Style>
 
@@ -113,7 +113,7 @@
         <ControlTemplate>
           <Border Background="Transparent">
             <views:LucideIcon Data="{DynamicResource LucideChevronRightGeometry}"
-                              Foreground="{DynamicResource TreeViewItemForeground}"
+                              Foreground="{DynamicResource MmTextFaintBrush}"
                               Width="12"
                               Height="12" />
           </Border>
@@ -211,7 +211,7 @@
     <Style Selector="Border.mm-search-shell">
       <Setter Property="Height" Value="30" />
       <Setter Property="Margin" Value="19,0,19,10" />
-      <Setter Property="Padding" Value="8,0" />
+      <Setter Property="Padding" Value="10,0" />
       <Setter Property="Background" Value="{DynamicResource MmBackgroundBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
       <Setter Property="BorderThickness" Value="1" />
@@ -460,11 +460,11 @@
               Classes="mm-search-shell"
               Classes.active="{Binding Workspace.HasSearchQuery}">
         <Grid ColumnDefinitions="Auto,*,Auto"
-              ColumnSpacing="7">
+              ColumnSpacing="8">
           <views:LucideIcon Grid.Column="0"
                             Data="{DynamicResource LucideSearchGeometry}"
-                            Width="12"
-                            Height="12"
+                            Width="14"
+                            Height="14"
                             VerticalAlignment="Center" />
 
           <!-- Esc вешается в code-behind: TextBox помечает клавишу обработанной,
@@ -571,8 +571,8 @@
               <!-- Несохранённый документ: та же точка, что и во вкладке -->
               <Ellipse Grid.Column="2"
                        IsVisible="{Binding IsDirty}"
-                       Width="5"
-                       Height="5"
+                       Width="7"
+                       Height="7"
                        Margin="6,0,2,0"
                        VerticalAlignment="Center"
                        Fill="{DynamicResource MmAccentBrush}" />
@@ -623,20 +623,16 @@
                    Text="{Binding SidebarSearchEmpty}" />
       </Grid>
 
-      <!-- Подвал: в поиске — неполная выдача и подсказка про Esc, иначе счётчик документов -->
+      <!-- Подвал: в поиске — неполная выдача и подсказка про Esc -->
       <StackPanel Grid.Row="4">
         <Border Classes="mm-search-truncated"
                 IsVisible="{Binding Workspace.IsSearchTruncated}">
           <TextBlock Text="{Binding SidebarSearchTruncated}"
                      TextWrapping="Wrap" />
         </Border>
-        <Border Classes="mm-sidebar-footer">
-          <Panel>
-            <TextBlock IsVisible="{Binding Workspace.HasSearchQuery}"
-                       Text="{Binding SidebarSearchReset}" />
-            <TextBlock IsVisible="{Binding Workspace.ShowsTree}"
-                       Text="{Binding SidebarFooterLabel}" />
-          </Panel>
+        <Border Classes="mm-sidebar-footer"
+                IsVisible="{Binding Workspace.HasSearchQuery}">
+          <TextBlock Text="{Binding SidebarSearchReset}" />
         </Border>
       </StackPanel>
     </Grid>

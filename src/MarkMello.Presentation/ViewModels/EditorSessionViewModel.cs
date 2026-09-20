@@ -220,7 +220,7 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
 
     public int WordCount => CountWords(SourceText);
 
-    public int ReadTimeMinutes => Math.Max(1, (int)Math.Round(WordCount / 220.0));
+    public int ReadTimeMinutes => Math.Max(1, (int)Math.Ceiling(WordCount / 200.0));
 
     public void UpdateReadingPreferences(ReadingPreferences preferences)
     {

@@ -17,6 +17,36 @@ public sealed class LocalizationServiceTests
     }
 
 
+    /// <summary>
+    /// Плашка счётчика набирается числительным: в русском три формы, в английском две.
+    /// </summary>
+    [Theory]
+    [InlineData(1, "1 слово")]
+    [InlineData(2, "2 слова")]
+    [InlineData(5, "5 слов")]
+    [InlineData(11, "11 слов")]
+    [InlineData(21, "21 слово")]
+    [InlineData(102, "102 слова")]
+    [InlineData(114, "114 слов")]
+    [InlineData(0, "0 слов")]
+    public void RussianWordCountAgreesWithTheNumeral(int count, string expected)
+    {
+        var localization = new LocalizationService(AppLanguage.Russian);
+
+        Assert.Equal(expected, localization.FormatPlural("StatusWords", count));
+    }
+
+    [Theory]
+    [InlineData(1, "1 word")]
+    [InlineData(2, "2 words")]
+    [InlineData(0, "0 words")]
+    public void EnglishWordCountAgreesWithTheNumeral(int count, string expected)
+    {
+        var localization = new LocalizationService(AppLanguage.English);
+
+        Assert.Equal(expected, localization.FormatPlural("StatusWords", count));
+    }
+
     [Fact]
     public void SetLanguageRaisesIndexerNotificationsForActiveBindings()
     {

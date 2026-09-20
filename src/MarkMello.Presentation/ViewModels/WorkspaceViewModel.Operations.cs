@@ -347,9 +347,6 @@ public sealed partial class WorkspaceViewModel
                 await RestoreExpansionAsync(expanded).ConfigureAwait(true);
             }
 
-            // Счётчик документов в подвале считает по дереву, поэтому его надо
-            // пересчитать и после операции в корне, а не только в подкаталоге.
-            RefreshFooterCounters();
             return;
         }
 
@@ -366,8 +363,6 @@ public sealed partial class WorkspaceViewModel
             ApplyActiveDocumentHighlight(node);
             await RestoreExpansionAsync(expanded).ConfigureAwait(true);
         }
-
-        RefreshFooterCounters();
     }
 
     private async Task RestoreExpansionAsync(IReadOnlyList<string> directories)

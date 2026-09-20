@@ -89,16 +89,17 @@
       <Setter Property="Background" Value="{DynamicResource MmBorderBrush}" />
     </Style>
 
+    <!-- Плашка счётчика (A-Reading): в правом нижнем углу области документа, на
+         непрозрачной подложке фона — текст документа под неё не просвечивает. -->
     <Style Selector="Border.mm-status">
-      <Setter Property="Opacity" Value="0" />
-      <Setter Property="Transitions">
-        <Transitions>
-          <DoubleTransition Property="Opacity" Duration="0:0:0.20" />
-        </Transitions>
-      </Setter>
+      <Setter Property="Margin" Value="0,0,16,12" />
+      <Setter Property="Padding" Value="8,3" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Background" Value="{DynamicResource MmBackgroundBrush}" />
     </Style>
-    <Style Selector="Window:pointerover Border.mm-status">
-      <Setter Property="Opacity" Value="1" />
+    <Style Selector="Border.mm-status TextBlock">
+      <Setter Property="FontSize" Value="11.5" />
+      <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
     </Style>
 
     <!-- Полоса «изменён на диске» (A-External): под строкой окна во всю ширину области
@@ -455,23 +456,11 @@
         </Panel>
 
         <Border Classes="mm-status"
-                HorizontalAlignment="Stretch"
+                HorizontalAlignment="Right"
                 VerticalAlignment="Bottom"
-                Padding="20,0,20,14"
-                IsHitTestVisible="False">
-          <!-- В узком окне счётчики обрезаются по отступу, а не вылезают за край окна. -->
-          <StackPanel Orientation="Horizontal"
-                      Spacing="18"
-                      VerticalAlignment="Bottom"
-                      ClipToBounds="True"
-                      IsVisible="{Binding ShowsReadingStatus}">
-            <TextBlock Text="{Binding WordCountStatusLabel}"
-                       FontSize="11"
-                       Foreground="{DynamicResource MmTextSoftBrush}" />
-            <TextBlock Text="{Binding ReadTimeStatusLabel}"
-                       FontSize="11"
-                       Foreground="{DynamicResource MmTextSoftBrush}" />
-          </StackPanel>
+                IsHitTestVisible="False"
+                IsVisible="{Binding ShowsReadingStatus}">
+          <TextBlock Text="{Binding ReadingStatusLabel}" />
         </Border>
       </Panel>
 
@@ -506,6 +495,7 @@
               <views:LucideIcon Data="{DynamicResource LucideFileDownGeometry}"
                                 Width="28"
                                 Height="28"
+                                StrokeThickness="1.5"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
                                 Foreground="{DynamicResource MmAccentBrush}"
@@ -513,6 +503,7 @@
               <views:LucideIcon Data="{DynamicResource LucideFolderDownGeometry}"
                                 Width="28"
                                 Height="28"
+                                StrokeThickness="1.5"
                                 HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
                                 Foreground="{DynamicResource MmAccentBrush}"

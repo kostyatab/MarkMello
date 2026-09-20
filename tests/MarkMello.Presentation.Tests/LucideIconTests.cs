@@ -9,7 +9,8 @@ namespace MarkMello.Presentation.Tests;
 
 /// <summary>
 /// Контрол, которым нарисованы все иконки интерфейса: размер задаёт разметка,
-/// цвет — кнопка, а обводка всегда каноничная для Lucide.
+/// цвет — кнопка, а обводка держится заданной толщины в пикселях независимо
+/// от размера значка.
 /// </summary>
 [Collection(AvaloniaHeadlessTestGroup.Name)]
 public sealed class LucideIconTests
@@ -79,14 +80,15 @@ public sealed class LucideIconTests
     }
 
     /// <summary>
-    /// Обводка 2 единицы сетки 24 со скруглёнными концами и стыками, без заливки;
-    /// масштаб — сторона иконки к 24, так что обводка тоньше вместе с иконкой.
+    /// Геометрия рисуется на сетке 24 со скруглёнными концами и стыками, без заливки;
+    /// масштаб — сторона иконки к 24. Перо задано в единицах сетки так, чтобы после
+    /// масштабирования линия вышла заданной толщины в пикселях.
     /// </summary>
     [Theory]
     [InlineData(24, 24, 1, 0, 0)]
     [InlineData(12, 12, 0.5, 0, 0)]
     [InlineData(14, 12, 0.5, 1, 0)]
-    public Task DrawsTheGeometryOnLucidesGridWithTheCanonicalStroke(
+    public Task DrawsTheGeometryOnLucidesGridWithTheDefaultStroke(
         double width,
         double height,
         double expectedScale,
@@ -106,9 +108,38 @@ public sealed class LucideIconTests
             Assert.Equal(Matrix.CreateScale(expectedScale, expectedScale) * Matrix.CreateTranslation(expectedOffsetX, expectedOffsetY), transform);
             Assert.Equal(data.Bounds, Assert.IsAssignableFrom<Geometry>(drawing.Geometry).Bounds);
             Assert.Null(drawing.Brush);
-            Assert.Equal(2, pen.Thickness);
+            Assert.Equal(1.75, pen.Thickness * expectedScale, 6);
             Assert.Equal(PenLineCap.Round, pen.LineCap);
             Assert.Equal(PenLineJoin.Round, pen.LineJoin);
+        }, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Регресс: обводка задавалась в единицах сетки и росла вместе со значком —
+    /// иконка 28 px выходила вдвое жирнее иконки 14 px. Теперь толщина в пикселях
+    /// та, что задана, а крупным значкам её можно убавить.
+    /// </summary>
+    [Theory]
+    [InlineData(14, 1.75)]
+    [InlineData(24, 1.75)]
+    [InlineData(28, 1.5)]
+    public Task KeepsTheStrokeAtTheGivenWidthInPixels(double size, double strokeThickness)
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var icon = new LucideIcon
+            {
+                Data = Geometry.Parse(Chevron),
+                Foreground = Brushes.Black,
+                StrokeThickness = strokeThickness
+            };
+            icon.Measure(new Size(size, size));
+            icon.Arrange(new Rect(0, 0, size, size));
+
+            var (transform, drawing) = RenderOnce(icon);
+            var pen = Assert.IsAssignableFrom<IPen>(drawing.Pen);
+
+            Assert.Equal(strokeThickness, pen.Thickness * transform.M11, 6);
         }, CancellationToken.None);
     }
 

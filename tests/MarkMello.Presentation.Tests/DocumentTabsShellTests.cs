@@ -253,7 +253,7 @@ public sealed class DocumentTabsShellTests
 
     /// <summary>
     /// Вкладка, открытая до папки, после её открытия ведёт себя как открытая из дерева:
-    /// раньше подвал не считал её правки, а дерево не ставило ей точку несохранённого.
+    /// раньше дерево не ставило ей точку несохранённого.
     /// </summary>
     [Fact]
     public async Task TabsOpenedBeforeTheFolderJoinItByPath()
@@ -270,7 +270,6 @@ public sealed class DocumentTabsShellTests
         Assert.True(first.BelongsToWorkspace);
         Assert.False(outside.BelongsToWorkspace);
         Assert.True(harness.ViewModel.Workspace!.Roots.Single(node => node.Name == "first.md").IsDirty);
-        Assert.Equal("Documents: 2 · Unsaved: 1", harness.ViewModel.SidebarFooterLabel);
     }
 
     [Fact]
