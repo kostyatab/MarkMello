@@ -91,14 +91,13 @@
       </Setter>
     </Style>
 
-    <!-- Отступы уровней: 8px у корня — шеврон встаёт на вертикаль иконок сайдбара, —
-         +16px на уровень, место под шеврон 12px с щелью 6px — в каждой строке, чтобы
-         иконки файлов стояли ровно под иконками папок того же уровня. Штатный отступ
-         вложенности Fluent заменён своим: вместе они давали дыру перед именем. -->
+    <!-- Отступ строки: 8px у корня — шеврон встаёт на вертикаль иконок сайдбара, —
+         место под шеврон 12px с щелью 6px в каждой строке, чтобы иконки файлов
+         стояли ровно под иконками папок того же уровня. Вложенность отступает сам
+         Fluent, по 16px на уровень; свой отступ на уровень здесь его удваивал. -->
     <Style Selector="TreeView.mm-tree TreeViewItem /template/ Panel#PART_ExpandCollapseChevronContainer">
       <Setter Property="Width" Value="18" />
-      <Setter Property="Margin"
-              Value="{Binding $parent[TreeViewItem].Level, Converter={x:Static views:TreeLevelIndentConverter.Instance}}" />
+      <Setter Property="Margin" Value="8,0,0,0" />
     </Style>
     <!-- Шеврон Lucide вместо залитого глифа Fluent: тот же ToggleButton (мышь и
          клавиатура раскрывают папку как раньше), другой шаблон. Цвет — тот, каким

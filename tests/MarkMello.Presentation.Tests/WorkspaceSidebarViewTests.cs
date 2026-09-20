@@ -303,6 +303,37 @@ public sealed class WorkspaceSidebarViewTests
         });
     }
 
+    /// <summary>
+    /// Регресс: отступ вложенности считался дважды — свой на уровень плюс штатный
+    /// отступ Fluent, — и файлы в папке уезжали на 32 px вместо 16 из холста.
+    /// </summary>
+    [Fact]
+    public Task NestedRowsStepInByOneLevelOnly()
+    {
+        return _fixture.RunAsync(async () =>
+        {
+            var viewModel = CreateViewModel();
+            await viewModel.OpenFolderPathAsync(TestPaths.At("docs"));
+
+            var window = ThemedTestWindow.Create(ThemeVariant.Light);
+            window.DataContext = viewModel;
+            window.Content = new WorkspaceSidebarView();
+            window.Show();
+            window.UpdateLayout();
+
+            var folder = viewModel.Workspace!.Roots.Single(row => row.Name == "adr");
+            await viewModel.Workspace.ExpandNodeAsync(folder);
+            window.UpdateLayout();
+
+            Assert.Equal(16, IconOffset(window, "0001-record.md") - IconOffset(window, "README.md"), 1);
+
+            window.Close();
+        });
+    }
+
+    private static double IconOffset(Window window, string name)
+        => RowIcon(Row(window, name)).TranslatePoint(new Point(0, 0), window)!.Value.X;
+
     private static TreeViewItem Row(Window window, string name)
         => window.GetVisualDescendants()
             .OfType<TreeViewItem>()
