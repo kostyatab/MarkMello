@@ -47,6 +47,7 @@ public partial class ShellViewModel
 
     private static readonly string[] LocalizedBindingPropertyNames =
     [
+        nameof(AppMenuAbout),
         nameof(AppMenuCloseFolderLabel),
         nameof(AppMenuCloseTab),
         nameof(AppMenuFilesPanel),
@@ -203,6 +204,13 @@ public partial class ShellViewModel
     public string AppMenuFilesPanel => _localization["AppMenuFilesPanel"];
     public string AppMenuCloseTab => _localization["AppMenuCloseTab"];
     public string AppMenuSettings => _localization["AppMenuSettings"];
+    public string AppMenuAbout => _localization["AppMenuAbout"];
+
+    /// <summary>
+    /// «О MarkMello» в меню ⋯ — только вне macOS (ADR-0009 Rule 4): там этот пункт
+    /// живёт в системном меню приложения, и дублировать его — против привычки платформы.
+    /// </summary>
+    public bool ShowsAboutMenuItem => _showsAboutMenuItem;
     public string AppMenuTooltip => _localization["AppMenuTooltip"];
     public string AppSettingsHeader => _localization["AppSettingsHeader"];
 

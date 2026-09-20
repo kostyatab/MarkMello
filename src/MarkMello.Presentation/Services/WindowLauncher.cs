@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using MarkMello.Presentation.Localization;
 using MarkMello.Presentation.ViewModels;
 using MarkMello.Presentation.Views;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,6 +28,12 @@ public interface IWindowLauncher
 
     /// <summary>Открывает новое окно и показывает в нём указанную папку.</summary>
     void OpenFolderInNewWindow(string folderPath);
+
+    /// <summary>
+    /// Показывает окно «О MarkMello» (ADR-0009 Rule 7). Второе окно не создаётся:
+    /// повторный вызов выводит вперёд уже открытое.
+    /// </summary>
+    void ShowAbout();
 }
 
 public sealed class WindowLauncher : IWindowLauncher
@@ -35,6 +42,9 @@ public sealed class WindowLauncher : IWindowLauncher
     private const int CascadeOffset = 32;
 
     private readonly IServiceProvider _services;
+
+    /// <summary>Единственное окно About, пока оно открыто. Создаётся только по нажатию пункта меню.</summary>
+    private AboutWindow? _aboutWindow;
 
     public WindowLauncher(IServiceProvider services)
     {
@@ -94,6 +104,20 @@ public sealed class WindowLauncher : IWindowLauncher
 
         // Папка открывается уже в новом окне: его view-model — своя, вкладки не общие.
         _ = shell.OpenFolderPathAsync(folderPath);
+    }
+
+    public void ShowAbout()
+    {
+        if (_aboutWindow is not null)
+        {
+            _aboutWindow.Activate();
+            return;
+        }
+
+        var window = new AboutWindow(new AboutViewModel(_services.GetRequiredService<ILocalizationService>()));
+        window.Closed += (_, _) => _aboutWindow = null;
+        _aboutWindow = window;
+        window.Show();
     }
 
     /// <summary>

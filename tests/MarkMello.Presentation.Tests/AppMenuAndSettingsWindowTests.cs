@@ -46,13 +46,18 @@ public sealed class AppMenuAndSettingsWindowTests
             viewModel.ToggleAppMenuCommand.Execute(null);
             Render(window);
 
-            Assert.Equal(
-                ["MenuNewDocument", "MenuOpenFile", "MenuOpenFolder", "MenuSave", "MenuSaveAs", "MenuReload", "MenuCloseTab", "MenuSettings"],
-                VisibleMenuItems(window).Select(static button => button.Name));
+            // «О MarkMello» и разделитель над ним — только вне macOS: там пункт в системном меню.
+            string[] expectedItems = OperatingSystem.IsMacOS()
+                ? ["MenuNewDocument", "MenuOpenFile", "MenuOpenFolder", "MenuSave", "MenuSaveAs", "MenuReload", "MenuCloseTab", "MenuSettings"]
+                : ["MenuNewDocument", "MenuOpenFile", "MenuOpenFolder", "MenuSave", "MenuSaveAs", "MenuReload", "MenuCloseTab", "MenuSettings", "MenuAbout"];
+
+            Assert.Equal(expectedItems, VisibleMenuItems(window).Select(static button => button.Name));
             Assert.Equal(
                 ["MenuSave", "MenuSaveAs", "MenuReload", "MenuCloseTab"],
                 VisibleMenuItems(window).Where(static button => !button.IsEffectivelyEnabled).Select(static button => button.Name));
-            Assert.Equal(3, window.GetVisualDescendants().OfType<Border>().Count(static border => border.Classes.Contains("mm-menu-separator")));
+            Assert.Equal(
+                OperatingSystem.IsMacOS() ? 3 : 4,
+                window.GetVisualDescendants().OfType<Border>().Count(static border => border.Classes.Contains("mm-menu-separator") && border.IsVisible));
 
             window.Hide();
             return Task.CompletedTask;

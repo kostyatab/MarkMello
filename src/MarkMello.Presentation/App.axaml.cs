@@ -1,10 +1,12 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using MarkMello.Application.Abstractions;
 using MarkMello.Application.UseCases;
 using MarkMello.Domain.Diagnostics;
 using MarkMello.Presentation.Localization;
+using MarkMello.Presentation.Services;
 using MarkMello.Presentation.Views;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -28,8 +30,14 @@ public partial class App : global::Avalonia.Application
     {
         AvaloniaXamlLoader.Load(this);
 
+        // Имя приложения для macOS: заголовок системного меню и «Hide …». В .app его даёт
+        // CFBundleName, но запуск собранного бинарника без бандла остался бы безымянным.
+        Name = "MarkMello";
+
         var localization = Services?.GetService<ILocalizationService>() ?? new LocalizationService();
         Resources["Localization"] = localization;
+
+        InstallMacOsApplicationMenu(localization);
     }
 
     public override void OnFrameworkInitializationCompleted()
@@ -62,6 +70,33 @@ public partial class App : global::Avalonia.Application
         WireFileActivationFromAvalonia();
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>
+    /// Системное меню приложения macOS (ADR-0009 Rule 4). Пока в нём один свой пункт —
+    /// «О MarkMello»; без него Avalonia ставит туда своё «About Avalonia». Services, Hide,
+    /// Show All и Quit остаются от Avalonia. Меню из одного пункта без сервисов: быстрый
+    /// путь открытия документа не дорожает, окно About создаётся только по нажатию.
+    ///
+    /// Ставится именно в <see cref="Initialize"/>: экспортёр меню Avalonia читает
+    /// <c>NativeMenu</c> один раз, в <c>AfterSetup</c> сразу после этого метода, и если
+    /// меню нет — сам записывает туда «About Avalonia». Позже свойство менять поздно:
+    /// переэкспорта уже не будет.
+    /// </summary>
+    private void InstallMacOsApplicationMenu(ILocalizationService localization)
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return;
+        }
+
+        var about = new NativeMenuItem(localization["AppMenuAbout"]);
+        about.Click += (_, _) => Services?.GetService<IWindowLauncher>()?.ShowAbout();
+
+        // Подпись идёт за языком приложения; системные пункты переводит сама Avalonia.
+        localization.PropertyChanged += (_, _) => about.Header = localization["AppMenuAbout"];
+
+        NativeMenu.SetMenu(this, new NativeMenu { Items = { about } });
     }
 
     /// <summary>

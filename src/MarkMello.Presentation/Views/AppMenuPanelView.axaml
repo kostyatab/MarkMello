@@ -123,6 +123,19 @@
                      Text="{Binding SettingsShortcut}" />
         </Grid>
       </Button>
+      <!-- На macOS «О MarkMello» живёт в системном меню приложения: здесь нет ни пункта,
+           ни разделителя над ним — иначе меню кончалось бы пустой чертой -->
+      <Border Classes="mm-menu-separator"
+              IsVisible="{Binding ShowsAboutMenuItem}" />
+      <Button Name="MenuAbout"
+              Classes="mm-menu-command"
+              IsVisible="{Binding ShowsAboutMenuItem}"
+              Command="{Binding ShowAboutCommand}">
+        <Grid ColumnDefinitions="*,Auto"
+              ColumnSpacing="12">
+          <TextBlock Text="{Binding AppMenuAbout}" />
+        </Grid>
+      </Button>
     </StackPanel>
   </Border>
 </UserControl>

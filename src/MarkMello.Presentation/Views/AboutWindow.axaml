@@ -1,0 +1,84 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:MarkMello.Presentation.ViewModels"
+        mc:Ignorable="d"
+        x:Class="MarkMello.Presentation.Views.AboutWindow"
+        x:DataType="vm:AboutViewModel"
+        Title="{Binding WindowTitle}"
+        Icon="/Assets/Icons/markmello.ico"
+        Width="360"
+        SizeToContent="Height"
+        CanResize="False"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource MmBackgroundBrush}"
+        UseLayoutRounding="True">
+  <!-- «О MarkMello» (ADR-0009 Rule 7): настоящее окно ОС, а не оверлей — на macOS оно
+       открывается из системного меню, когда карточки «Настройки» на экране нет.
+       Сведения те же, что в нижней строке карточки «Настройки». -->
+  <StackPanel HorizontalAlignment="Center"
+              Margin="24,28">
+
+    <Image Source="avares://MarkMello.Presentation/Assets/Images/logo.png"
+           Width="88"
+           Height="88"
+           HorizontalAlignment="Center"
+           Margin="0,0,0,-4" />
+
+    <!-- «Mark» + акцентное «Mello», как на стартовом экране -->
+    <TextBlock FontFamily="{DynamicResource MmDocumentSerifFontFamily}"
+               FontSize="28"
+               FontWeight="Bold"
+               HorizontalAlignment="Center"
+               Foreground="{DynamicResource MmTextBrush}">
+      <Run Text="Mark" />
+      <Run Text="Mello"
+           Foreground="{DynamicResource MmAccentBrush}" />
+    </TextBlock>
+
+    <TextBlock Name="AboutVersionLine"
+               Classes="mm-app-settings-caption"
+               HorizontalAlignment="Center"
+               TextAlignment="Center"
+               TextWrapping="Wrap"
+               Margin="0,8,0,0"
+               Text="{Binding VersionLine}" />
+
+    <TextBlock Name="AboutLicenseLine"
+               Classes="mm-app-settings-caption"
+               HorizontalAlignment="Center"
+               Margin="0,2,0,0"
+               Text="{Binding License}" />
+
+    <Button Name="AboutAuthorLink"
+            Classes="mm-inline-link"
+            HorizontalAlignment="Center"
+            Margin="0,10,0,0"
+            Tag="{Binding AuthorUrl}"
+            Click="OnLinkClick"
+            Content="{Binding Author}" />
+
+    <StackPanel Orientation="Horizontal"
+                HorizontalAlignment="Center"
+                Spacing="12"
+                Margin="0,14,0,0">
+      <Button Name="AboutWebsiteLink"
+              Classes="mm-inline-link"
+              Tag="{Binding WebsiteUrl}"
+              Click="OnLinkClick"
+              Content="{Binding WebsiteLabel}" />
+      <Button Name="AboutTelegramLink"
+              Classes="mm-inline-link"
+              Tag="{Binding TelegramUrl}"
+              Click="OnLinkClick"
+              Content="Telegram" />
+      <Button Name="AboutGitHubLink"
+              Classes="mm-inline-link"
+              Tag="{Binding GitHubUrl}"
+              Click="OnLinkClick"
+              Content="GitHub" />
+    </StackPanel>
+  </StackPanel>
+</Window>

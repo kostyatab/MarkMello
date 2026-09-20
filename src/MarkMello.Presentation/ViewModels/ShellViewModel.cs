@@ -8,7 +8,6 @@ using MarkMello.Domain.Diagnostics;
 using MarkMello.Presentation.Editing;
 using MarkMello.Presentation.Localization;
 using MarkMello.Presentation.Services;
-using System.Reflection;
 using System.ComponentModel;
 using System.Windows.Input;
 
@@ -67,8 +66,9 @@ public partial class ShellViewModel : ObservableObject
     private Queue<string>? _deferredActivationPaths;
 
     private readonly bool _showCustomTitleBar = OperatingSystem.IsWindows();
+    private readonly bool _showsAboutMenuItem = !OperatingSystem.IsMacOS();
     private readonly string _aboutVersion;
-    private readonly string _aboutLicense = "GPLv3";
+    private readonly string _aboutLicense = AppProductInfo.License;
     private AppUpdatePackage? _availableUpdatePackage;
     private ReadingPreferences _documentReadingPreferences = GetDocumentRenderingPreferences(ReadingPreferences.Default);
     private WindowBorderMode _windowBorderMode = WindowBorderMode.Auto;
@@ -120,7 +120,7 @@ public partial class ShellViewModel : ObservableObject
         _imageSourceResolver = imageSourceResolver;
         _previewSchedulerFactory = previewSchedulerFactory;
         _recentItems = recentItems;
-        _aboutVersion = GetProductVersion();
+        _aboutVersion = AppProductInfo.GetVersion();
         InitializeOpenDocuments();
         _localization.PropertyChanged += OnLocalizationChanged;
         _commandLine.FileActivated += OnFileActivated;
@@ -427,7 +427,7 @@ public partial class ShellViewModel : ObservableObject
     /// Нижняя строка окна «Настройки»: продукт, версия сборки и лицензия; имя автора
     /// идёт за ней ссылкой. Слов для перевода здесь нет.
     /// </summary>
-    public string AppSettingsVersionLine => $"MarkMello {_aboutVersion} · {_aboutLicense} ·";
+    public string AppSettingsVersionLine => $"{AppProductInfo.Name} {_aboutVersion} · {_aboutLicense} ·";
 
     public bool HasDirtyPromptError => !string.IsNullOrWhiteSpace(DirtyPromptErrorMessage);
 
@@ -1185,6 +1185,18 @@ public partial class ShellViewModel : ObservableObject
 
         IsFindBarOpen = false;
         ShellOverlay = ShellOverlayKind.Settings;
+    }
+
+    /// <summary>
+    /// «О MarkMello» — своё окно ОС (ADR-0009 Rule 7), а не карточка внутри окна:
+    /// на macOS команда приходит из системного меню приложения, где карточку показать
+    /// негде. Окно создаётся только здесь, по нажатию, и второй раз не плодится.
+    /// </summary>
+    [RelayCommand]
+    private void ShowAbout()
+    {
+        MarkSecondaryFeaturesReady();
+        _windowLauncher.ShowAbout();
     }
 
     /// <summary>
@@ -2127,28 +2139,6 @@ public partial class ShellViewModel : ObservableObject
         OnPropertyChanged(nameof(UpdateActionLabel));
         OnPropertyChanged(nameof(UpdateActionCommand));
         OnPropertyChanged(nameof(IsUpdateActionPrimary));
-    }
-
-    private static string GetProductVersion()
-    {
-        var assembly = Assembly.GetEntryAssembly() ?? typeof(ShellViewModel).Assembly;
-
-        var informationalVersion = assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-            ?.InformationalVersion;
-
-        if (!string.IsNullOrWhiteSpace(informationalVersion))
-        {
-            var buildMetadataIndex = informationalVersion.IndexOf('+');
-            return buildMetadataIndex >= 0
-                ? informationalVersion[..buildMetadataIndex]
-                : informationalVersion;
-        }
-
-        var version = assembly.GetName().Version;
-        return version is null
-            ? "1.0.0"
-            : $"{version.Major}.{Math.Max(version.Minor, 0)}.{Math.Max(version.Build, 0)}";
     }
 
     private void CloseOverlayCore()

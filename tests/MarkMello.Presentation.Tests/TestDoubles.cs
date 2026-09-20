@@ -355,6 +355,9 @@ internal sealed class RecordingWindowLauncher : MarkMello.Presentation.Services.
 
     public List<string> FocusedFolders { get; } = [];
 
+    /// <summary>Сколько раз просили показать окно «О MarkMello».</summary>
+    public int AboutRequests { get; private set; }
+
     /// <summary>Папки, которые считаются уже открытыми в других окнах.</summary>
     public HashSet<string> OpenFolders { get; } = new(StringComparer.OrdinalIgnoreCase);
 
@@ -372,4 +375,6 @@ internal sealed class RecordingWindowLauncher : MarkMello.Presentation.Services.
     public bool IsFolderOpen(string folderPath) => OpenFolders.Contains(folderPath);
 
     public void OpenFolderInNewWindow(string folderPath) => NewWindowFolders.Add(folderPath);
+
+    public void ShowAbout() => AboutRequests++;
 }

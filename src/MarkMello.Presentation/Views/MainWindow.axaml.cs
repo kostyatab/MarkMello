@@ -405,7 +405,41 @@ public partial class MainWindow : Window
         PropertyChanged -= OnWindowAvaloniaPropertyChanged;
         _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
         _viewModel.CloseRequested -= OnViewModelCloseRequested;
+        CloseAuxiliaryWindowsWhenLast();
         base.OnClosed(e);
+    }
+
+    /// <summary>
+    /// Окно «О MarkMello» не держит приложение: с уходом последнего главного окна
+    /// вспомогательные окна закрываются, и <c>ShutdownMode.OnLastWindowClose</c> доводит
+    /// выход до конца — иначе он ждал бы, пока пользователь закроет About вручную.
+    /// </summary>
+    private void CloseAuxiliaryWindowsWhenLast()
+    {
+        if (global::Avalonia.Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime lifetime)
+        {
+            return;
+        }
+
+        foreach (var window in AuxiliaryWindowsToCloseWith(this, lifetime.Windows))
+        {
+            window.Close();
+        }
+    }
+
+    /// <summary>
+    /// Пока открыто хотя бы одно главное окно, вспомогательные остаются. Закрывающееся
+    /// окно может ещё числиться в списке, поэтому его исключаем явно.
+    /// </summary>
+    internal static IReadOnlyList<Window> AuxiliaryWindowsToCloseWith(Window closing, IReadOnlyList<Window> windows)
+    {
+        ArgumentNullException.ThrowIfNull(windows);
+
+        var remaining = windows
+            .Where(window => !ReferenceEquals(window, closing))
+            .ToArray();
+
+        return remaining.Any(static window => window is MainWindow) ? [] : remaining;
     }
 
     // ---------- Window control buttons (Windows only path) ----------
