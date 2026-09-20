@@ -1,0 +1,63 @@
+<views:MenuCardView xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                    xmlns:vm="using:MarkMello.Presentation.ViewModels"
+                    xmlns:views="using:MarkMello.Presentation.Views"
+                    mc:Ignorable="d"
+                    x:Class="MarkMello.Presentation.Views.TreeContextMenuView"
+                    ClipToBounds="False"
+                    x:DataType="vm:ShellViewModel">
+  <!-- Контекстное меню строки дерева (ADR-0009 Rule 4): та же карточка, что у ⋯,
+       только встаёт у курсора. Команды работают со строкой из TreeContextNode. -->
+  <Border Classes="mm-settings-panel mm-popover-left mm-sidebar-menu-panel">
+    <StackPanel>
+      <Button Name="TreeMenuOpenInNewTab"
+              Classes="mm-menu-command"
+              IsEnabled="{Binding TreeContextNode.IsSupportedDocument}"
+              Command="{Binding Workspace.OpenNodeCommand}"
+              CommandParameter="{Binding TreeContextNode}">
+        <TextBlock Text="{Binding TreeOpenInNewTab}" />
+      </Button>
+      <Button Name="TreeMenuRename"
+              Classes="mm-menu-command"
+              AutomationProperties.Name="{Binding TreeRename}"
+              Command="{Binding Workspace.StartRenameCommand}"
+              CommandParameter="{Binding TreeContextNode}">
+        <Grid ColumnDefinitions="*,Auto"
+              ColumnSpacing="12">
+          <TextBlock Text="{Binding TreeRename}" />
+          <TextBlock Grid.Column="1"
+                     Classes="mm-menu-shortcut"
+                     Text="{Binding TreeRenameShortcut}" />
+        </Grid>
+      </Button>
+      <Button Name="TreeMenuDuplicate"
+              Classes="mm-menu-command"
+              Command="{Binding Workspace.DuplicateCommand}"
+              CommandParameter="{Binding TreeContextNode}">
+        <TextBlock Text="{Binding TreeDuplicate}" />
+      </Button>
+      <Border Classes="mm-menu-separator" />
+      <Button Name="TreeMenuReveal"
+              Classes="mm-menu-command"
+              Command="{Binding Workspace.RevealCommand}"
+              CommandParameter="{Binding TreeContextNode}">
+        <TextBlock Text="{Binding TreeRevealInExplorer}" />
+      </Button>
+      <Button Name="TreeMenuDelete"
+              Classes="mm-menu-command mm-menu-destructive"
+              AutomationProperties.Name="{Binding TreeDelete}"
+              Command="{Binding Workspace.RequestDeleteCommand}"
+              CommandParameter="{Binding TreeContextNode}">
+        <Grid ColumnDefinitions="*,Auto"
+              ColumnSpacing="12">
+          <TextBlock Text="{Binding TreeDelete}" />
+          <TextBlock Grid.Column="1"
+                     Classes="mm-menu-shortcut"
+                     Text="{Binding TreeDeleteShortcut}" />
+        </Grid>
+      </Button>
+    </StackPanel>
+  </Border>
+</views:MenuCardView>

@@ -219,7 +219,21 @@ public partial class ShellViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(AppMenuOverlayContent))]
     [NotifyPropertyChangedFor(nameof(AppSettingsContent))]
     [NotifyPropertyChangedFor(nameof(ReadingSettingsOverlayContent))]
+    [NotifyPropertyChangedFor(nameof(IsFolderMenuOpen))]
+    [NotifyPropertyChangedFor(nameof(IsCreateMenuOpen))]
+    [NotifyPropertyChangedFor(nameof(IsTreeContextMenuOpen))]
+    [NotifyPropertyChangedFor(nameof(FolderMenuOverlayContent))]
+    [NotifyPropertyChangedFor(nameof(CreateMenuOverlayContent))]
+    [NotifyPropertyChangedFor(nameof(TreeContextMenuOverlayContent))]
     private ShellOverlayKind _shellOverlay = ShellOverlayKind.None;
+
+    /// <summary>
+    /// Строка дерева, по которой вызвали контекстное меню: её пункты работают с ней,
+    /// а не с выделением, поэтому узел держится отдельно от <c>SelectedNode</c>.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TreeContextMenuOverlayContent))]
+    private FileTreeNodeViewModel? _treeContextNode;
 
     [ObservableProperty]
     private double _readingProgress;
@@ -359,9 +373,30 @@ public partial class ShellViewModel : ObservableObject
     /// </summary>
     public bool IsAppSettingsOpen => ShellOverlay == ShellOverlayKind.Settings;
 
-    public bool HasOpenOverlay => IsSettingsOpen || IsAppMenuOpen || IsAppSettingsOpen;
+    /// <summary>Меню «имя папки ▾» в сайдбаре — такая же карточка внутри окна, как ⋯.</summary>
+    public bool IsFolderMenuOpen => ShellOverlay == ShellOverlayKind.FolderMenu;
+
+    /// <summary>Меню «+» в сайдбаре: новый файл и новая папка.</summary>
+    public bool IsCreateMenuOpen => ShellOverlay == ShellOverlayKind.CreateMenu;
+
+    /// <summary>Контекстное меню строки дерева — карточка у курсора, а не попап ОС.</summary>
+    public bool IsTreeContextMenuOpen => ShellOverlay == ShellOverlayKind.TreeContextMenu;
+
+    public bool HasOpenOverlay => IsSettingsOpen
+        || IsAppMenuOpen
+        || IsAppSettingsOpen
+        || IsFolderMenuOpen
+        || IsCreateMenuOpen
+        || IsTreeContextMenuOpen;
 
     public object? AppMenuOverlayContent => IsAppMenuOpen ? this : null;
+
+    /// <summary>Карточки меню сайдбара строятся по первому открытию, как и карточка ⋯.</summary>
+    public object? FolderMenuOverlayContent => IsFolderMenuOpen ? this : null;
+
+    public object? CreateMenuOverlayContent => IsCreateMenuOpen ? this : null;
+
+    public object? TreeContextMenuOverlayContent => IsTreeContextMenuOpen && TreeContextNode is not null ? this : null;
 
     /// <summary>Карточка «Настройки» строится по первому открытию, а не на старте (ADR-0009 Rule 12).</summary>
     public object? AppSettingsContent => IsAppSettingsOpen ? this : null;
@@ -1166,6 +1201,52 @@ public partial class ShellViewModel : ObservableObject
         ShellOverlay = IsAppMenuOpen
             ? ShellOverlayKind.None
             : ShellOverlayKind.AppMenu;
+    }
+
+    /// <summary>
+    /// Меню «имя папки ▾»: те же действия над папкой, что в ⋯, только рядом с деревом
+    /// (ADR-0009 Rule 4). Карточка внутри окна, поэтому открытие такое же, как у ⋯.
+    /// </summary>
+    [RelayCommand]
+    private void ToggleFolderMenu()
+    {
+        MarkSecondaryFeaturesReady();
+
+        IsFindBarOpen = false;
+        ShellOverlay = IsFolderMenuOpen
+            ? ShellOverlayKind.None
+            : ShellOverlayKind.FolderMenu;
+    }
+
+    [RelayCommand]
+    private void ToggleCreateMenu()
+    {
+        MarkSecondaryFeaturesReady();
+
+        IsFindBarOpen = false;
+        ShellOverlay = IsCreateMenuOpen
+            ? ShellOverlayKind.None
+            : ShellOverlayKind.CreateMenu;
+    }
+
+    /// <summary>
+    /// Контекстное меню строки дерева: всегда открывается заново на той строке, по которой
+    /// позвали, — как системное меню. Кнопки меню сайдбара переключаются повторным нажатием,
+    /// а у строки такого жеста нет: правый клик по открытому меню его и так закрывает.
+    /// </summary>
+    [RelayCommand]
+    private void OpenTreeContextMenu(FileTreeNodeViewModel? node)
+    {
+        if (node is null)
+        {
+            return;
+        }
+
+        MarkSecondaryFeaturesReady();
+
+        IsFindBarOpen = false;
+        TreeContextNode = node;
+        ShellOverlay = ShellOverlayKind.TreeContextMenu;
     }
 
     /// <summary>
@@ -2146,6 +2227,15 @@ public partial class ShellViewModel : ObservableObject
         ShellOverlay = ShellOverlayKind.None;
     }
 
+    /// <summary>Закрытая карточка контекстного меню не держит строку дерева.</summary>
+    partial void OnShellOverlayChanged(ShellOverlayKind value)
+    {
+        if (value != ShellOverlayKind.TreeContextMenu)
+        {
+            TreeContextNode = null;
+        }
+    }
+
     /// <summary>
     /// Команда, которая меняет документ за окном «Настройки» (⌘W, ⌘E, ⌘R, Ctrl+Tab),
     /// сначала закрывает окно: модальная карточка не остаётся поверх другого содержимого
@@ -2161,7 +2251,11 @@ public partial class ShellViewModel : ObservableObject
 
     private void CloseAppOverlayCore()
     {
-        if (ShellOverlay is ShellOverlayKind.AppMenu or ShellOverlayKind.Settings)
+        if (ShellOverlay is ShellOverlayKind.AppMenu
+            or ShellOverlayKind.Settings
+            or ShellOverlayKind.FolderMenu
+            or ShellOverlayKind.CreateMenu
+            or ShellOverlayKind.TreeContextMenu)
         {
             ShellOverlay = ShellOverlayKind.None;
         }

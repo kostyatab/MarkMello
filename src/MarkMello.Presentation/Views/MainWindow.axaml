@@ -469,6 +469,51 @@
 
       </Grid>
 
+      <!-- Меню сайдбара и контекстное меню строки — такие же карточки, как ⋯
+           (ADR-0009 Rule 4), но слой их общий и лежит поверх колонок: карточка шире
+           сайдбара иначе ушла бы под документ вместе с тенью. Позицию — от кнопки
+           или от курсора — ставит code-behind. -->
+      <Panel Name="SidebarMenuHost"
+             Grid.Column="0"
+             Grid.ColumnSpan="3"
+             ClipToBounds="False">
+        <ContentControl Name="FolderMenuPanel"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        ClipToBounds="False"
+                        Content="{Binding FolderMenuOverlayContent}">
+          <ContentControl.ContentTemplate>
+            <DataTemplate x:DataType="vm:ShellViewModel">
+              <views:SidebarFolderMenuView />
+            </DataTemplate>
+          </ContentControl.ContentTemplate>
+        </ContentControl>
+
+        <ContentControl Name="CreateMenuPanel"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        ClipToBounds="False"
+                        Content="{Binding CreateMenuOverlayContent}">
+          <ContentControl.ContentTemplate>
+            <DataTemplate x:DataType="vm:ShellViewModel">
+              <views:SidebarCreateMenuView />
+            </DataTemplate>
+          </ContentControl.ContentTemplate>
+        </ContentControl>
+
+        <ContentControl Name="TreeContextMenuPanel"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        ClipToBounds="False"
+                        Content="{Binding TreeContextMenuOverlayContent}">
+          <ContentControl.ContentTemplate>
+            <DataTemplate x:DataType="vm:ShellViewModel">
+              <views:TreeContextMenuView />
+            </DataTemplate>
+          </ContentControl.ContentTemplate>
+        </ContentControl>
+      </Panel>
+
       <!-- Слой перетаскивания — на всё окно, вместе с сайдбаром и строкой: файл можно
            отпустить где угодно. Вторая строка говорит, куда он откроется. -->
       <Panel Grid.Column="0"

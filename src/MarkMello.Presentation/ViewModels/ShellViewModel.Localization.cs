@@ -329,6 +329,11 @@ public partial class ShellViewModel
     /// <summary>Сочетание настроек приложения — плашка в нижней строке карточки Aa.</summary>
     public string SettingsShortcut => CommandShortcut(Key.OemComma);
 
+    /// <summary>Клавиши строки дерева — подписи в её контекстном меню.</summary>
+    public string TreeRenameShortcut => KeyShortcut(Key.F2);
+
+    public string TreeDeleteShortcut => KeyShortcut(Key.Delete);
+
     /// <summary>
     /// Клавиши диалогов — в тултипах их кнопок: Enter подтверждает, Esc отменяет,
     /// ⌘⌫ (Ctrl+Backspace) — «Не сохранять».

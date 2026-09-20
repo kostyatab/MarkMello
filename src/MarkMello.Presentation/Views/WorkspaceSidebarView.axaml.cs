@@ -19,6 +19,9 @@ public partial class WorkspaceSidebarView : UserControl
     // и Linux кнопка слева. Подложка кнопки в 11px от края, как у всех кнопок сайдбара.
     private const double HeaderInset = 11;
 
+    // Меню с клавиатуры раскрывается от подложки строки — она той же высоты, что кнопки.
+    private const double RowAnchorHeight = 26;
+
     /// <summary>
     /// Строка дерева показывает текущий документ. Заливку рисует шаблон
     /// <see cref="TreeViewItem"/>, куда класс из шаблона данных не дотягивается, поэтому
@@ -57,6 +60,14 @@ public partial class WorkspaceSidebarView : UserControl
             RoutingStrategies.Bubble,
             handledEventsToo: true);
 
+        // Контекстное меню открывается на нажатии, как системное, и по той же причине
+        // слушает обработанные события: строку забирает себе TreeViewItem.
+        FileTree.AddHandler(
+            PointerPressedEvent,
+            OnTreePointerPressed,
+            RoutingStrategies.Bubble,
+            handledEventsToo: true);
+
         // Esc внутри TextBox помечается обработанным самим полем.
         SearchInput.AddHandler(
             KeyDownEvent,
@@ -67,6 +78,83 @@ public partial class WorkspaceSidebarView : UserControl
 
     internal static (Thickness Padding, HorizontalAlignment ToggleAlignment) CalculateHeaderLayout(bool isMacOS)
         => (new Thickness(HeaderInset, 0), isMacOS ? HorizontalAlignment.Right : HorizontalAlignment.Left);
+
+    /// <summary>
+    /// Меню «имя папки ▾» — карточка под кнопкой (ADR-0009 Rule 4): позиция считается
+    /// от самой кнопки, поэтому окно узнаёт её до того, как меню откроется.
+    /// </summary>
+    private void OnFolderMenuButtonClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not ShellViewModel viewModel)
+        {
+            return;
+        }
+
+        AnchorMenuTo(FolderMenuButton, alignRight: false);
+        viewModel.ToggleFolderMenuCommand.Execute(null);
+    }
+
+    /// <summary>Меню «+» прижимается к правому краю своей кнопки — как и раньше.</summary>
+    private void OnCreateMenuButtonClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not ShellViewModel viewModel)
+        {
+            return;
+        }
+
+        AnchorMenuTo(CreateMenuButton, alignRight: true);
+        viewModel.ToggleCreateMenuCommand.Execute(null);
+    }
+
+    /// <summary>
+    /// Правый клик по строке: выделяет её и открывает карточку у курсора. Выделение —
+    /// то же, что у попапа раньше: по строке видно, к чему относятся пункты меню.
+    /// </summary>
+    private void OnTreePointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(this).Properties.IsRightButtonPressed
+            || e.Source is not Visual source
+            || DataContext is not ShellViewModel { Workspace: { } workspace } viewModel)
+        {
+            return;
+        }
+
+        // В поле инлайн-переименования правый клик принадлежит самому полю: его меню
+        // правки нужнее, а карточка строки забрала бы фокус и отменила ввод.
+        if (source.FindAncestorOfType<TextBox>(includeSelf: true) is not null)
+        {
+            return;
+        }
+
+        if (source.FindAncestorOfType<TreeViewItem>(includeSelf: true)?.DataContext
+            is not FileTreeNodeViewModel node)
+        {
+            return;
+        }
+
+        workspace.SelectedNode = node;
+        AnchorMenuAt(e.GetPosition(this));
+        viewModel.OpenTreeContextMenuCommand.Execute(node);
+        e.Handled = true;
+    }
+
+    private void AnchorMenuTo(Control trigger, bool alignRight)
+    {
+        if (trigger.TranslatePoint(default, (Visual)this) is not { } origin)
+        {
+            return;
+        }
+
+        SetMenuAnchor(new Rect(origin, trigger.Bounds.Size), alignRight);
+    }
+
+    /// <summary>Меню у курсора: якорь без высоты, поэтому карточка встаёт прямо под точкой.</summary>
+    private void AnchorMenuAt(Point point) => SetMenuAnchor(new Rect(point, default(Size)), alignRight: false);
+
+    private void SetMenuAnchor(Rect anchorInSidebar, bool alignRight)
+        => MenuHost()?.AnchorSidebarMenu(this, anchorInSidebar, alignRight);
+
+    private ISidebarMenuHost? MenuHost() => TopLevel.GetTopLevel(this) as ISidebarMenuHost;
 
     private void OnTreePointerReleased(object? sender, PointerReleasedEventArgs e)
     {
@@ -102,8 +190,9 @@ public partial class WorkspaceSidebarView : UserControl
     }
 
     /// <summary>
-    /// Клавиатура дерева: Enter открывает строку, F2 переименовывает, Delete удаляет.
-    /// `InputGesture` в пунктах контекстного меню — только подпись, обработчика за ней нет.
+    /// Клавиатура дерева: Enter открывает строку, F2 переименовывает, Delete удаляет,
+    /// ⇧F10 и клавиша «меню» открывают контекстное меню — это у попапа было даром.
+    /// Подписи клавиш в пунктах меню — только подписи, обработчик за ними здесь.
     /// </summary>
     private void OnTreeKeyDown(object? sender, KeyEventArgs e)
     {
@@ -136,7 +225,39 @@ public partial class WorkspaceSidebarView : UserControl
                 workspace.RequestDeleteCommand.Execute(node);
                 e.Handled = true;
                 break;
+
+            case Key.Apps:
+            case Key.F10 when e.KeyModifiers == KeyModifiers.Shift:
+                OpenContextMenuForSelectedRow(node);
+                e.Handled = true;
+                break;
         }
+    }
+
+    /// <summary>
+    /// Меню с клавиатуры встаёт под выделенной строкой, а не у курсора: мышь может быть
+    /// где угодно. Строки дерева в headless не материализуются, поэтому якорь ставится
+    /// по строке, только если она есть.
+    /// </summary>
+    private void OpenContextMenuForSelectedRow(FileTreeNodeViewModel node)
+    {
+        if (DataContext is not ShellViewModel viewModel)
+        {
+            return;
+        }
+
+        var row = FileTree.GetVisualDescendants()
+            .OfType<TreeViewItem>()
+            .FirstOrDefault(item => ReferenceEquals(item.DataContext, node));
+        if (row is not null && row.TranslatePoint(default, (Visual)this) is { } origin)
+        {
+            SetMenuAnchor(new Rect(origin, new Size(row.Bounds.Width, RowAnchorHeight)), alignRight: false);
+        }
+
+        viewModel.OpenTreeContextMenuCommand.Execute(node);
+
+        // Мышь оставляет фокус там, где он был, а с клавиатуры меню иначе недосягаемо.
+        MenuHost()?.FocusSidebarMenu();
     }
 
     /// <summary>

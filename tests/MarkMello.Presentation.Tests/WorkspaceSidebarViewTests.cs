@@ -7,9 +7,7 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Styling;
-using Avalonia.Threading;
 using Avalonia.VisualTree;
-using System.Windows.Input;
 using MarkMello.Application.UseCases;
 using MarkMello.Domain;
 using MarkMello.Domain.Workspace;
@@ -213,16 +211,17 @@ public sealed class WorkspaceSidebarViewTests
     }
 
     /// <summary>
-    /// «имя папки ▾» — действия над самой папкой, «+» — создание в ней (ADR-0009 Rule 4).
-    /// Кнопки меню приложения в шапке больше нет: меню ⋯ живёт в строке окна.
+    /// «имя папки ▾» и «+» открывают меню карточками внутри окна (ADR-0009 Rule 4):
+    /// попапов ОС в сайдбаре не осталось — ни у кнопок, ни у строк дерева. Сами меню
+    /// проверяет <see cref="SidebarMenuCardTests"/> — они живут в слое окна.
+    /// Кнопки меню приложения в шапке нет: меню ⋯ живёт в строке окна.
     /// </summary>
     [Fact]
-    public Task FolderRowMenusCarryTheFolderActions()
+    public Task FolderRowButtonsOpenMenuCardsInsteadOfPopups()
     {
         return _fixture.RunAsync(async () =>
         {
-            var platform = new FakePlatformServices();
-            var viewModel = CreateViewModel(platform);
+            var viewModel = CreateViewModel();
             await viewModel.OpenFolderPathAsync(TestPaths.At("docs"));
 
             var sidebar = new WorkspaceSidebarView();
@@ -235,20 +234,18 @@ public sealed class WorkspaceSidebarViewTests
                 sidebar.GetVisualDescendants().OfType<ToggleButton>(),
                 button => button.Command == viewModel.ToggleAppMenuCommand);
 
-            var folderMenu = OpenMenu(sidebar.GetControl<Button>("FolderMenuButton"));
-            Assert.Equal(
-                ["Open Another Folder…", "Show in Explorer", "Close Folder"],
-                folderMenu.Select(item => item.Header));
+            foreach (var name in (string[])["FolderMenuButton", "CreateMenuButton"])
+            {
+                var button = sidebar.GetControl<Button>(name);
+                Assert.Null(button.Flyout);
+                Assert.True(MainWindow.IsSidebarMenuTriggerSource(button), name);
+            }
 
-            folderMenu[1].Command!.Execute(null);
-            await Task.Yield();
-            Assert.Equal([TestPaths.At("docs")], platform.RevealedPaths);
-
-            var createMenu = OpenMenu(sidebar.GetControl<Button>("CreateMenuButton"));
-            Assert.Equal(["New File", "New Folder"], createMenu.Select(item => item.Header));
-
-            createMenu[0].Command!.Execute(null);
-            Assert.True(viewModel.Workspace!.IsEditingName);
+            Assert.Empty(sidebar.GetVisualDescendants().OfType<ContextMenu>());
+            Assert.Empty(sidebar.GetVisualDescendants().OfType<MenuItem>());
+            Assert.All(
+                sidebar.GetVisualDescendants().OfType<Control>(),
+                static control => Assert.Null(control.ContextMenu));
 
             window.Close();
         });
@@ -349,23 +346,6 @@ public sealed class WorkspaceSidebarViewTests
     {
         Assert.True(window.TryFindResource(key, window.ActualThemeVariant, out var value));
         return value;
-    }
-
-    /// <summary>
-    /// Пункты меню привязаны к shell только пока меню открыто: закрытое меню
-    /// отцепляется от дерева, и подписи с командами пропадают.
-    /// </summary>
-    private static List<(string? Header, ICommand? Command)> OpenMenu(Button button)
-    {
-        var flyout = Assert.IsType<MenuFlyout>(button.Flyout);
-        flyout.ShowAt(button);
-        Dispatcher.UIThread.RunJobs();
-        var items = flyout.Items
-            .OfType<MenuItem>()
-            .Select(item => (item.Header as string, item.Command))
-            .ToList();
-        flyout.Hide();
-        return items;
     }
 
     private static void AssertTurnedDown(LucideIcon icon)

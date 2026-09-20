@@ -5,5 +5,8 @@ public enum ShellOverlayKind
     None,
     AppMenu,
     Settings,
-    ReadingSettings
+    ReadingSettings,
+    FolderMenu,
+    CreateMenu,
+    TreeContextMenu
 }

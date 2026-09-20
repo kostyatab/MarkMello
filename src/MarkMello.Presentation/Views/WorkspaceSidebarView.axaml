@@ -402,20 +402,9 @@
             Margin="11,4,11,8">
         <Button Grid.Column="0"
                 Name="FolderMenuButton"
-                Classes="mm-sidebar-folder"
+                Classes="mm-sidebar-folder mm-menu-trigger"
+                Click="OnFolderMenuButtonClick"
                 ToolTip.Tip="{Binding Workspace.Folder.RootPath}">
-          <Button.Flyout>
-            <MenuFlyout Placement="BottomEdgeAlignedLeft"
-                        VerticalOffset="6">
-              <MenuItem Header="{Binding SidebarOpenAnotherFolder}"
-                        Command="{Binding OpenFolderCommand}" />
-              <MenuItem Header="{Binding TreeRevealInExplorer}"
-                        Command="{Binding Workspace.RevealRootCommand}" />
-              <Separator />
-              <MenuItem Header="{Binding AppMenuCloseFolderLabel}"
-                        Command="{Binding CloseFolderCommand}" />
-            </MenuFlyout>
-          </Button.Flyout>
           <!-- Сетка, а не StackPanel: длинное имя папки обрезается, а не выталкивает шеврон -->
           <Grid ColumnDefinitions="Auto,*,Auto"
                 ColumnSpacing="7">
@@ -437,17 +426,9 @@
 
         <Button Grid.Column="1"
                 Name="CreateMenuButton"
-                Classes="mm-row-button"
+                Classes="mm-row-button mm-menu-trigger"
+                Click="OnCreateMenuButtonClick"
                 ToolTip.Tip="{Binding SidebarCreateTooltip}">
-          <Button.Flyout>
-            <MenuFlyout Placement="BottomEdgeAlignedRight"
-                        VerticalOffset="6">
-              <MenuItem Header="{Binding SidebarNewFile}"
-                        Command="{Binding Workspace.StartNewFileCommand}" />
-              <MenuItem Header="{Binding SidebarNewFolder}"
-                        Command="{Binding Workspace.StartNewFolderCommand}" />
-            </MenuFlyout>
-          </Button.Flyout>
           <views:LucideIcon Data="{DynamicResource LucidePlusGeometry}"
                             Width="14"
                             Height="14" />
@@ -497,31 +478,6 @@
             <Grid ColumnDefinitions="Auto,*,Auto"
                   ColumnSpacing="6"
                   Background="Transparent">
-              <Grid.ContextMenu>
-                <ContextMenu>
-                  <MenuItem Header="{Binding $parent[TreeView].((vm:ShellViewModel)DataContext).TreeOpenInNewTab}"
-                            IsEnabled="{Binding IsSupportedDocument}"
-                            Command="{Binding $parent[TreeView].((vm:ShellViewModel)DataContext).Workspace.OpenNodeCommand}"
-                            CommandParameter="{Binding}" />
-                  <MenuItem Header="{Binding $parent[TreeView].((vm:ShellViewModel)DataContext).TreeRename}"
-                            InputGesture="F2"
-                            Command="{Binding $parent[TreeView].((vm:ShellViewModel)DataContext).Workspace.StartRenameCommand}"
-                            CommandParameter="{Binding}" />
-                  <MenuItem Header="{Binding $parent[TreeView].((vm:ShellViewModel)DataContext).TreeDuplicate}"
-                            Command="{Binding $parent[TreeView].((vm:ShellViewModel)DataContext).Workspace.DuplicateCommand}"
-                            CommandParameter="{Binding}" />
-                  <Separator />
-                  <MenuItem Header="{Binding $parent[TreeView].((vm:ShellViewModel)DataContext).TreeRevealInExplorer}"
-                            Command="{Binding $parent[TreeView].((vm:ShellViewModel)DataContext).Workspace.RevealCommand}"
-                            CommandParameter="{Binding}" />
-                  <MenuItem Header="{Binding $parent[TreeView].((vm:ShellViewModel)DataContext).TreeDelete}"
-                            InputGesture="Delete"
-                            Classes="mm-menu-destructive"
-                            Command="{Binding $parent[TreeView].((vm:ShellViewModel)DataContext).Workspace.RequestDeleteCommand}"
-                            CommandParameter="{Binding}" />
-                </ContextMenu>
-              </Grid.ContextMenu>
-
               <views:LucideIcon Grid.Column="0"
                                 Classes="mm-tree-icon"
                                 Classes.folder="{Binding IsDirectory}"

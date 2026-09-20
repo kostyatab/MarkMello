@@ -1,0 +1,26 @@
+<views:MenuCardView xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                    xmlns:vm="using:MarkMello.Presentation.ViewModels"
+                    xmlns:views="using:MarkMello.Presentation.Views"
+                    mc:Ignorable="d"
+                    x:Class="MarkMello.Presentation.Views.SidebarCreateMenuView"
+                    ClipToBounds="False"
+                    x:DataType="vm:ShellViewModel">
+  <!-- Меню «+» (ADR-0009 Rule 4): создание в открытой папке -->
+  <Border Classes="mm-settings-panel mm-popover-right mm-sidebar-menu-panel">
+    <StackPanel>
+      <Button Name="CreateMenuNewFile"
+              Classes="mm-menu-command"
+              Command="{Binding Workspace.StartNewFileCommand}">
+        <TextBlock Text="{Binding SidebarNewFile}" />
+      </Button>
+      <Button Name="CreateMenuNewFolder"
+              Classes="mm-menu-command"
+              Command="{Binding Workspace.StartNewFolderCommand}">
+        <TextBlock Text="{Binding SidebarNewFolder}" />
+      </Button>
+    </StackPanel>
+  </Border>
+</views:MenuCardView>

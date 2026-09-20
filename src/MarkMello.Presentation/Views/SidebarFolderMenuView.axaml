@@ -1,0 +1,32 @@
+<views:MenuCardView xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                    xmlns:vm="using:MarkMello.Presentation.ViewModels"
+                    xmlns:views="using:MarkMello.Presentation.Views"
+                    mc:Ignorable="d"
+                    x:Class="MarkMello.Presentation.Views.SidebarFolderMenuView"
+                    ClipToBounds="False"
+                    x:DataType="vm:ShellViewModel">
+  <!-- Меню «имя папки ▾» (ADR-0009 Rule 4): действия над самой папкой -->
+  <Border Classes="mm-settings-panel mm-popover-left mm-sidebar-menu-panel">
+    <StackPanel>
+      <Button Name="FolderMenuOpenAnotherFolder"
+              Classes="mm-menu-command"
+              Command="{Binding OpenFolderCommand}">
+        <TextBlock Text="{Binding SidebarOpenAnotherFolder}" />
+      </Button>
+      <Button Name="FolderMenuReveal"
+              Classes="mm-menu-command"
+              Command="{Binding Workspace.RevealRootCommand}">
+        <TextBlock Text="{Binding TreeRevealInExplorer}" />
+      </Button>
+      <Border Classes="mm-menu-separator" />
+      <Button Name="FolderMenuCloseFolder"
+              Classes="mm-menu-command"
+              Command="{Binding CloseFolderCommand}">
+        <TextBlock Text="{Binding AppMenuCloseFolderLabel}" />
+      </Button>
+    </StackPanel>
+  </Border>
+</views:MenuCardView>
