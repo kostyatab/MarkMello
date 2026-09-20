@@ -1,9 +1,19 @@
+---
+title: MarkMello Markdown showcase
+description: Every common Markdown element in one file: text, lists, tables, code, diagrams
+type: sample
+tags: [markdown, showcase, rendering]
+updated: 2026-09-20
+draft:
+---
+
 # MarkMello Markdown showcase
 
 This file collects the common Markdown elements in one place. Open it to see how each element looks in the viewer and to spot rendering problems at a glance.
 
 ## Contents
 
+- [Front matter](#front-matter)
 - [Text and inlines](#text-and-inlines)
 - [Lists and quotes](#lists-and-quotes)
 - [Tables](#tables)
@@ -11,6 +21,43 @@ This file collects the common Markdown elements in one place. Open it to see how
 - [Links and images](#links-and-images)
 - [Footnotes and rules](#footnotes-and-rules)
 - [Diagrams](#diagrams)
+
+## Front matter
+
+A block of metadata between `---` fences at the very start of the file. This
+file opens with one: the key/value table above the first heading is it.
+
+Flat `key: value` pairs become a table without a header row, with the key in
+bold:
+
+```yaml
+---
+title: MarkMello Markdown showcase
+tags: [markdown, showcase, rendering]
+draft:
+---
+```
+
+The value is shown as written, with no YAML semantics: `[a, b]` stays a string,
+quotes are kept, and a colon inside a value belongs to the value. Anything that
+is not a flat pair — nesting, a list, a multi-line `|` or `>` value, a comment
+line, or a colon with no space after it — turns the whole block into a code
+block, so that no line is ever dropped:
+
+```yaml
+---
+build:
+  runtime: net10
+description: |
+  First line
+  Second line
+---
+```
+
+Only the block at the very start of the file is front matter, and three hyphens
+on the very first line open one whenever a second such line follows — even when
+they were meant as a rule. Everywhere else three hyphens stay a horizontal
+rule.
 
 ## Text and inlines
 
