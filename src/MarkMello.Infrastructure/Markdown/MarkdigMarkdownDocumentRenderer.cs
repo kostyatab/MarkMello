@@ -7,6 +7,7 @@ using Markdig.Extensions.Alerts;
 using Markdig.Extensions.Footnotes;
 using Markdig.Extensions.Tables;
 using Markdig.Extensions.TaskLists;
+using Markdig.Extensions.Yaml;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 using MarkMello.Application.Abstractions;
@@ -25,6 +26,9 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
 {
     private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
         .UseAdvancedExtensions()
+        // Front matter не входит в UseAdvancedExtensions. Без расширения первые
+        // `---` становятся горизонтальной линией, а метаданные — setext-заголовком.
+        .UseYamlFrontMatter()
         .Build();
 
     public RenderedMarkdownDocument Render(string markdown)
@@ -99,6 +103,14 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
 
             case ThematicBreakBlock thematicBreak:
                 target.Add(WithSourceSpan(new MarkdownHorizontalRuleBlock(), thematicBreak, source));
+                return;
+
+            // YamlFrontMatterBlock наследует CodeBlock, поэтому ветка идёт раньше общей.
+            case YamlFrontMatterBlock frontMatter:
+                if (ConvertFrontMatter(frontMatter) is { } frontMatterBlock)
+                {
+                    target.Add(WithSourceSpan(frontMatterBlock, frontMatter, source));
+                }
                 return;
 
             case FencedCodeBlock fencedCode:
@@ -666,6 +678,88 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
                 }
                 return;
         }
+    }
+
+    /// <summary>
+    /// YAML front matter в начале файла. Плоские пары <c>key: value</c> становятся
+    /// таблицей без строки заголовка (ключ — жирным), как в preview VS Code.
+    /// Всё, что сложнее (вложенность, списки блоком, многострочные значения
+    /// <c>|</c> и <c>&gt;</c>), уходит блоком кода целиком — текст не теряется.
+    /// Пустой front matter не даёт блока вовсе.
+    /// </summary>
+    private static MarkdownBlock? ConvertFrontMatter(YamlFrontMatterBlock frontMatter)
+    {
+        // Строки разделителей Markdig в блок не кладёт: и открывающий, и закрывающий
+        // забор он отбрасывает при разборе, так что в Lines только содержимое.
+        var text = ExtractCode(frontMatter);
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return null;
+        }
+
+        return TryParseFlatFrontMatter(text) is { } rows
+            ? new MarkdownTableBlock([], rows)
+            : new MarkdownCodeBlock(null, text);
+    }
+
+    /// <summary>
+    /// Разбирает плоские пары по первому двоеточию. Значение берётся как есть,
+    /// без YAML-семантики: кавычки не снимаются, <c>[a, b]</c> остаётся строкой.
+    /// Возвращает <c>null</c>, если хоть одна строка под плоскую пару не подходит.
+    /// </summary>
+    private static List<IReadOnlyList<MarkdownTableCell>>? TryParseFlatFrontMatter(string text)
+    {
+        var rows = new List<IReadOnlyList<MarkdownTableCell>>();
+
+        foreach (var line in text.Split('\n'))
+        {
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                continue;
+            }
+
+            // Отступ — вложенность или продолжение многострочного значения;
+            // `#` — комментарий, `-` — элемент списка блоком.
+            if (char.IsWhiteSpace(line[0]) || line[0] is '#' or '-')
+            {
+                return null;
+            }
+
+            // YAML отделяет ключ двоеточием с пробелом или концом строки: `a:b` —
+            // это одна строка-скаляр, а не пара. `key:` без значения парой быть
+            // может (значение null), а если ниже идёт вложенный блок или список,
+            // его строки не пройдут проверки выше.
+            var separator = line.IndexOf(':', StringComparison.Ordinal);
+            if (separator <= 0)
+            {
+                return null;
+            }
+
+            var rest = line[(separator + 1)..];
+            if (rest.Length > 0 && rest[0] != ' ')
+            {
+                return null;
+            }
+
+            var value = rest.Trim();
+
+            // `|` и `>` — многострочные значения, их содержимое лежит отдельными
+            // строками ниже.
+            if (value.Length > 0 && value[0] is '|' or '>')
+            {
+                return null;
+            }
+
+            rows.Add([
+                new MarkdownTableCell([
+                    new MarkdownStrongInline([new MarkdownTextInline(line[..separator].Trim())])
+                ]),
+                new MarkdownTableCell(value.Length == 0 ? [] : [new MarkdownTextInline(value)])
+            ]);
+        }
+
+        return rows.Count == 0 ? null : rows;
     }
 
     private static string ExtractCode(CodeBlock codeBlock)
