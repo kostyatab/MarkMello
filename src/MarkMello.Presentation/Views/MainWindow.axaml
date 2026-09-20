@@ -117,26 +117,6 @@
       <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
     </Style>
 
-    <Style Selector="Button.mm-external-change-action">
-      <Setter Property="MinHeight" Value="28" />
-      <Setter Property="Padding" Value="12,0" />
-      <Setter Property="VerticalContentAlignment" Value="Center" />
-      <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="7" />
-      <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
-      <Setter Property="FontSize" Value="12.5" />
-      <Setter Property="FontWeight" Value="Medium" />
-      <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
-    </Style>
-    <Style Selector="Button.mm-external-change-action:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
-      <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
-    </Style>
-
-
     <Style Selector="Border.mm-progress">
       <Setter Property="Opacity" Value="0" />
       <Setter Property="Width" Value="0" />
@@ -204,7 +184,7 @@
             <!-- Свёрнутый сайдбар возвращается отсюда: без видимой кнопки дерево
                  кажется потерянным. -->
             <Button Grid.Column="0"
-                    Classes="mm-row-button"
+                    Classes="mm-icon-button mm-row-button"
                     Margin="0,0,4,0"
                     IsVisible="{Binding ShowsExpandSidebarButton}"
                     Command="{Binding ToggleSidebarCommand}"
@@ -249,7 +229,7 @@
               </StackPanel>
 
               <ToggleButton Name="FindTriggerButton"
-                            Classes="mm-row-button"
+                            Classes="mm-icon-button mm-row-button"
                             IsVisible="{Binding ShowsFindToggle}"
                             IsChecked="{Binding IsFindBarOpen, Mode=OneWay}"
                             Command="{Binding ToggleFindBarCommand}"
@@ -260,7 +240,7 @@
               </ToggleButton>
 
               <ToggleButton Name="SettingsTriggerButton"
-                            Classes="mm-row-button"
+                            Classes="mm-icon-button mm-row-button"
                             IsVisible="{Binding ShowsReadingSettingsToggle}"
                             IsChecked="{Binding IsSettingsOpen, Mode=OneWay}"
                             Command="{Binding ToggleSettingsCommand}"
@@ -271,7 +251,7 @@
               </ToggleButton>
 
               <Button Name="EditTriggerButton"
-                      Classes="mm-row-button"
+                      Classes="mm-icon-button mm-row-button"
                       IsVisible="{Binding ShowsEditToggle}"
                       Command="{Binding ToggleEditModeCommand}"
                       ToolTip.Tip="{Binding EditToggleTooltip}">
@@ -298,7 +278,7 @@
               </Button>
 
               <ToggleButton Name="AppMenuTriggerButton"
-                            Classes="mm-row-button"
+                            Classes="mm-icon-button mm-row-button"
                             IsChecked="{Binding IsAppMenuOpen, Mode=OneWay}"
                             Command="{Binding ToggleAppMenuCommand}"
                             ToolTip.Tip="{Binding AppMenuTooltip}">
@@ -373,11 +353,11 @@
                               Orientation="Horizontal"
                               Spacing="10"
                               VerticalAlignment="Center">
-                    <Button Classes="mm-external-change-action"
+                    <Button Classes="mm-action-secondary mm-action-raised mm-action-small"
                             Content="{Binding ExternalChangeReload}"
                             ToolTip.Tip="{Binding ExternalChangeReloadTooltip}"
                             Command="{Binding ReloadExternalChangeCommand}" />
-                    <Button Classes="mm-external-change-action"
+                    <Button Classes="mm-action-secondary mm-action-raised mm-action-small"
                             Content="{Binding ExternalChangeKeep}"
                             Command="{Binding KeepExternalChangeCommand}" />
                   </StackPanel>
@@ -607,14 +587,14 @@
                 <Grid Classes="mm-dialog-buttons"
                       ColumnDefinitions="Auto,*,Auto,Auto,Auto">
                   <!-- Фокус сразу на «Отмене»: удаление по случайному Enter не случится -->
-                  <Button Classes="mm-dialog-secondary"
+                  <Button Classes="mm-action-secondary"
                           Grid.Column="{Binding DeleteCancelColumn}"
                           KeyboardNavigation.TabIndex="{Binding DeleteCancelColumn}"
                           views:ModalDialogFrame.IsInitialFocus="True"
                           Content="{Binding DeleteCancelLabel}"
                           Command="{Binding CancelDeleteCommand}"
                           ToolTip.Tip="{Binding DialogCancelShortcut}" />
-                  <Button Classes="mm-dialog-destructive"
+                  <Button Classes="mm-action-destructive"
                           Grid.Column="{Binding DeleteConfirmColumn}"
                           KeyboardNavigation.TabIndex="{Binding DeleteConfirmColumn}"
                           IsVisible="{Binding !IsDeleteErrorPrompt}"
@@ -642,13 +622,13 @@
                            Text="{Binding RecentRemovePromptMessage}" />
                 <Grid Classes="mm-dialog-buttons"
                       ColumnDefinitions="Auto,*,Auto,Auto,Auto">
-                  <Button Classes="mm-dialog-secondary"
+                  <Button Classes="mm-action-secondary"
                           Grid.Column="{Binding RecentRemoveCancelColumn}"
                           KeyboardNavigation.TabIndex="{Binding RecentRemoveCancelColumn}"
                           Content="{Binding RecentRemoveCancel}"
                           Command="{Binding CancelRecentRemoveCommand}"
                           ToolTip.Tip="{Binding DialogCancelShortcut}" />
-                  <Button Classes="mm-dialog-primary"
+                  <Button Classes="mm-action-primary"
                           Grid.Column="{Binding RecentRemoveConfirmColumn}"
                           KeyboardNavigation.TabIndex="{Binding RecentRemoveConfirmColumn}"
                           IsDefault="True"
@@ -696,20 +676,20 @@
                 </Border>
                 <Grid Classes="mm-dialog-buttons"
                       ColumnDefinitions="Auto,*,Auto,Auto,Auto">
-                  <Button Classes="mm-dialog-secondary"
+                  <Button Classes="mm-action-secondary"
                           Grid.Column="{Binding DirtyPromptDiscardColumn}"
                           KeyboardNavigation.TabIndex="{Binding DirtyPromptDiscardColumn}"
                           Content="{Binding DirtyPromptDiscard}"
                           Command="{Binding ConfirmDirtyDiscardCommand}"
                           ToolTip.Tip="{Binding DirtyPromptDiscardShortcut}" />
-                  <Button Classes="mm-dialog-secondary"
+                  <Button Classes="mm-action-secondary"
                           Grid.Column="{Binding DirtyPromptCancelColumn}"
                           KeyboardNavigation.TabIndex="{Binding DirtyPromptCancelColumn}"
                           Content="{Binding DirtyPromptCancel}"
                           Command="{Binding CancelDirtyPromptCommand}"
                           ToolTip.Tip="{Binding DialogCancelShortcut}" />
                   <!-- Enter — «Сохранить»; Esc отменяет через общий Escape окна -->
-                  <Button Classes="mm-dialog-primary"
+                  <Button Classes="mm-action-primary"
                           Grid.Column="{Binding DirtyPromptSaveColumn}"
                           KeyboardNavigation.TabIndex="{Binding DirtyPromptSaveColumn}"
                           IsDefault="True"

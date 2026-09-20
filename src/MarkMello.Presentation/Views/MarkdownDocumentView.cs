@@ -1982,7 +1982,7 @@ public sealed class MarkdownDocumentView : UserControl
         // from the theme.
         var button = new Button
         {
-            Classes = { "mm-code-copy-button" },
+            Classes = { "mm-icon-button", "mm-icon-button-raised", "mm-code-copy-button" },
             Width = CodeCopyButtonSize,
             Height = CodeCopyButtonSize,
             Content = new LucideIcon

@@ -19,9 +19,7 @@
                    Text="{Binding AppSettingsHeader}" />
         <Button Name="CloseSettingsButton"
                 Grid.Column="1"
-                Classes="mm-settings-close"
-                Width="28"
-                Height="28"
+                Classes="mm-icon-button mm-settings-close"
                 views:ModalDialogFrame.IsInitialFocus="True"
                 Command="{Binding CloseOverlayCommand}"
                 ToolTip.Tip="{Binding OverlayCloseSettings}">
@@ -122,8 +120,10 @@
           <Button Name="UpdateActionButton"
                   Grid.Column="1"
                   VerticalAlignment="Center"
-                  Classes.mm-dialog-primary="{Binding IsUpdateActionPrimary}"
-                  Classes.mm-dialog-secondary="{Binding !IsUpdateActionPrimary}"
+                  Classes="mm-action-small"
+                  Classes.mm-action-primary="{Binding IsUpdateActionPrimary}"
+                  Classes.mm-action-secondary="{Binding !IsUpdateActionPrimary}"
+                  Classes.mm-action-raised="{Binding !IsUpdateActionPrimary}"
                   Content="{Binding UpdateActionLabel}"
                   Command="{Binding UpdateActionCommand}" />
         </Grid>
@@ -138,7 +138,7 @@
             <TextBlock Classes="mm-app-settings-caption"
                        VerticalAlignment="Center"
                        Text="{Binding AppSettingsVersionLine}" />
-            <Button Classes="mm-inline-link"
+            <Button Classes="mm-link"
                     Tag="https://ermolaev.tech"
                     Click="OnLinkClick"
                     Content="Andrey Ermolaev" />
@@ -146,15 +146,15 @@
           <StackPanel Grid.Column="1"
                       Orientation="Horizontal"
                       Spacing="12">
-            <Button Classes="mm-inline-link"
+            <Button Classes="mm-link"
                     Tag="https://markmello.ru"
                     Click="OnLinkClick"
                     Content="{Binding AppSettingsWebsite}" />
-            <Button Classes="mm-inline-link"
+            <Button Classes="mm-link"
                     Tag="https://t.me/mark_mello"
                     Click="OnLinkClick"
                     Content="Telegram" />
-            <Button Classes="mm-inline-link"
+            <Button Classes="mm-link"
                     Tag="https://github.com/dartdavros/MarkMello"
                     Click="OnLinkClick"
                     Content="GitHub" />

@@ -9,8 +9,10 @@
              x:Class="MarkMello.Presentation.Views.WorkspaceSidebarView"
              x:DataType="vm:ShellViewModel">
 
-  <!-- Стили открытой папки живут здесь, а не в глобальном словаре: в single-file
-       режиме этот контрол не создаётся, и парсить их незачем. -->
+  <!-- Стили самого сайдбара живут здесь, а не в глобальном словаре: в single-file
+       режиме этот контрол не создаётся, и парсить их незачем. Роли кнопок
+       («имя папки ▾», находки поиска, кнопки шапки) — в Themes/Controls.axaml:
+       они общие со строкой окна и меню. -->
   <UserControl.Styles>
     <!-- ======================= Сайдбар открытой папки ======================= -->
 
@@ -25,20 +27,6 @@
       <Setter Property="BorderThickness" Value="0,0,1,0" />
     </Style>
 
-    <!-- «имя папки ▾»: кнопка с меню действий над папкой (ADR-0009 Rule 4) -->
-    <Style Selector="Button.mm-sidebar-folder">
-      <Setter Property="Height" Value="28" />
-      <Setter Property="Padding" Value="8,0" />
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="CornerRadius" Value="7" />
-      <Setter Property="HorizontalAlignment" Value="Left" />
-      <Setter Property="VerticalContentAlignment" Value="Center" />
-      <Setter Property="Cursor" Value="Hand" />
-    </Style>
-    <Style Selector="Button.mm-sidebar-folder:pointerover /template/ ContentPresenter, Button.mm-sidebar-folder:pressed /template/ ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
-    </Style>
     <!-- Иконки подписи не перекрашиваются: наведение показывает только фон.
          Цвет стоит на самих иконках — Foreground кнопки Fluent меняет по состояниям. -->
     <Style Selector="Button.mm-sidebar-folder views|LucideIcon">
@@ -270,20 +258,6 @@
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
-    <Style Selector="Button.mm-search-hit">
-      <Setter Property="HorizontalAlignment" Value="Stretch" />
-      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-      <Setter Property="Padding" Value="8,4" />
-      <Setter Property="Margin" Value="0,1" />
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="CornerRadius" Value="4" />
-    </Style>
-    <Style Selector="Button.mm-search-hit:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource MmSurfaceHoverBrush}" />
-      <Setter Property="CornerRadius" Value="4" />
-    </Style>
-
     <Style Selector="TextBlock.mm-search-hit-path">
       <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
       <Setter Property="FontSize" Value="11" />
@@ -387,7 +361,7 @@
               Classes="mm-window-drag"
               Background="Transparent">
         <Button Name="SidebarToggleButton"
-                Classes="mm-row-button"
+                Classes="mm-icon-button mm-row-button"
                 Command="{Binding ToggleSidebarCommand}"
                 ToolTip.Tip="{Binding SidebarToggleTooltip}">
           <views:LucideIcon Data="{DynamicResource LucidePanelLeftCloseGeometry}"
@@ -402,7 +376,7 @@
             Margin="11,4,11,8">
         <Button Grid.Column="0"
                 Name="FolderMenuButton"
-                Classes="mm-sidebar-folder mm-menu-trigger"
+                Classes="mm-list-item mm-sidebar-folder mm-menu-trigger"
                 Click="OnFolderMenuButtonClick"
                 ToolTip.Tip="{Binding Workspace.Folder.RootPath}">
           <!-- Сетка, а не StackPanel: длинное имя папки обрезается, а не выталкивает шеврон -->
@@ -426,7 +400,7 @@
 
         <Button Grid.Column="1"
                 Name="CreateMenuButton"
-                Classes="mm-row-button mm-menu-trigger"
+                Classes="mm-icon-button mm-row-button mm-menu-trigger"
                 Click="OnCreateMenuButtonClick"
                 ToolTip.Tip="{Binding SidebarCreateTooltip}">
           <views:LucideIcon Data="{DynamicResource LucidePlusGeometry}"
@@ -554,7 +528,7 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="ws:WorkspaceSearchHit">
-                <Button Classes="mm-search-hit"
+                <Button Classes="mm-list-item mm-search-hit"
                         Command="{Binding $parent[ItemsControl].((vm:ShellViewModel)DataContext).Workspace.ActivateSearchHitCommand}"
                         CommandParameter="{Binding}">
                   <StackPanel Spacing="1">

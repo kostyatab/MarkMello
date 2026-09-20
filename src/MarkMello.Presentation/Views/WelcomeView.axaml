@@ -46,11 +46,11 @@
       <StackPanel Orientation="Horizontal"
                   Spacing="8"
                   HorizontalAlignment="Center">
-        <Button Classes="mm-dialog-primary welcome-action"
+        <Button Classes="mm-action-primary mm-action-large"
                 Content="{Binding WelcomeOpenFile}"
                 Command="{Binding OpenFileCommand}"
                 ToolTip.Tip="{Binding OpenFileShortcut}" />
-        <Button Classes="mm-dialog-secondary welcome-action with-icon"
+        <Button Classes="mm-action-secondary mm-action-large mm-action-with-icon"
                 Command="{Binding OpenFolderCommand}"
                 ToolTip.Tip="{Binding OpenFolderShortcut}">
           <StackPanel Orientation="Horizontal"
@@ -62,7 +62,7 @@
                        VerticalAlignment="Center" />
           </StackPanel>
         </Button>
-        <Button Classes="mm-dialog-secondary welcome-action with-icon"
+        <Button Classes="mm-action-secondary mm-action-large mm-action-with-icon"
                 Command="{Binding CreateNewDocumentCommand}"
                 ToolTip.Tip="{Binding NewDocumentTooltip}">
           <StackPanel Orientation="Horizontal"
@@ -94,7 +94,7 @@
                        Foreground="{DynamicResource MmTextSoftBrush}" />
             <Button Grid.Column="1"
                     Name="RecentClearButton"
-                    Classes="recent-clear"
+                    Classes="mm-link mm-link-quiet"
                     Content="{Binding RecentClear}"
                     Command="{Binding ClearRecentItemsCommand}" />
           </Grid>
@@ -103,7 +103,7 @@
                         ItemsSource="{Binding RecentItems}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:RecentItemViewModel">
-                <Button Classes="recent-row"
+                <Button Classes="mm-list-item recent-row"
                         Classes.missing="{Binding IsMissing}"
                         Command="{Binding OpenCommand}"
                         ToolTip.Tip="{Binding Path}">

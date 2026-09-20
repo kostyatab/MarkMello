@@ -13,14 +13,14 @@
   <Border Classes="mm-settings-panel mm-popover-left mm-sidebar-menu-panel">
     <StackPanel>
       <Button Name="TreeMenuOpenInNewTab"
-              Classes="mm-menu-command"
+              Classes="mm-list-item mm-menu-command"
               IsEnabled="{Binding TreeContextNode.IsSupportedDocument}"
               Command="{Binding Workspace.OpenNodeCommand}"
               CommandParameter="{Binding TreeContextNode}">
         <TextBlock Text="{Binding TreeOpenInNewTab}" />
       </Button>
       <Button Name="TreeMenuRename"
-              Classes="mm-menu-command"
+              Classes="mm-list-item mm-menu-command"
               AutomationProperties.Name="{Binding TreeRename}"
               Command="{Binding Workspace.StartRenameCommand}"
               CommandParameter="{Binding TreeContextNode}">
@@ -33,20 +33,20 @@
         </Grid>
       </Button>
       <Button Name="TreeMenuDuplicate"
-              Classes="mm-menu-command"
+              Classes="mm-list-item mm-menu-command"
               Command="{Binding Workspace.DuplicateCommand}"
               CommandParameter="{Binding TreeContextNode}">
         <TextBlock Text="{Binding TreeDuplicate}" />
       </Button>
       <Border Classes="mm-menu-separator" />
       <Button Name="TreeMenuReveal"
-              Classes="mm-menu-command"
+              Classes="mm-list-item mm-menu-command"
               Command="{Binding Workspace.RevealCommand}"
               CommandParameter="{Binding TreeContextNode}">
         <TextBlock Text="{Binding TreeRevealInExplorer}" />
       </Button>
       <Button Name="TreeMenuDelete"
-              Classes="mm-menu-command mm-menu-destructive"
+              Classes="mm-list-item mm-menu-command mm-menu-destructive"
               AutomationProperties.Name="{Binding TreeDelete}"
               Command="{Binding Workspace.RequestDeleteCommand}"
               CommandParameter="{Binding TreeContextNode}">

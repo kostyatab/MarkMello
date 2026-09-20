@@ -187,12 +187,12 @@ public sealed class AppMenuAndSettingsWindowTests
 
             var update = dialog.GetVisualDescendants().OfType<Button>().Single(static button => button.Name == "UpdateActionButton");
             Assert.Equal("Check now", update.Content);
-            Assert.Contains("mm-dialog-secondary", update.Classes);
+            Assert.Contains("mm-action-secondary", update.Classes);
             Assert.Same(Resource(window, "MmTabBrush"), dialog.GetVisualDescendants().OfType<Border>().Single(static border => border.Classes.Contains("mm-app-settings-update")).Background);
 
             Assert.Equal(
                 ["https://ermolaev.tech", "https://markmello.ru", "https://t.me/mark_mello", "https://github.com/dartdavros/MarkMello"],
-                dialog.GetVisualDescendants().OfType<Button>().Where(static button => button.Classes.Contains("mm-inline-link")).Select(static button => button.Tag as string));
+                dialog.GetVisualDescendants().OfType<Button>().Where(static button => button.Classes.Contains("mm-link")).Select(static button => button.Tag as string));
 
             window.Hide();
             return Task.CompletedTask;

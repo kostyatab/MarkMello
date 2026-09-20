@@ -12,12 +12,12 @@
   <Border Classes="mm-settings-panel mm-popover-left mm-sidebar-menu-panel">
     <StackPanel>
       <Button Name="CreateMenuNewFile"
-              Classes="mm-menu-command"
+              Classes="mm-list-item mm-menu-command"
               Command="{Binding Workspace.StartNewFileCommand}">
         <TextBlock Text="{Binding SidebarNewFile}" />
       </Button>
       <Button Name="CreateMenuNewFolder"
-              Classes="mm-menu-command"
+              Classes="mm-list-item mm-menu-command"
               Command="{Binding Workspace.StartNewFolderCommand}">
         <TextBlock Text="{Binding SidebarNewFolder}" />
       </Button>

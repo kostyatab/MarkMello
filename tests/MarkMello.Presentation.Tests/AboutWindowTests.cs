@@ -102,7 +102,7 @@ public sealed class AboutWindowTests
             Assert.Equal(
                 ["https://ermolaev.tech", "https://markmello.ru", "https://t.me/mark_mello", "https://github.com/dartdavros/MarkMello"],
                 window.GetVisualDescendants().OfType<Button>()
-                    .Where(static button => button.Classes.Contains("mm-inline-link"))
+                    .Where(static button => button.Classes.Contains("mm-link"))
                     .Select(static button => button.Tag as string));
 
             var texts = window.GetVisualDescendants().OfType<TextBlock>().Select(static block => block.Text).ToList();

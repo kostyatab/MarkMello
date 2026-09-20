@@ -77,10 +77,10 @@
                   Spacing="8"
                   Margin="0,26,0,0"
                   HorizontalAlignment="Center">
-        <Button Classes="mm-dialog-primary mm-error-action"
+        <Button Classes="mm-action-primary mm-action-large"
                 Content="{Binding LoadErrorOpenAnotherFile}"
                 Command="{Binding OpenFileCommand}" />
-        <Button Classes="mm-dialog-secondary mm-error-action"
+        <Button Classes="mm-action-secondary mm-action-large"
                 IsVisible="{Binding ShowsLoadErrorRetry}"
                 Content="{Binding LoadErrorTryAgain}"
                 Command="{Binding RetryLoadCommand}" />

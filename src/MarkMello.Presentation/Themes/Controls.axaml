@@ -14,104 +14,292 @@
     <Setter Property="Padding" Value="8,5" />
   </Style>
 
-  <!-- Ghost button: полупрозрачная кнопка для top bar и welcome actions -->
-  <Style Selector="Button.ghost">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="6" />
-    <Setter Property="Padding" Value="10,4" />
-    <Setter Property="MinHeight" Value="28" />
-    <Setter Property="HorizontalContentAlignment" Value="Center" />
-    <Setter Property="VerticalContentAlignment" Value="Center" />
-    <Setter Property="FontSize" Value="12" />
-    <Setter Property="Cursor" Value="Hand" />
-  </Style>
-  <Style Selector="Button.ghost:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource MmTextBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
-  </Style>
-  <Style Selector="Button.ghost:pressed /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmAccentSoftBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmAccentBrush}" />
-  </Style>
-
-
-  <Style Selector="Button.topbar-ghost">
-    <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="6" />
-    <Setter Property="Padding" Value="0" />
-    <Setter Property="Width" Value="28" />
-    <Setter Property="Height" Value="28" />
-    <Setter Property="MinWidth" Value="28" />
-    <Setter Property="MinHeight" Value="28" />
-    <Setter Property="HorizontalContentAlignment" Value="Center" />
-    <Setter Property="VerticalContentAlignment" Value="Center" />
-    <Setter Property="Cursor" Value="Hand" />
-  </Style>
   <!--
-    Иконки (Views/LucideIcon) берут цвет из Foreground, как текст. Fluent сам
-    перекрашивает Foreground у ContentPresenter кнопки в :pointerover, :pressed,
-    :disabled и :checked, поэтому у кнопок с иконкой без подписи каждое такое
-    состояние задано явно: нейтральное — цветом покоя. Порядок правил важен —
-    при нескольких состояниях сразу побеждает правило ниже.
+    ============================== Кнопки ==============================
+
+    У кнопки пять ролей, и каждая описана здесь один раз:
+
+      mm-action-primary / -secondary / -destructive — текстовое действие;
+      mm-icon-button — иконка-кнопка (в том числе кнопки строки окна);
+      mm-row-primary, titlebar, mm-tab-overflow — кнопки строки окна и вкладок;
+      mm-list-item — пункт списка или меню;
+      mm-link — ссылка.
+
+    Роль ставится классом в разметке, класс места идёт рядом с ней
+    («mm-icon-button mm-find-button») и меняет только размеры и отступы. Свои
+    цвета по месту не заводим: из-за этого состояния и расходились (MM-42).
+
+    Цвет состояния задан у ContentPresenter: Fluent красит кнопку своими кистями
+    в :pointerover, :pressed, :disabled и :checked, и без явного правила зажатая
+    кнопка, с которой увели курсор, сереет. Иконки (Views/LucideIcon) берут цвет
+    из Foreground, как текст, поэтому каждое состояние называет и его. Порядок
+    правил важен — при нескольких состояниях сразу побеждает правило ниже, а
+    класс места стоит после роли.
   -->
-  <Style Selector="Button.topbar-ghost:disabled /template/ ContentPresenter">
-    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+
+  <!--
+    Текстовое действие (A-Dialog, A-Welcome, A-LoadError, A-AppSettings): 32 px,
+    радиус 8. Вторичная — заливка вкладки, основная — цветом текста, опасная —
+    акцентом. Выключенная держит цвета роли и гаснет до 0.6: серый Fluent
+    выбивался из палитры. Фокус с клавиатуры — кольцо акцентом через 2 px, как
+    у вкладок.
+  -->
+  <Style Selector="Button.mm-action-primary, Button.mm-action-secondary, Button.mm-action-destructive">
+    <Setter Property="Height" Value="32" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="Padding" Value="14,0" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner">
+      <FocusAdornerTemplate>
+        <Border Margin="-4"
+                BorderThickness="2"
+                CornerRadius="12"
+                BorderBrush="{DynamicResource MmAccentBrush}"
+                AdornerLayer.IsClipEnabled="False" />
+      </FocusAdornerTemplate>
+    </Setter>
   </Style>
-  <Style Selector="Button.topbar-ghost:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
+
+  <Style Selector="Button.mm-action-secondary">
+    <Setter Property="Background" Value="{DynamicResource MmTabBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
   </Style>
-  <Style Selector="Button.topbar-ghost:pressed /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmAccentSoftBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmAccentBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
+  <Style Selector="Button.mm-action-secondary:pointerover /template/ ContentPresenter, Button.mm-action-secondary:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+  </Style>
+  <Style Selector="Button.mm-action-secondary:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTabBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+    <Setter Property="Opacity" Value="0.6" />
+  </Style>
+
+  <Style Selector="Button.mm-action-primary">
+    <Setter Property="Background" Value="{DynamicResource MmTextBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmBackgroundBrush}" />
+  </Style>
+  <Style Selector="Button.mm-action-primary:pointerover /template/ ContentPresenter, Button.mm-action-primary:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTextBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmBackgroundBrush}" />
+    <Setter Property="Opacity" Value="0.88" />
+  </Style>
+  <Style Selector="Button.mm-action-primary:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTextBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmBackgroundBrush}" />
+    <Setter Property="Opacity" Value="0.6" />
+  </Style>
+
+  <Style Selector="Button.mm-action-destructive">
+    <Setter Property="Background" Value="{DynamicResource MmAccentBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmElevatedBackgroundBrush}" />
+  </Style>
+  <Style Selector="Button.mm-action-destructive:pointerover /template/ ContentPresenter, Button.mm-action-destructive:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmAccentBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmElevatedBackgroundBrush}" />
+    <Setter Property="Opacity" Value="0.88" />
+  </Style>
+  <Style Selector="Button.mm-action-destructive:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmAccentBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmElevatedBackgroundBrush}" />
+    <Setter Property="Opacity" Value="0.6" />
   </Style>
 
   <!--
-    Кнопки строки окна и шапки сайдбара (ADR-0009 Rule 2): иконка 30×30 без рамки
-    и фона, радиус 8. Наведение — MmTabHoverBrush; кнопка нажата или её карточка
-    открыта (:checked у ToggleButton) — MmTabActiveBrush. Иконка в этих состояниях
-    темнеет до цвета текста; :checked стоит ниже :pointerover, чтобы открытая
-    карточка держала заливку и под курсором.
+    Тон «на заливке»: кнопка стоит на залитой поверхности (полоса «изменён на
+    диске», блок обновлений в «Настройках»), где заливка вкладки не читается, —
+    поверхность карточки с рамкой, под курсором заливка наведения.
   -->
-  <Style Selector="Button.mm-row-button, ToggleButton.mm-row-button">
+  <Style Selector="Button.mm-action-raised">
+    <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Button.mm-action-raised:pointerover /template/ ContentPresenter, Button.mm-action-raised:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
+  </Style>
+  <Style Selector="Button.mm-action-raised:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
+    <Setter Property="Opacity" Value="0.6" />
+  </Style>
+
+  <!-- Размеры по месту: стартовый экран и экран ошибки — на 2 px выше (раньше
+       welcome-action и mm-error-action), блок обновлений — на 2 px ниже.
+       У кнопки с иконкой слева отступ меньше, как в макете. -->
+  <Style Selector="Button.mm-action-large">
+    <Setter Property="Height" Value="34" />
+    <Setter Property="Padding" Value="15,0" />
+  </Style>
+  <Style Selector="Button.mm-action-small">
+    <Setter Property="Height" Value="30" />
+    <Setter Property="FontSize" Value="12.5" />
+  </Style>
+  <Style Selector="Button.mm-action-with-icon">
+    <Setter Property="Padding" Value="12,0,14,0" />
+  </Style>
+
+  <!--
+    Иконка-кнопка: прозрачная, под курсором — заливка наведения вкладки, нажатая —
+    заливка активной, выключенная гаснет иконкой. Размер и радиус — от класса места.
+  -->
+  <Style Selector="Button.mm-icon-button, ToggleButton.mm-icon-button">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
     <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="CornerRadius" Value="8" />
     <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner">
+      <FocusAdornerTemplate>
+        <Border Margin="-3"
+                BorderThickness="2"
+                CornerRadius="11"
+                BorderBrush="{DynamicResource MmAccentBrush}"
+                AdornerLayer.IsClipEnabled="False" />
+      </FocusAdornerTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="Button.mm-icon-button:pointerover /template/ ContentPresenter, ToggleButton.mm-icon-button:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+  </Style>
+  <Style Selector="Button.mm-icon-button:pressed /template/ ContentPresenter, ToggleButton.mm-icon-button:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTabActiveBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+  </Style>
+  <!-- Карточка открыта (:checked) — заливка держится и под курсором, поэтому ниже -->
+  <Style Selector="ToggleButton.mm-icon-button:checked /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTabActiveBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+  </Style>
+
+  <!-- Тон «голая»: крестик внутри вкладки и в списке «ещё N» — своей подложки нет,
+       на курсор отвечает только иконка. -->
+  <Style Selector="Button.mm-icon-button.mm-icon-button-bare:pointerover /template/ ContentPresenter, Button.mm-icon-button.mm-icon-button-bare:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+  </Style>
+
+  <!-- Тон «на заливке»: кнопка стоит на залитой дорожке или на блоке кода, где
+       заливка вкладки не читается, — под курсором светлеет до поверхности карточки. -->
+  <Style Selector="Button.mm-icon-button.mm-icon-button-raised:pointerover /template/ ContentPresenter, Button.mm-icon-button.mm-icon-button-raised:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+  </Style>
+
+  <!-- Кнопки строки окна и шапки сайдбара (ADR-0009 Rule 2): 30×30, радиус 8 -->
+  <Style Selector="Button.mm-icon-button.mm-row-button, ToggleButton.mm-icon-button.mm-row-button">
     <Setter Property="Width" Value="30" />
     <Setter Property="Height" Value="30" />
     <Setter Property="MinWidth" Value="30" />
     <Setter Property="MinHeight" Value="30" />
     <Setter Property="VerticalAlignment" Value="Center" />
-    <Setter Property="HorizontalContentAlignment" Value="Center" />
-    <Setter Property="VerticalContentAlignment" Value="Center" />
-    <Setter Property="Cursor" Value="Hand" />
   </Style>
-  <Style Selector="Button.mm-row-button:disabled /template/ ContentPresenter, ToggleButton.mm-row-button:disabled /template/ ContentPresenter">
+
+  <!-- ✕ в шапке окна «Настройки»: 28×28, радиус 8 -->
+  <Style Selector="Button.mm-icon-button.mm-settings-close">
+    <Setter Property="Width" Value="28" />
+    <Setter Property="Height" Value="28" />
+    <Setter Property="MinWidth" Value="28" />
+    <Setter Property="MinHeight" Value="28" />
+  </Style>
+
+  <!-- Кнопки карточки поиска (A-CollapsedFind): 28×28, радиус 7 -->
+  <Style Selector="Button.mm-icon-button.mm-find-button">
+    <Setter Property="Width" Value="28" />
+    <Setter Property="Height" Value="28" />
+    <Setter Property="MinWidth" Value="28" />
+    <Setter Property="MinHeight" Value="28" />
+    <Setter Property="CornerRadius" Value="7" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <!-- Крестик вкладки: 18×18, радиус 5. В обход по Tab не встаёт — вкладку с
+       клавиатуры закрывает ⌘W; показывает его вкладка под курсором. -->
+  <Style Selector="Button.mm-icon-button.mm-tab-close">
+    <Setter Property="Width" Value="18" />
+    <Setter Property="Height" Value="18" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+
+  <!-- Крестик в списке «ещё N»: 14×14, проявляется под курсором строки -->
+  <Style Selector="Button.mm-icon-button.mm-tab-overflow-close">
+    <Setter Property="Width" Value="14" />
+    <Setter Property="Height" Value="14" />
+    <Setter Property="CornerRadius" Value="3" />
+    <Setter Property="Opacity" Value="0" />
+  </Style>
+
+  <!-- «− N px +» (A-SetAa): 28×26, радиус 6. На границе диапазона кнопка гаснет,
+       а не исчезает: подпись не прыгает. -->
+  <Style Selector="Button.mm-icon-button.mm-card-step">
+    <Setter Property="Width" Value="28" />
+    <Setter Property="Height" Value="26" />
+    <Setter Property="MinWidth" Value="28" />
+    <Setter Property="MinHeight" Value="26" />
+    <Setter Property="CornerRadius" Value="6" />
+  </Style>
+  <Style Selector="Button.mm-icon-button.mm-card-step:disabled">
+    <Setter Property="Opacity" Value="0.5" />
+  </Style>
+
+  <!-- Панель редактора: 28×24, радиус 4 -->
+  <Style Selector="Button.mm-icon-button.mm-editor-toolbar-button">
+    <Setter Property="Width" Value="28" />
+    <Setter Property="Height" Value="24" />
+    <Setter Property="MinWidth" Value="28" />
+    <Setter Property="MinHeight" Value="24" />
+    <Setter Property="CornerRadius" Value="4" />
+  </Style>
+
+  <!-- Выключенная — в самом низу роли: выключенная кнопка продолжает получать
+       :pointerover (Avalonia смотрит на IsHitTestVisible, а не на IsEnabled), и
+       из равных побеждает правило ниже. Класс места, которому нужен свой фон
+       выключенной (mm-code-copy-button), стоит после этого правила. -->
+  <Style Selector="Button.mm-icon-button:disabled /template/ ContentPresenter, ToggleButton.mm-icon-button:disabled /template/ ContentPresenter">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
   </Style>
-  <Style Selector="Button.mm-row-button:pointerover /template/ ContentPresenter, ToggleButton.mm-row-button:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
+
+  <!--
+    «Копировать» у блока кода: размеры и положение задаёт MarkdownDocumentView
+    (иконка выравнивается по подписи языка). В покое иконка того же тона, что и
+    подпись, — они читаются как пара; фон и рамка в покое — цвета блока кода, а не
+    Transparent, иначе кнопка проступала бы на полосе прокрутки кода.
+  -->
+  <Style Selector="Button.mm-icon-button.mm-code-copy-button">
+    <Setter Property="Background" Value="{DynamicResource MmCodeBackgroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource MmCodeBackgroundBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="6" />
+  </Style>
+  <Style Selector="Button.mm-icon-button.mm-code-copy-button:pointerover /template/ ContentPresenter, Button.mm-icon-button.mm-code-copy-button:pressed /template/ ContentPresenter">
+    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
+  </Style>
+  <Style Selector="Button.mm-icon-button.mm-code-copy-button:focus-visible /template/ ContentPresenter">
     <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
   </Style>
-  <Style Selector="Button.mm-row-button:pressed /template/ ContentPresenter, ToggleButton.mm-row-button:pressed /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmTabActiveBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
-  </Style>
-  <Style Selector="ToggleButton.mm-row-button:checked /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmTabActiveBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+
+  <Style Selector="Button.mm-icon-button.mm-code-copy-button:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmCodeBackgroundBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource MmCodeBackgroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
   </Style>
 
   <!--
@@ -136,6 +324,15 @@
     <Setter Property="FontSize" Value="13" />
     <Setter Property="FontWeight" Value="Medium" />
     <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner">
+      <FocusAdornerTemplate>
+        <Border Margin="-4"
+                BorderThickness="2"
+                CornerRadius="12"
+                BorderBrush="{DynamicResource MmAccentBrush}"
+                AdornerLayer.IsClipEnabled="False" />
+      </FocusAdornerTemplate>
+    </Setter>
   </Style>
   <Style Selector="Button.mm-row-primary:pointerover /template/ ContentPresenter, Button.mm-row-primary:pressed /template/ ContentPresenter, Button.mm-row-primary:disabled /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource MmTextBrush}" />
@@ -148,18 +345,51 @@
     <Setter Property="Opacity" Value="0.8" />
   </Style>
 
-  <!-- «Не сохранено» рядом с «Готово»: короткая подпись и плашка ⌘S -->
-  <Style Selector="TextBlock.mm-row-status">
-    <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
-    <Setter Property="FontSize" Value="12" />
+  <!--
+    «ещё N» (A-Tabs): плашка той же высоты и заливки, что вкладка; пока меню открыто
+    или кнопку держат — заливка активной вкладки.
+  -->
+  <Style Selector="Button.mm-tab-overflow">
+    <Setter Property="Height" Value="30" />
+    <Setter Property="Padding" Value="10,0,8,0" />
+    <Setter Property="Background" Value="{DynamicResource MmTabBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
+    <Setter Property="FontSize" Value="13" />
     <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner">
+      <FocusAdornerTemplate>
+        <Border Margin="-3"
+                BorderThickness="2"
+                CornerRadius="11"
+                BorderBrush="{DynamicResource MmAccentBrush}"
+                AdornerLayer.IsClipEnabled="False" />
+      </FocusAdornerTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="Button.mm-tab-overflow:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+  </Style>
+  <Style Selector="Button.mm-tab-overflow:pressed /template/ ContentPresenter, Button.mm-tab-overflow:flyout-open /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTabActiveBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+  </Style>
+
+  <Style Selector="Button.mm-tab-overflow:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTabBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
   </Style>
 
   <!--
     Кнопки окна Windows (свернуть / развернуть / закрыть) — системные глифы на всю
     высоту строки окна. Цвет глифа задан здесь, а не на самом Path: у крестика
-    под курсором он белый на красном, как у системных кнопок.
+    под курсором он белый на красном, как у системных кнопок. В обход по Tab
+    кнопки не встают, поэтому кольца фокуса у них нет.
   -->
   <Style Selector="Button.titlebar">
     <Setter Property="Background" Value="Transparent" />
@@ -179,84 +409,179 @@
   <Style Selector="Button.titlebar:pointerover /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
   </Style>
-  <Style Selector="Button.titlebar:pointerover Path">
+  <Style Selector="Button.titlebar:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource MmTabActiveBrush}" />
+  </Style>
+  <Style Selector="Button.titlebar:pointerover Path, Button.titlebar:pressed Path">
     <Setter Property="Stroke" Value="{DynamicResource MmTextBrush}" />
   </Style>
   <Style Selector="Button.titlebar.close:pointerover /template/ ContentPresenter">
     <Setter Property="Background" Value="#E81123" />
   </Style>
-  <Style Selector="Button.titlebar.close:pointerover Path">
+  <!-- Нажатый крестик — тот же красный, притушенный: второго красного в палитре нет -->
+  <Style Selector="Button.titlebar.close:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="#E81123" />
+    <Setter Property="Opacity" Value="0.85" />
+  </Style>
+  <Style Selector="Button.titlebar.close:pointerover Path, Button.titlebar.close:pressed Path">
     <Setter Property="Stroke" Value="White" />
   </Style>
 
-  <!-- Welcome primary / secondary buttons -->
-  <Style Selector="Button.welcome-primary">
-    <Setter Property="Background" Value="{DynamicResource MmTextBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmBackgroundBrush}" />
-    <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="CornerRadius" Value="6" />
-    <Setter Property="Padding" Value="16,8" />
-    <Setter Property="FontSize" Value="13" />
-    <Setter Property="FontWeight" Value="Medium" />
-    <Setter Property="Cursor" Value="Hand" />
+  <Style Selector="Button.titlebar:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
   </Style>
-  <Style Selector="Button.welcome-primary:pointerover /template/ ContentPresenter">
-    <Setter Property="Opacity" Value="0.85" />
+  <Style Selector="Button.titlebar:disabled Path">
+    <Setter Property="Stroke" Value="{DynamicResource MmTextSoftBrush}" />
   </Style>
 
-  <Style Selector="Button.welcome-secondary">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="6" />
-    <Setter Property="Padding" Value="16,8" />
-    <Setter Property="FontSize" Value="13" />
-    <Setter Property="Cursor" Value="Hand" />
-  </Style>
-  <!-- Иконка перекрашивается вместе с подписью -->
-  <Style Selector="Button.welcome-secondary:pointerover /template/ ContentPresenter">
-    <Setter Property="TextElement.Foreground" Value="{DynamicResource MmTextBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmTextSoftBrush}" />
-  </Style>
-
-  <!-- «Недавние» стартового экрана (A-Welcome): ссылка «Очистить» и строки записей -->
-  <Style Selector="Button.recent-clear">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="Padding" Value="4,2" />
-    <Setter Property="CornerRadius" Value="4" />
-    <Setter Property="FontSize" Value="12" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-    <Setter Property="Cursor" Value="Hand" />
-  </Style>
-  <!-- Нажатие держится, даже когда курсор ушёл с кнопки: без своего цвета Fluent
-       закрашивал её серым -->
-  <Style Selector="Button.recent-clear:pointerover /template/ ContentPresenter, Button.recent-clear:pressed /template/ ContentPresenter">
+  <!--
+    Пункт списка или меню: строка во всю ширину, прозрачная в покое; под курсором и
+    при фокусе с клавиатуры — заливка наведения вкладки, нажатая — заливка активной,
+    неприменимая гаснет подписью. Высота и отступы — от класса места: пункт меню ⋯,
+    строка «Недавних», находка поиска, пункт списка «ещё N», «имя папки ▾» и
+    строка-подвал карточки.
+  -->
+  <Style Selector="Button.mm-list-item">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
-  </Style>
-
-  <!-- Строка «Недавних»: 46 px, наведение и фокус с клавиатуры — MmTabHoverBrush -->
-  <Style Selector="Button.recent-row">
-    <Setter Property="Height" Value="46" />
-    <Setter Property="Padding" Value="12,0" />
-    <Setter Property="CornerRadius" Value="8" />
     <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+    <Setter Property="CornerRadius" Value="7" />
     <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="Cursor" Value="Hand" />
   </Style>
-  <Style Selector="Button.recent-row:pointerover /template/ ContentPresenter, Button.recent-row:focus-visible /template/ ContentPresenter">
+  <Style Selector="Button.mm-list-item /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+  </Style>
+  <Style Selector="Button.mm-list-item:pointerover /template/ ContentPresenter, Button.mm-list-item:focus-visible /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
   </Style>
-  <Style Selector="Button.recent-row:pressed /template/ ContentPresenter">
+  <Style Selector="Button.mm-list-item:pressed /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource MmTabActiveBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
   </Style>
+
+  <!-- Тон «деструктивный»: удаление в меню строки дерева — акцентом во всех
+       состояниях, кроме выключенного (оно ниже по роли и гасит подпись). -->
+  <Style Selector="Button.mm-list-item.mm-menu-destructive /template/ ContentPresenter, Button.mm-list-item.mm-menu-destructive:pointerover /template/ ContentPresenter, Button.mm-list-item.mm-menu-destructive:pressed /template/ ContentPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
+  </Style>
+
+  <!-- Строка «Недавних» (A-Welcome): 46 px -->
+  <Style Selector="Button.mm-list-item.recent-row">
+    <Setter Property="Height" Value="46" />
+    <Setter Property="Padding" Value="12,0" />
+    <Setter Property="CornerRadius" Value="8" />
+  </Style>
+  <!-- Находка поиска по сайдбару: две строки, поэтому высота по содержимому -->
+  <Style Selector="Button.mm-list-item.mm-search-hit">
+    <Setter Property="Padding" Value="8,4" />
+    <Setter Property="Margin" Value="0,1" />
+    <Setter Property="CornerRadius" Value="4" />
+  </Style>
+  <!-- Пункт списка «ещё N» -->
+  <Style Selector="Button.mm-list-item.mm-tab-overflow-item">
+    <Setter Property="Padding" Value="8,7" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
+    <Setter Property="FontSize" Value="12.5" />
+  </Style>
+  <!-- «имя папки ▾»: кнопка с меню действий над папкой (ADR-0009 Rule 4) -->
+  <Style Selector="Button.mm-list-item.mm-sidebar-folder">
+    <Setter Property="Height" Value="28" />
+    <Setter Property="Padding" Value="8,0" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+  </Style>
+  <!-- «Язык, обновления, версия · Настройки… ⌘,» — строка во всю ширину карточки -->
+  <Style Selector="Button.mm-list-item.mm-card-footer">
+    <Setter Property="Height" Value="36" />
+    <Setter Property="Margin" Value="-8,0" />
+    <Setter Property="Padding" Value="8,0" />
+    <Setter Property="CornerRadius" Value="0,0,6,6" />
+    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
+    <Setter Property="BorderThickness" Value="0,1,0,0" />
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+  </Style>
+  <!-- Линия над подвалом видна во всех состояниях, подпись не темнеет под курсором -->
+  <Style Selector="Button.mm-list-item.mm-card-footer /template/ ContentPresenter, Button.mm-list-item.mm-card-footer:pointerover /template/ ContentPresenter, Button.mm-list-item.mm-card-footer:pressed /template/ ContentPresenter">
+    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+  </Style>
+
+  <!-- Выключенная — в самом низу роли: под курсором выключенная кнопка тоже
+       получает :pointerover, а из равных побеждает правило ниже. -->
+  <Style Selector="Button.mm-list-item:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
+  </Style>
+
+  <!--
+    Ссылка: текст без фона и рамки, подчёркивание — по наведению. Акцентный тон —
+    ссылки «Настроек» и окна «О программе»; приглушённый (mm-link-quiet) —
+    «Очистить» в «Недавних»: мягкий текст темнеет, но не подчёркивается.
+  -->
+  <Style Selector="Button.mm-link">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="FocusAdorner">
+      <FocusAdornerTemplate>
+        <Border Margin="-3"
+                BorderThickness="2"
+                CornerRadius="6"
+                BorderBrush="{DynamicResource MmAccentBrush}"
+                AdornerLayer.IsClipEnabled="False" />
+      </FocusAdornerTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="Button.mm-link /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
+  </Style>
+  <Style Selector="Button.mm-link:pointerover /template/ ContentPresenter, Button.mm-link:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
+  </Style>
+  <Style Selector="Button.mm-link:not(.mm-link-quiet):pointerover /template/ ContentPresenter, Button.mm-link:not(.mm-link-quiet):pressed /template/ ContentPresenter">
+    <Setter Property="TextBlock.TextDecorations" Value="Underline" />
+  </Style>
+  <Style Selector="Button.mm-link.mm-link-quiet">
+    <Setter Property="Padding" Value="4,2" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+  </Style>
+  <Style Selector="Button.mm-link.mm-link-quiet /template/ ContentPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+  </Style>
+  <Style Selector="Button.mm-link.mm-link-quiet:pointerover /template/ ContentPresenter, Button.mm-link.mm-link-quiet:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+  </Style>
+
+  <!-- Выключенная — ниже обоих тонов: иначе безусловный цвет тона её перекроет -->
+  <Style Selector="Button.mm-link:disabled /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
+  </Style>
+
+  <!-- «Не сохранено» рядом с «Готово»: короткая подпись и плашка ⌘S -->
+  <Style Selector="TextBlock.mm-row-status">
+    <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
   <!-- Пропавшая с диска запись приглушена; клик по ней спрашивает, убрать ли её -->
   <Style Selector="Button.recent-row.missing Grid.recent-row-content">
     <Setter Property="Opacity" Value="0.5" />
@@ -336,38 +661,6 @@
     <Setter Property="RenderTransform" Value="translate(0px,0px) scale(1)" />
   </Style>
 
-  <!-- ✕ в шапке окна «Настройки» -->
-  <Style Selector="Button.mm-settings-close">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-    <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="Padding" Value="4" />
-    <Setter Property="Width" Value="24" />
-    <Setter Property="Height" Value="24" />
-    <Setter Property="CornerRadius" Value="8" />
-    <Setter Property="HorizontalContentAlignment" Value="Center" />
-    <Setter Property="VerticalContentAlignment" Value="Center" />
-    <Setter Property="Cursor" Value="Hand" />
-    <!-- Кольцо фокуса с клавиатуры — акцентом через 1 px, как у кнопок диалогов,
-         а не чёрная рамка Fluent -->
-    <Setter Property="FocusAdorner">
-      <FocusAdornerTemplate>
-        <Border Margin="-3"
-                BorderThickness="2"
-                CornerRadius="7"
-                BorderBrush="{DynamicResource MmAccentBrush}"
-                AdornerLayer.IsClipEnabled="False" />
-      </FocusAdornerTemplate>
-    </Setter>
-  </Style>
-  <Style Selector="Button.mm-settings-close:pressed /template/ ContentPresenter, Button.mm-settings-close:disabled /template/ ContentPresenter">
-    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-  </Style>
-  <Style Selector="Button.mm-settings-close:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
-  </Style>
-
   <Style Selector="Line.mm-setting-divider">
     <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="Height" Value="1" />
@@ -375,28 +668,6 @@
     <Setter Property="Stroke" Value="{DynamicResource MmBorderSoftBrush}" />
     <Setter Property="StrokeThickness" Value="1" />
     <Setter Property="StrokeDashArray" Value="2,2" />
-  </Style>
-
-  <Style Selector="Button.mm-inline-link">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="Padding" Value="0" />
-    <Setter Property="MinWidth" Value="0" />
-    <Setter Property="MinHeight" Value="0" />
-    <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
-    <Setter Property="FontSize" Value="12" />
-    <Setter Property="Cursor" Value="Hand" />
-    <Setter Property="VerticalAlignment" Value="Center" />
-  </Style>
-  <!-- Ссылки внизу окна «Настройки»: акцентом, подчёркивание — по наведению -->
-  <Style Selector="Button.mm-inline-link /template/ ContentPresenter">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
-  </Style>
-  <Style Selector="Button.mm-inline-link:pointerover /template/ ContentPresenter, Button.mm-inline-link:pressed /template/ ContentPresenter">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
-    <Setter Property="TextBlock.TextDecorations" Value="Underline" />
   </Style>
 
   <!--
@@ -410,18 +681,13 @@
     <Setter Property="CornerRadius" Value="12" />
   </Style>
 
-  <Style Selector="Button.mm-menu-command">
+  <!-- Пункт меню — класс места у роли mm-list-item: только высота и отступы -->
+  <Style Selector="Button.mm-list-item.mm-menu-command">
     <Setter Property="Height" Value="26" />
     <Setter Property="MinHeight" Value="26" />
     <Setter Property="Padding" Value="10,0" />
     <Setter Property="CornerRadius" Value="7" />
     <Setter Property="FontSize" Value="13" />
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="HorizontalAlignment" Value="Stretch" />
-    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-    <Setter Property="VerticalContentAlignment" Value="Center" />
-    <Setter Property="Cursor" Value="Hand" />
   </Style>
 
   <Style Selector="TextBlock.mm-menu-shortcut">
@@ -448,36 +714,11 @@
     <Setter Property="Width" Value="288" />
   </Style>
 
-  <!-- Неприменимая команда гаснет — цвет задан у ContentPresenter, иначе Fluent
-       перекрасит её своими кистями -->
-  <Style Selector="Button.mm-menu-command /template/ ContentPresenter">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
-  </Style>
-  <!-- Подсветка — под мышью и при обходе с клавиатуры; просто открытое меню
-       не выделяет первый пункт, хотя фокус в нём (ADR-0009 Rule 4) -->
-  <Style Selector="Button.mm-menu-command:pointerover /template/ ContentPresenter, Button.mm-menu-command:pressed /template/ ContentPresenter, Button.mm-menu-command:focus-visible /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
-  </Style>
-  <Style Selector="Button.mm-menu-command:disabled /template/ ContentPresenter">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
-  </Style>
-
   <Style Selector="Button.mm-menu-command TextBlock">
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
   <Style Selector="TextBlock.mm-menu-shortcut">
     <Setter Property="VerticalAlignment" Value="Center" />
-  </Style>
-
-  <!-- Удаление — деструктивное действие, поэтому акцентное -->
-  <Style Selector="Button.mm-menu-command.mm-menu-destructive /template/ ContentPresenter">
-    <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
-  </Style>
-  <Style Selector="Button.mm-menu-command.mm-menu-destructive:pointerover /template/ ContentPresenter, Button.mm-menu-command.mm-menu-destructive:pressed /template/ ContentPresenter">
-    <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
   </Style>
 
   <!--
@@ -611,35 +852,6 @@
     <Setter Property="Padding" Value="2" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
-  <Style Selector="Button.mm-card-step">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="CornerRadius" Value="6" />
-    <Setter Property="Padding" Value="0" />
-    <Setter Property="Width" Value="28" />
-    <Setter Property="Height" Value="26" />
-    <Setter Property="MinWidth" Value="28" />
-    <Setter Property="MinHeight" Value="26" />
-    <Setter Property="HorizontalContentAlignment" Value="Center" />
-    <Setter Property="VerticalContentAlignment" Value="Center" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-    <Setter Property="Cursor" Value="Hand" />
-  </Style>
-  <Style Selector="Button.mm-card-step /template/ ContentPresenter">
-    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-  </Style>
-  <Style Selector="Button.mm-card-step:pointerover /template/ ContentPresenter, Button.mm-card-step:pressed /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
-  </Style>
-  <!-- На границе диапазона кнопка гаснет, а не исчезает: подпись не прыгает. -->
-  <Style Selector="Button.mm-card-step:disabled /template/ ContentPresenter">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
-  </Style>
-  <Style Selector="Button.mm-card-step:disabled">
-    <Setter Property="Opacity" Value="0.5" />
-  </Style>
   <Style Selector="TextBlock.mm-card-step-value">
     <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
     <Setter Property="FontSize" Value="12.5" />
@@ -649,31 +861,6 @@
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
 
-  <!-- «Язык, обновления, версия · Настройки… ⌘,» — строка во всю ширину карточки -->
-  <Style Selector="Button.mm-card-footer">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
-    <Setter Property="BorderThickness" Value="0,1,0,0" />
-    <Setter Property="CornerRadius" Value="0,0,6,6" />
-    <Setter Property="Height" Value="36" />
-    <Setter Property="Margin" Value="-8,0" />
-    <Setter Property="Padding" Value="8,0" />
-    <Setter Property="HorizontalAlignment" Value="Stretch" />
-    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-    <Setter Property="VerticalContentAlignment" Value="Center" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-    <Setter Property="FontSize" Value="12.5" />
-    <Setter Property="Cursor" Value="Hand" />
-  </Style>
-  <Style Selector="Button.mm-card-footer /template/ ContentPresenter">
-    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-  </Style>
-  <Style Selector="Button.mm-card-footer:pointerover /template/ ContentPresenter, Button.mm-card-footer:pressed /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-  </Style>
   <Style Selector="TextBlock.mm-card-footer-link">
     <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
     <Setter Property="FontWeight" Value="Medium" />
@@ -888,28 +1075,6 @@
     <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
     <Setter Property="BorderThickness" Value="0,0,0,1" />
-  </Style>
-
-  <Style Selector="Button.mm-editor-toolbar-button">
-    <Setter Property="Width" Value="28" />
-    <Setter Property="Height" Value="24" />
-    <Setter Property="MinWidth" Value="28" />
-    <Setter Property="MinHeight" Value="24" />
-    <Setter Property="Padding" Value="0" />
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-    <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="CornerRadius" Value="4" />
-    <Setter Property="HorizontalContentAlignment" Value="Center" />
-    <Setter Property="VerticalContentAlignment" Value="Center" />
-    <Setter Property="Cursor" Value="Hand" />
-  </Style>
-  <Style Selector="Button.mm-editor-toolbar-button:pressed /template/ ContentPresenter, Button.mm-editor-toolbar-button:disabled /template/ ContentPresenter">
-    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-  </Style>
-  <Style Selector="Button.mm-editor-toolbar-button:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
   </Style>
 
   <Style Selector="Border.mm-editor-toolbar-separator">
@@ -1168,70 +1333,6 @@
     <Setter Property="ColumnSpacing" Value="8" />
   </Style>
 
-  <!-- Кнопки диалогов: 32 px, радиус 8. Обычная — заливка вкладки, основная — цветом
-       текста, опасная — акцентом. Fluent перекрашивает кнопку в наведении и нажатии,
-       поэтому эти состояния заданы явно. Фокус с клавиатуры — кольцо акцентом через
-       2 px от кнопки, как у вкладок. -->
-  <Style Selector="Button.mm-dialog-secondary, Button.mm-dialog-primary, Button.mm-dialog-destructive">
-    <Setter Property="Height" Value="32" />
-    <Setter Property="MinWidth" Value="0" />
-    <Setter Property="Padding" Value="14,0" />
-    <Setter Property="CornerRadius" Value="8" />
-    <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="HorizontalContentAlignment" Value="Center" />
-    <Setter Property="VerticalContentAlignment" Value="Center" />
-    <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
-    <Setter Property="FontSize" Value="13" />
-    <Setter Property="FontWeight" Value="Medium" />
-    <Setter Property="Cursor" Value="Hand" />
-    <Setter Property="FocusAdorner">
-      <FocusAdornerTemplate>
-        <Border Margin="-4"
-                BorderThickness="2"
-                CornerRadius="12"
-                BorderBrush="{DynamicResource MmAccentBrush}"
-                AdornerLayer.IsClipEnabled="False" />
-      </FocusAdornerTemplate>
-    </Setter>
-  </Style>
-
-  <Style Selector="Button.mm-dialog-secondary">
-    <Setter Property="Background" Value="{DynamicResource MmTabBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
-  </Style>
-  <Style Selector="Button.mm-dialog-secondary:pointerover /template/ ContentPresenter, Button.mm-dialog-secondary:pressed /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
-  </Style>
-
-  <Style Selector="Button.mm-dialog-primary">
-    <Setter Property="Background" Value="{DynamicResource MmTextBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmBackgroundBrush}" />
-  </Style>
-  <Style Selector="Button.mm-dialog-primary:pointerover /template/ ContentPresenter, Button.mm-dialog-primary:pressed /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmTextBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmBackgroundBrush}" />
-    <Setter Property="Opacity" Value="0.88" />
-  </Style>
-
-  <!-- Экран ошибки открытия (A-LoadError): кнопки — те же, что в диалогах, на 2 px выше.
-       На время «Повторить» команда выключает кнопку, и Fluent перекрасил бы её в серый —
-       выключенное состояние задано явно: та же заливка, приглушённая. -->
-  <Style Selector="Button.mm-error-action">
-    <Setter Property="Height" Value="34" />
-    <Setter Property="Padding" Value="15,0" />
-  </Style>
-  <Style Selector="Button.mm-dialog-primary.mm-error-action:disabled /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmTextBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmBackgroundBrush}" />
-    <Setter Property="Opacity" Value="0.6" />
-  </Style>
-  <Style Selector="Button.mm-dialog-secondary.mm-error-action:disabled /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmTabBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
-    <Setter Property="Opacity" Value="0.6" />
-  </Style>
-
   <!-- Плашка с иконкой вида ошибки над заголовком -->
   <Style Selector="Border.mm-error-badge">
     <Setter Property="Width" Value="52" />
@@ -1247,43 +1348,6 @@
     <Setter Property="StrokeThickness" Value="1.5" />
     <Setter Property="HorizontalAlignment" Value="Center" />
     <Setter Property="VerticalAlignment" Value="Center" />
-  </Style>
-
-  <Style Selector="Button.mm-dialog-destructive">
-    <Setter Property="Background" Value="{DynamicResource MmAccentBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmElevatedBackgroundBrush}" />
-  </Style>
-  <Style Selector="Button.mm-dialog-destructive:pointerover /template/ ContentPresenter, Button.mm-dialog-destructive:pressed /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmAccentBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmElevatedBackgroundBrush}" />
-    <Setter Property="Opacity" Value="0.88" />
-  </Style>
-
-  <!-- Кнопка блока обновлений в окне «Настройки» сидит на заливке вкладки — обычная
-       кнопка берёт заливку наведения. Стоит после общих: из равных побеждает поздний. -->
-  <Style Selector="Border.mm-app-settings-update Button.mm-dialog-primary, Border.mm-app-settings-update Button.mm-dialog-secondary">
-    <Setter Property="Height" Value="30" />
-    <Setter Property="FontSize" Value="12.5" />
-  </Style>
-  <Style Selector="Border.mm-app-settings-update Button.mm-dialog-secondary">
-    <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
-  </Style>
-  <Style Selector="Border.mm-app-settings-update Button.mm-dialog-secondary:pointerover /template/ ContentPresenter, Border.mm-app-settings-update Button.mm-dialog-secondary:pressed /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmTabActiveBrush}" />
-  </Style>
-  <Style Selector="Border.mm-app-settings-update Button:disabled">
-    <Setter Property="Opacity" Value="0.6" />
-  </Style>
-
-  <!-- Кнопки стартового экрана (A-Welcome) — те же кнопки диалогов, на 2 px выше.
-       Цвета, наведение, нажатие и кольцо фокуса берутся у mm-dialog-primary/secondary,
-       здесь только размер. У кнопки с иконкой слева отступ меньше, как в макете. -->
-  <Style Selector="Button.welcome-action.mm-dialog-primary, Button.welcome-action.mm-dialog-secondary">
-    <Setter Property="Height" Value="34" />
-    <Setter Property="Padding" Value="15,0" />
-  </Style>
-  <Style Selector="Button.welcome-action.with-icon">
-    <Setter Property="Padding" Value="12,0,14,0" />
   </Style>
 
   <Style Selector="TextBlock.mm-md-heading">
@@ -1377,26 +1441,6 @@
     <Setter Property="Background" Value="{DynamicResource MmCodeBackgroundBrush}" />
   </Style>
 
-  <!--
-    Кнопка 24×24 с иконкой 13px; размеры и положение задаёт MarkdownDocumentView
-    (иконка выравнивается по подписи языка). В покое иконка того же тона, что и
-    подпись, — они читаются как пара; при наведении и фокусе с клавиатуры темнеет.
-    Фон и рамка видны только при наведении. В покое и фон, и рамка — цвета блока
-    кода, а не Transparent. У блока без языка кнопка стоит на первой строке кода,
-    и справа под неё оставлено место: длинная строка обрезается до кнопки.
-  -->
-  <Style Selector="Button.mm-code-copy-button">
-    <Setter Property="Background" Value="{DynamicResource MmCodeBackgroundBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmCodeBackgroundBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="6" />
-    <Setter Property="Padding" Value="0" />
-    <Setter Property="HorizontalContentAlignment" Value="Center" />
-    <Setter Property="VerticalContentAlignment" Value="Center" />
-    <Setter Property="Cursor" Value="Hand" />
-  </Style>
-
   <Style Selector="Button.mm-code-copy-button views|LucideIcon">
     <Setter Property="Data" Value="{DynamicResource LucideCopyGeometry}" />
   </Style>
@@ -1404,20 +1448,6 @@
   <!-- После копирования иконка ненадолго сменяется галочкой (класс ставит MarkdownDocumentView). -->
   <Style Selector="Button.mm-code-copy-button.copied views|LucideIcon">
     <Setter Property="Data" Value="{DynamicResource LucideCheckGeometry}" />
-  </Style>
-
-  <Style Selector="Button.mm-code-copy-button:pressed /template/ ContentPresenter, Button.mm-code-copy-button:disabled /template/ ContentPresenter">
-    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
-  </Style>
-
-  <!-- MmSurfaceBrush почти сливается с фоном блока кода, поэтому здесь Elevated. -->
-  <Style Selector="Button.mm-code-copy-button:pointerover /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
-  </Style>
-
-  <Style Selector="Button.mm-code-copy-button:pointerover /template/ ContentPresenter, Button.mm-code-copy-button:focus-visible /template/ ContentPresenter">
-    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
   </Style>
 
   <Style Selector="TextBlock.mm-md-code-info">

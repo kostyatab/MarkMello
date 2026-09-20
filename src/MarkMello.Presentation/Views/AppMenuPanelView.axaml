@@ -12,7 +12,7 @@
   <Border Classes="mm-settings-panel mm-popover-right mm-app-menu-panel">
     <StackPanel>
       <Button Name="MenuNewDocument"
-              Classes="mm-menu-command"
+              Classes="mm-list-item mm-menu-command"
               Command="{Binding CreateNewDocumentCommand}">
         <Grid ColumnDefinitions="*,Auto"
               ColumnSpacing="12">
@@ -23,7 +23,7 @@
         </Grid>
       </Button>
       <Button Name="MenuOpenFile"
-              Classes="mm-menu-command"
+              Classes="mm-list-item mm-menu-command"
               Command="{Binding OpenFileCommand}">
         <Grid ColumnDefinitions="*,Auto"
               ColumnSpacing="12">
@@ -34,7 +34,7 @@
         </Grid>
       </Button>
       <Button Name="MenuOpenFolder"
-              Classes="mm-menu-command"
+              Classes="mm-list-item mm-menu-command"
               Command="{Binding OpenFolderCommand}">
         <Grid ColumnDefinitions="*,Auto"
               ColumnSpacing="12">
@@ -46,7 +46,7 @@
       </Button>
       <Border Classes="mm-menu-separator" />
       <Button Name="MenuSave"
-              Classes="mm-menu-command"
+              Classes="mm-list-item mm-menu-command"
               Command="{Binding SaveCommand}">
         <Grid ColumnDefinitions="*,Auto"
               ColumnSpacing="12">
@@ -57,7 +57,7 @@
         </Grid>
       </Button>
       <Button Name="MenuSaveAs"
-              Classes="mm-menu-command"
+              Classes="mm-list-item mm-menu-command"
               Command="{Binding SaveAsCommand}">
         <Grid ColumnDefinitions="*,Auto"
               ColumnSpacing="12">
@@ -68,7 +68,7 @@
         </Grid>
       </Button>
       <Button Name="MenuReload"
-              Classes="mm-menu-command"
+              Classes="mm-list-item mm-menu-command"
               Command="{Binding ReloadCommand}">
         <Grid ColumnDefinitions="*,Auto"
               ColumnSpacing="12">
@@ -80,7 +80,7 @@
       </Button>
       <Border Classes="mm-menu-separator" />
       <Button Name="MenuFilesPanel"
-              Classes="mm-menu-command"
+              Classes="mm-list-item mm-menu-command"
               IsVisible="{Binding CanToggleSidebar}"
               Command="{Binding ToggleSidebarCommand}">
         <Grid ColumnDefinitions="*,Auto"
@@ -92,7 +92,7 @@
         </Grid>
       </Button>
       <Button Name="MenuCloseTab"
-              Classes="mm-menu-command"
+              Classes="mm-list-item mm-menu-command"
               Command="{Binding CloseActiveTabCommand}">
         <Grid ColumnDefinitions="*,Auto"
               ColumnSpacing="12">
@@ -103,7 +103,7 @@
         </Grid>
       </Button>
       <Button Name="MenuCloseFolder"
-              Classes="mm-menu-command"
+              Classes="mm-list-item mm-menu-command"
               IsVisible="{Binding CanCloseFolder}"
               Command="{Binding CloseFolderCommand}">
         <Grid ColumnDefinitions="*,Auto"
@@ -113,7 +113,7 @@
       </Button>
       <Border Classes="mm-menu-separator" />
       <Button Name="MenuSettings"
-              Classes="mm-menu-command"
+              Classes="mm-list-item mm-menu-command"
               Command="{Binding OpenAppSettingsCommand}">
         <Grid ColumnDefinitions="*,Auto"
               ColumnSpacing="12">
@@ -128,7 +128,7 @@
       <Border Classes="mm-menu-separator"
               IsVisible="{Binding ShowsAboutMenuItem}" />
       <Button Name="MenuAbout"
-              Classes="mm-menu-command"
+              Classes="mm-list-item mm-menu-command"
               IsVisible="{Binding ShowsAboutMenuItem}"
               Command="{Binding ShowAboutCommand}">
         <Grid ColumnDefinitions="*,Auto"

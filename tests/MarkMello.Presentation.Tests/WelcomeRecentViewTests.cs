@@ -200,8 +200,8 @@ public sealed class WelcomeRecentViewTests
                 var (window, view) = Show(harness, theme);
 
                 var buttons = view.GetVisualDescendants().OfType<Button>().ToList();
-                var primary = buttons.Single(static button => button.Classes.Contains("mm-dialog-primary"));
-                var chip = buttons.First(static button => button.Classes.Contains("mm-dialog-secondary"));
+                var primary = buttons.Single(static button => button.Classes.Contains("mm-action-primary"));
+                var chip = buttons.First(static button => button.Classes.Contains("mm-action-secondary"));
                 var clear = view.GetControl<Button>("RecentClearButton");
 
                 AssertPressedBackground(window, primary, "MmTextBrush");

@@ -305,9 +305,9 @@ public sealed class ModalDialogTests
     {
         return _fixture.Session.Dispatch(() =>
         {
-            var secondary = new Button { Classes = { "mm-dialog-secondary" }, Content = "Cancel" };
-            var primary = new Button { Classes = { "mm-dialog-primary" }, Content = "Save" };
-            var destructive = new Button { Classes = { "mm-dialog-destructive" }, Content = "Delete" };
+            var secondary = new Button { Classes = { "mm-action-secondary" }, Content = "Cancel" };
+            var primary = new Button { Classes = { "mm-action-primary" }, Content = "Save" };
+            var destructive = new Button { Classes = { "mm-action-destructive" }, Content = "Delete" };
             var frame = new ModalDialogFrame
             {
                 Content = new StackPanel { Children = { secondary, primary, destructive } }

@@ -96,7 +96,7 @@
                     Classes="mm-card-stepper">
               <StackPanel Orientation="Horizontal"
                           Spacing="2">
-                <Button Classes="mm-card-step"
+                <Button Classes="mm-icon-button mm-icon-button-raised mm-card-step"
                         Command="{Binding DecreaseTextSizeCommand}"
                         ToolTip.Tip="{Binding ReadingSizeDecreaseTooltip}">
                   <views:LucideIcon Data="{DynamicResource LucideMinusGeometry}"
@@ -105,7 +105,7 @@
                 </Button>
                 <TextBlock Classes="mm-card-step-value"
                            Text="{Binding FontSizeLabel}" />
-                <Button Classes="mm-card-step"
+                <Button Classes="mm-icon-button mm-icon-button-raised mm-card-step"
                         Command="{Binding IncreaseTextSizeCommand}"
                         ToolTip.Tip="{Binding ReadingSizeIncreaseTooltip}">
                   <views:LucideIcon Data="{DynamicResource LucidePlusGeometry}"
@@ -190,7 +190,7 @@
             «Ctrl+,» (Windows, Linux) подсказка не помещается и при 4 — тогда она
             не рисуется совсем, а не обрывается на полуслове.
           -->
-          <Button Classes="mm-card-footer"
+          <Button Classes="mm-list-item mm-card-footer"
                   Command="{Binding OpenAppSettingsCommand}">
             <Grid ColumnDefinitions="*,Auto,Auto"
                   ColumnSpacing="4">

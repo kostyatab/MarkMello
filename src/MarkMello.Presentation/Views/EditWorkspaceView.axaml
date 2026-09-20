@@ -27,7 +27,7 @@
             <StackPanel Grid.Column="0"
                         Orientation="Horizontal"
                         Spacing="2">
-              <Button Classes="mm-editor-toolbar-button"
+              <Button Classes="mm-icon-button mm-editor-toolbar-button"
                       Tag="Bold"
                       Click="OnFormatButtonClick"
                       ToolTip.Tip="{Binding EditorBoldTooltip}">
@@ -35,7 +35,7 @@
                                   Width="14"
                                   Height="14" />
               </Button>
-              <Button Classes="mm-editor-toolbar-button"
+              <Button Classes="mm-icon-button mm-editor-toolbar-button"
                       Tag="Italic"
                       Click="OnFormatButtonClick"
                       ToolTip.Tip="{Binding EditorItalicTooltip}">
@@ -43,7 +43,7 @@
                                   Width="14"
                                   Height="14" />
               </Button>
-              <Button Classes="mm-editor-toolbar-button"
+              <Button Classes="mm-icon-button mm-editor-toolbar-button"
                       Tag="Code"
                       Click="OnFormatButtonClick"
                       ToolTip.Tip="{Binding EditorCodeTooltip}">
@@ -52,7 +52,7 @@
                                   Height="14" />
               </Button>
               <Border Classes="mm-editor-toolbar-separator" />
-              <Button Classes="mm-editor-toolbar-button"
+              <Button Classes="mm-icon-button mm-editor-toolbar-button"
                       Tag="Link"
                       Click="OnFormatButtonClick"
                       ToolTip.Tip="{Binding EditorLinkTooltip}">
@@ -60,7 +60,7 @@
                                   Width="14"
                                   Height="14" />
               </Button>
-              <Button Classes="mm-editor-toolbar-button"
+              <Button Classes="mm-icon-button mm-editor-toolbar-button"
                       Tag="List"
                       Click="OnFormatButtonClick"
                       ToolTip.Tip="{Binding EditorListTooltip}">
@@ -68,7 +68,7 @@
                                   Width="14"
                                   Height="14" />
               </Button>
-              <Button Classes="mm-editor-toolbar-button"
+              <Button Classes="mm-icon-button mm-editor-toolbar-button"
                       Tag="Quote"
                       Click="OnFormatButtonClick"
                       ToolTip.Tip="{Binding EditorQuoteTooltip}">

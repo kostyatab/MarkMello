@@ -8,7 +8,9 @@
              x:Class="MarkMello.Presentation.Views.TabStripView"
              x:DataType="vm:ShellViewModel">
 
-  <!-- Стили полосы: она создаётся с первой вкладкой или папкой, до этого их незачем разбирать. -->
+  <!-- Здесь только вид самой полосы и правила, где вкладка управляет своими частями:
+       роли кнопок (крестик, «ещё N», пункты списка) живут в Themes/Controls.axaml.
+       Полоса создаётся с первой вкладкой или папкой, до этого эти стили не разбираются. -->
   <UserControl.Styles>
     <!-- ======================= Полоса вкладок ======================= -->
 
@@ -76,54 +78,15 @@
       <Setter Property="IsVisible" Value="False" />
     </Style>
 
-    <!-- Крестик не встаёт в обход по Tab: вкладку с клавиатуры закрывает ⌘W. -->
-    <Style Selector="Button.mm-tab-close">
-      <Setter Property="Width" Value="18" />
-      <Setter Property="Height" Value="18" />
-      <Setter Property="Padding" Value="0" />
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="CornerRadius" Value="5" />
-      <Setter Property="Focusable" Value="False" />
-      <Setter Property="IsVisible" Value="False" />
-      <Setter Property="Cursor" Value="Hand" />
-      <Setter Property="HorizontalContentAlignment" Value="Center" />
-      <Setter Property="VerticalContentAlignment" Value="Center" />
-    </Style>
+    <!-- Крестик (роль mm-icon-button) показывает вкладка: под курсором и активная -->
     <Style Selector="Border.mm-tab:pointerover Button.mm-tab-close, Border.mm-tab.active Button.mm-tab-close">
       <Setter Property="IsVisible" Value="True" />
-    </Style>
-    <!-- Своей подложки у крестика нет: Fluent красит её по состояниям кнопки -->
-    <Style Selector="Button.mm-tab-close:pointerover /template/ ContentPresenter, Button.mm-tab-close:pressed /template/ ContentPresenter">
-      <Setter Property="Background" Value="Transparent" />
     </Style>
     <Style Selector="Border.mm-tab Button.mm-tab-close:pointerover views|LucideIcon">
       <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
     </Style>
 
     <!-- ======================= «ещё N» ======================= -->
-
-    <!-- Плашка той же высоты и заливки, что вкладка; пока меню открыто — заливка активной. -->
-    <Style Selector="Button.mm-tab-overflow">
-      <Setter Property="Height" Value="30" />
-      <Setter Property="Padding" Value="10,0,8,0" />
-      <Setter Property="Background" Value="{DynamicResource MmTabBrush}" />
-      <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-      <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="CornerRadius" Value="8" />
-      <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
-      <Setter Property="FontSize" Value="13" />
-      <Setter Property="VerticalAlignment" Value="Center" />
-      <Setter Property="VerticalContentAlignment" Value="Center" />
-    </Style>
-    <Style Selector="Button.mm-tab-overflow:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
-      <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-    </Style>
-    <Style Selector="Button.mm-tab-overflow:pressed /template/ ContentPresenter, Button.mm-tab-overflow:flyout-open /template/ ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource MmTabActiveBrush}" />
-      <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
-    </Style>
 
     <Style Selector="Border.mm-tab-overflow-card">
       <Setter Property="Width" Value="236" />
@@ -151,40 +114,12 @@
       <Setter Property="TextTrimming" Value="CharacterEllipsis" />
     </Style>
 
-    <Style Selector="Button.mm-tab-overflow-item">
-      <Setter Property="HorizontalAlignment" Value="Stretch" />
-      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-      <Setter Property="Padding" Value="8,7" />
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="CornerRadius" Value="6" />
-      <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
-      <Setter Property="FontSize" Value="12.5" />
-      <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
-    </Style>
-    <Style Selector="Button.mm-tab-overflow-item:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
-      <Setter Property="CornerRadius" Value="6" />
-    </Style>
-
-    <!-- В меню крестик появляется под курсором и подменяет точку несохранённого -->
-    <Style Selector="Button.mm-tab-overflow-close">
-      <Setter Property="Width" Value="14" />
-      <Setter Property="Height" Value="14" />
-      <Setter Property="Padding" Value="0" />
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="CornerRadius" Value="3" />
-      <Setter Property="Opacity" Value="0" />
-      <Setter Property="Cursor" Value="Hand" />
-      <Setter Property="HorizontalContentAlignment" Value="Center" />
-      <Setter Property="VerticalContentAlignment" Value="Center" />
-    </Style>
     <!-- Цвет крестика не зависит от состояния кнопки, поэтому стоит на самой иконке:
          Foreground кнопки Fluent меняет по состояниям -->
     <Style Selector="Button.mm-tab-overflow-close views|LucideIcon">
       <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
     </Style>
+    <!-- В списке крестик проявляется под курсором строки и подменяет точку несохранённого -->
     <Style Selector="Button.mm-tab-overflow-item:pointerover Button.mm-tab-overflow-close">
       <Setter Property="Opacity" Value="1" />
     </Style>
@@ -242,7 +177,7 @@
                                         Width="16"
                                         Height="16" />
                     </Panel>
-                    <Button Classes="mm-tab-close"
+                    <Button Classes="mm-icon-button mm-icon-button-bare mm-tab-close"
                             Command="{Binding $parent[ItemsControl].((vm:ShellViewModel)DataContext).OpenDocuments.CloseCommand}"
                             CommandParameter="{Binding}">
                       <views:LucideIcon Data="{DynamicResource LucideXGeometry}"
@@ -293,7 +228,7 @@
                 <ItemsControl ItemsSource="{Binding OpenDocuments.OverflowTabs}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:DocumentTabViewModel">
-                      <Button Classes="mm-tab-overflow-item"
+                      <Button Classes="mm-list-item mm-tab-overflow-item"
                               Command="{Binding $parent[ItemsControl].((vm:ShellViewModel)DataContext).OpenDocuments.ActivateCommand}"
                               CommandParameter="{Binding}">
                         <Grid ColumnDefinitions="*,Auto"
@@ -311,7 +246,7 @@
                                      Width="6"
                                      Height="6"
                                      Fill="{DynamicResource MmAccentBrush}" />
-                            <Button Classes="mm-tab-overflow-close"
+                            <Button Classes="mm-icon-button mm-icon-button-bare mm-tab-overflow-close"
                                     Command="{Binding $parent[ItemsControl].((vm:ShellViewModel)DataContext).OpenDocuments.CloseCommand}"
                                     CommandParameter="{Binding}">
                               <views:LucideIcon Data="{DynamicResource LucideXGeometry}"
@@ -329,7 +264,7 @@
                       StartPoint="0,0.5"
                       EndPoint="1,0.5" />
 
-                <Button Classes="mm-tab-overflow-item"
+                <Button Classes="mm-list-item mm-tab-overflow-item"
                         Content="{Binding TabsCloseOthers}"
                         Command="{Binding OpenDocuments.CloseOthersCommand}"
                         CommandParameter="{Binding OpenDocuments.ActiveTab}" />
@@ -341,7 +276,7 @@
 
       <!-- «+» — новый документ, то же, что ⌘N; без меню -->
       <Button Name="NewDocumentButton"
-              Classes="mm-row-button"
+              Classes="mm-icon-button mm-row-button"
               Command="{Binding CreateNewDocumentCommand}"
               ToolTip.Tip="{Binding NewDocumentTooltip}">
         <views:LucideIcon Data="{DynamicResource LucidePlusGeometry}"

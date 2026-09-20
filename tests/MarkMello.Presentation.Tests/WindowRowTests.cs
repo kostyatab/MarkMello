@@ -265,6 +265,7 @@ public sealed class WindowRowTests
         return _fixture.Session.Dispatch(() =>
         {
             var button = new ToggleButton { Content = new LucideIcon { Width = 14, Height = 14 } };
+            button.Classes.Add("mm-icon-button");
             button.Classes.Add("mm-row-button");
             var window = ThemedTestWindow.Create(theme == "Dark" ? ThemeVariant.Dark : ThemeVariant.Light, button);
             window.Show();

@@ -12,18 +12,18 @@
   <Border Classes="mm-settings-panel mm-popover-left mm-sidebar-menu-panel">
     <StackPanel>
       <Button Name="FolderMenuOpenAnotherFolder"
-              Classes="mm-menu-command"
+              Classes="mm-list-item mm-menu-command"
               Command="{Binding OpenFolderCommand}">
         <TextBlock Text="{Binding SidebarOpenAnotherFolder}" />
       </Button>
       <Button Name="FolderMenuReveal"
-              Classes="mm-menu-command"
+              Classes="mm-list-item mm-menu-command"
               Command="{Binding Workspace.RevealRootCommand}">
         <TextBlock Text="{Binding TreeRevealInExplorer}" />
       </Button>
       <Border Classes="mm-menu-separator" />
       <Button Name="FolderMenuCloseFolder"
-              Classes="mm-menu-command"
+              Classes="mm-list-item mm-menu-command"
               Command="{Binding CloseFolderCommand}">
         <TextBlock Text="{Binding AppMenuCloseFolderLabel}" />
       </Button>
