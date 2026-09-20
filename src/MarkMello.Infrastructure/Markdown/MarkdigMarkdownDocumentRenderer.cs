@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using Markdig;
 using MarkdigMarkdown = Markdig.Markdown;
 using Markdig.Extensions.Alerts;
+using Markdig.Extensions.EmphasisExtras;
 using Markdig.Extensions.Footnotes;
 using Markdig.Extensions.Tables;
 using Markdig.Extensions.TaskLists;
@@ -24,10 +25,30 @@ namespace MarkMello.Infrastructure.Markdown;
 /// </summary>
 public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
 {
+    // Расширения перечислены поимённо, а не через UseAdvancedExtensions(): там их 19,
+    // и те, что конвертер в доменную модель не понимает, теряют текст. Markdig съедает
+    // маркер (`{x}`, `:::`, `^^^`, `^^`) или отдаёт узел без ветки (`$x$`, сокращения),
+    // и читатель видит дырку в абзаце. Берём только то, что доходит до модели целиком;
+    // остальное должно остаться исходным текстом, как на GitHub.
     private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
-        .UseAdvancedExtensions()
-        // Front matter не входит в UseAdvancedExtensions. Без расширения первые
+        .UseAlertBlocks()
+        .UseDefinitionLists()
+        .UseFootnotes()
+        .UseGridTables()
+        .UsePipeTables()
+        // Списки `a.` и `i.` без расширения схлопываются в один абзац. Свои маркеры —
+        // MM-47, пока буква показывается цифрой.
+        .UseListExtras()
+        .UseTaskLists()
+        .UseAutoLinks()
+        // Subscript — ради разбора одиночной тильды: `~s~` зачёркиваем, как GitHub
+        // (см. ветку EmphasisInline). Остальное из EmphasisExtras (`==`, `++`, `^`)
+        // осталось бы жирным или курсивом вместо исходного текста.
+        .UseEmphasisExtras(EmphasisExtraOptions.Strikethrough | EmphasisExtraOptions.Subscript)
+        // Front matter не входил и в UseAdvancedExtensions. Без расширения первые
         // `---` становятся горизонтальной линией, а метаданные — setext-заголовком.
+        // Идёт последним: парсер встаёт в начало списка блочных и должен опережать
+        // парсер definition list, который туда же встаёт раньше.
         .UseYamlFrontMatter()
         .Build();
 
@@ -641,7 +662,9 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
 
             case EmphasisInline emphasis:
                 var children = ConvertInlines(emphasis);
-                if (emphasis.DelimiterChar == '~' && emphasis.DelimiterCount == 2)
+                // Тильда зачёркивает при любом числе разделителей: `~~s~~` — GFM,
+                // а `~s~` Markdig разбирает как Subscript, и GitHub его тоже зачёркивает.
+                if (emphasis.DelimiterChar == '~')
                 {
                     target.Add(new MarkdownStrikethroughInline(children));
                 }
