@@ -173,9 +173,7 @@ public sealed class SidebarMenuCardTests
                 "mm-menu-destructive",
                 Item(window, "TreeContextMenuPanel", "TreeMenuDelete").Classes);
 
-            var panel = window.GetControl<ContentControl>("TreeContextMenuPanel");
-            Assert.Equal(point.X, panel.Bounds.X, 0);
-            Assert.Equal(point.Y, panel.Bounds.Y, 0);
+            AssertCardStartsAt(window, "TreeContextMenuPanel", point);
 
             Click(window, Item(window, "TreeContextMenuPanel", "TreeMenuRename"));
 
@@ -198,19 +196,17 @@ public sealed class SidebarMenuCardTests
         return _fixture.RunAsync(async () =>
         {
             var (window, viewModel) = await ShowWithFolderAsync();
-            var panel = window.GetControl<ContentControl>("TreeContextMenuPanel");
 
             // Вторая строка — выше первой: карточка раскрывается вниз и накрыла бы её.
             var first = RightClick(window, Row(window, "notes.md"));
             Assert.True(viewModel.IsTreeContextMenuOpen);
-            Assert.Equal(first.Y, panel.Bounds.Y, 0);
+            AssertCardStartsAt(window, "TreeContextMenuPanel", first);
 
             var second = RightClick(window, Row(window, "README.md"));
 
             Assert.True(viewModel.IsTreeContextMenuOpen);
             Assert.Same(Row(window, "README.md").DataContext, viewModel.TreeContextNode);
-            Assert.Equal(second.X, panel.Bounds.X, 0);
-            Assert.Equal(second.Y, panel.Bounds.Y, 0);
+            AssertCardStartsAt(window, "TreeContextMenuPanel", second);
             Assert.NotEqual(first.Y, second.Y);
 
             window.Hide();
@@ -325,12 +321,46 @@ public sealed class SidebarMenuCardTests
                 var origin = button.TranslatePoint(default, window)!.Value;
                 Click(window, button);
 
-                var card = window.GetControl<ContentControl>(
-                    name == "FolderMenuButton" ? "FolderMenuPanel" : "CreateMenuPanel");
-                Assert.True(card.Bounds.Width > 0, name);
-                Assert.Equal(origin.X, card.Bounds.X, 0);
-                Assert.Equal(origin.Y + button.Bounds.Height + 6, card.Bounds.Y, 0);
+                var panel = name == "FolderMenuButton" ? "FolderMenuPanel" : "CreateMenuPanel";
+                Assert.True(window.GetControl<ContentControl>(panel).Bounds.Width > 0, name);
+                AssertCardStartsAt(
+                    window,
+                    panel,
+                    new Point(origin.X, origin.Y + button.Bounds.Height + 6),
+                    name);
             }
+
+            window.Hide();
+        });
+    }
+
+    /// <summary>
+    /// Рамка окна сдвигает слой карточек на свою толщину внутрь окна — на Windows она
+    /// есть по умолчанию (<see cref="MainWindow.ShouldDrawWindowBorder"/>). Карточка
+    /// всё равно обязана встать под кнопкой: якорь переводится в координаты слоя.
+    /// Рамка включается явно, чтобы геометрия Windows проверялась на любой платформе.
+    /// </summary>
+    [Fact]
+    public Task CardsLineUpWithTheirButtonsInsideTheWindowBorder()
+    {
+        return _fixture.RunAsync(async () =>
+        {
+            var (window, viewModel) = await ShowWithFolderAsync();
+            viewModel.WindowBorderMode = WindowBorderMode.On;
+            Render(window);
+
+            var host = window.GetControl<Panel>("SidebarMenuHost");
+            var inset = host.TranslatePoint(default, window)!.Value;
+            Assert.Equal(1, inset.X, 0);
+
+            var button = Trigger(window, "FolderMenuButton");
+            var origin = button.TranslatePoint(default, window)!.Value;
+            Click(window, button);
+
+            AssertCardStartsAt(
+                window,
+                "FolderMenuPanel",
+                new Point(origin.X, origin.Y + button.Bounds.Height + 6));
 
             window.Hide();
         });
@@ -416,6 +446,21 @@ public sealed class SidebarMenuCardTests
             .GetVisualDescendants()
             .OfType<Border>()
             .Single(static border => border.Classes.Contains("mm-sidebar-menu-panel"));
+
+    /// <summary>
+    /// Карточка сравнивается с якорем в координатах окна: сам слой карточек лежит
+    /// внутри рамки окна, поэтому там, где рамку рисуют, его Bounds смещены на её
+    /// толщину — сравнение Bounds карточки с точкой в координатах окна ловило бы
+    /// толщину рамки, а не расхождение карточки с кнопкой.
+    /// </summary>
+    private static void AssertCardStartsAt(Window window, string panelName, Point expected, string? what = null)
+    {
+        var card = window.GetControl<ContentControl>(panelName);
+        var actual = card.TranslatePoint(default, window)!.Value;
+        Assert.True(
+            Math.Abs(expected.X - actual.X) < 0.5 && Math.Abs(expected.Y - actual.Y) < 0.5,
+            $"{panelName}{(what is null ? string.Empty : $" ({what})")}: expected {expected}, actual {actual}");
+    }
 
     private static Button Trigger(Window window, string name)
         => window.GetVisualDescendants().OfType<Button>().Single(button => button.Name == name);
