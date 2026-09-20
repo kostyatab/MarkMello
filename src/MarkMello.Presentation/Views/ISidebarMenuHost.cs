@@ -11,10 +11,10 @@ internal interface ISidebarMenuHost
 {
     /// <summary>
     /// Запомнить, от чего раскрывается следующее меню: <paramref name="anchor"/> — рамка
-    /// кнопки или точка клика в координатах <paramref name="source"/>,
-    /// <paramref name="alignRight"/> — карточка прижимается к её правому краю, а не к левому.
+    /// кнопки или точка клика в координатах <paramref name="source"/>. Карточка встаёт
+    /// под якорем, выровненная по его левому краю.
     /// </summary>
-    void AnchorSidebarMenu(Visual source, Rect anchor, bool alignRight);
+    void AnchorSidebarMenu(Visual source, Rect anchor);
 
     /// <summary>Перевести фокус в открытую карточку — для меню, вызванного с клавиатуры.</summary>
     void FocusSidebarMenu();

@@ -9,7 +9,7 @@
                     ClipToBounds="False"
                     x:DataType="vm:ShellViewModel">
   <!-- Меню «+» (ADR-0009 Rule 4): создание в открытой папке -->
-  <Border Classes="mm-settings-panel mm-popover-right mm-sidebar-menu-panel">
+  <Border Classes="mm-settings-panel mm-popover-left mm-sidebar-menu-panel">
     <StackPanel>
       <Button Name="CreateMenuNewFile"
               Classes="mm-menu-command"

@@ -90,11 +90,11 @@ public partial class WorkspaceSidebarView : UserControl
             return;
         }
 
-        AnchorMenuTo(FolderMenuButton, alignRight: false);
+        AnchorMenuTo(FolderMenuButton);
         viewModel.ToggleFolderMenuCommand.Execute(null);
     }
 
-    /// <summary>Меню «+» прижимается к правому краю своей кнопки — как и раньше.</summary>
+    /// <summary>Меню «+» раскрывается от левого края своей кнопки, как и меню папки.</summary>
     private void OnCreateMenuButtonClick(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not ShellViewModel viewModel)
@@ -102,7 +102,7 @@ public partial class WorkspaceSidebarView : UserControl
             return;
         }
 
-        AnchorMenuTo(CreateMenuButton, alignRight: true);
+        AnchorMenuTo(CreateMenuButton);
         viewModel.ToggleCreateMenuCommand.Execute(null);
     }
 
@@ -138,21 +138,21 @@ public partial class WorkspaceSidebarView : UserControl
         e.Handled = true;
     }
 
-    private void AnchorMenuTo(Control trigger, bool alignRight)
+    private void AnchorMenuTo(Control trigger)
     {
         if (trigger.TranslatePoint(default, (Visual)this) is not { } origin)
         {
             return;
         }
 
-        SetMenuAnchor(new Rect(origin, trigger.Bounds.Size), alignRight);
+        SetMenuAnchor(new Rect(origin, trigger.Bounds.Size));
     }
 
     /// <summary>Меню у курсора: якорь без высоты, поэтому карточка встаёт прямо под точкой.</summary>
-    private void AnchorMenuAt(Point point) => SetMenuAnchor(new Rect(point, default(Size)), alignRight: false);
+    private void AnchorMenuAt(Point point) => SetMenuAnchor(new Rect(point, default(Size)));
 
-    private void SetMenuAnchor(Rect anchorInSidebar, bool alignRight)
-        => MenuHost()?.AnchorSidebarMenu(this, anchorInSidebar, alignRight);
+    private void SetMenuAnchor(Rect anchorInSidebar)
+        => MenuHost()?.AnchorSidebarMenu(this, anchorInSidebar);
 
     private ISidebarMenuHost? MenuHost() => TopLevel.GetTopLevel(this) as ISidebarMenuHost;
 
@@ -251,7 +251,7 @@ public partial class WorkspaceSidebarView : UserControl
             .FirstOrDefault(item => ReferenceEquals(item.DataContext, node));
         if (row is not null && row.TranslatePoint(default, (Visual)this) is { } origin)
         {
-            SetMenuAnchor(new Rect(origin, new Size(row.Bounds.Width, RowAnchorHeight)), alignRight: false);
+            SetMenuAnchor(new Rect(origin, new Size(row.Bounds.Width, RowAnchorHeight)));
         }
 
         viewModel.OpenTreeContextMenuCommand.Execute(node);

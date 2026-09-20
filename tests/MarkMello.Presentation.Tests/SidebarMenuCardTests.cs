@@ -308,6 +308,34 @@ public sealed class SidebarMenuCardTests
         });
     }
 
+    /// <summary>
+    /// Обе карточки встают под своей кнопкой, выровненные по её левому краю: размер
+    /// карточки в момент открытия ещё неизвестен, поэтому проверяем нарисованные границы.
+    /// </summary>
+    [Fact]
+    public Task CardsLineUpWithTheirButtons()
+    {
+        return _fixture.RunAsync(async () =>
+        {
+            var (window, _) = await ShowWithFolderAsync();
+
+            foreach (var name in (string[])["FolderMenuButton", "CreateMenuButton"])
+            {
+                var button = Trigger(window, name);
+                var origin = button.TranslatePoint(default, window)!.Value;
+                Click(window, button);
+
+                var card = window.GetControl<ContentControl>(
+                    name == "FolderMenuButton" ? "FolderMenuPanel" : "CreateMenuPanel");
+                Assert.True(card.Bounds.Width > 0, name);
+                Assert.Equal(origin.X, card.Bounds.X, 0);
+                Assert.Equal(origin.Y + button.Bounds.Height + 6, card.Bounds.Y, 0);
+            }
+
+            window.Hide();
+        });
+    }
+
     /// <summary>Меню строки открывается и с клавиатуры: ⇧F10 — как было у попапа.</summary>
     [Fact]
     public Task ShiftF10OpensTheTreeContextMenu()
@@ -344,25 +372,27 @@ public sealed class SidebarMenuCardTests
         // Под кнопкой: левый край карточки — левый край кнопки, зазор 6 снизу.
         Assert.Equal(
             new Thickness(11, 46, 0, 0),
-            MainWindow.CalculateSidebarMenuMargin(new Rect(11, 12, 120, 28), alignRight: false, card, limits));
+            MainWindow.CalculateSidebarMenuMargin(new Rect(11, 12, 120, 28), card, limits));
 
-        // Прижата к правому краю кнопки: карточка шире сайдбара упирается в край окна.
+        // Кнопка у правого края сайдбара: карточка сдвигается внутрь окна.
         Assert.Equal(
-            new Thickness(8, 46, 0, 0),
-            MainWindow.CalculateSidebarMenuMargin(new Rect(11, 12, 120, 28), alignRight: true, card, limits));
-        Assert.Equal(
-            new Thickness(120, 46, 0, 0),
-            MainWindow.CalculateSidebarMenuMargin(new Rect(200, 12, 120, 28), alignRight: true, card, limits));
+            new Thickness(192, 46, 0, 0),
+            MainWindow.CalculateSidebarMenuMargin(new Rect(300, 12, 30, 28), card, limits));
 
         // У курсора: карточка не вылезает ни за правый край, ни за низ.
         Assert.Equal(
             new Thickness(192, 432, 0, 0),
-            MainWindow.CalculateSidebarMenuMargin(new Rect(new Point(380, 560), default(Size)), alignRight: false, card, limits));
+            MainWindow.CalculateSidebarMenuMargin(new Rect(new Point(380, 560), default(Size)), card, limits));
+
+        // Пока карточка не измерена, края окна её не двигают — поправит раскладка.
+        Assert.Equal(
+            new Thickness(380, 560, 0, 0),
+            MainWindow.CalculateSidebarMenuMargin(new Rect(new Point(380, 560), default(Size)), default, limits));
 
         // В окне ниже карточки верх важнее низа: меню не уезжает за строку окна.
         Assert.Equal(
             new Thickness(8, 8, 0, 0),
-            MainWindow.CalculateSidebarMenuMargin(new Rect(new Point(0, 0), default(Size)), alignRight: false, card, new Rect(8, 8, 100, 100)));
+            MainWindow.CalculateSidebarMenuMargin(new Rect(new Point(0, 0), default(Size)), card, new Rect(8, 8, 100, 100)));
     }
 
     private static ContentPresenter Presenter(Button button)

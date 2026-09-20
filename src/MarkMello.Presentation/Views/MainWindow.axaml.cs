@@ -63,11 +63,11 @@ public partial class MainWindow : Window, ISidebarMenuHost
     private bool _allowConfirmedClose;
     private IFindHost? _findHost;
     private Rect _sidebarMenuAnchor;
-    private bool _sidebarMenuAlignRight;
     private Panel? _sidebarMenuHost;
     private IReadOnlyList<ContentControl> _sidebarMenuPanels = [];
     private InputElement? _sidebarMenuFocusReturn;
     private bool _sidebarMenuWasOpen;
+    private bool _watchesSidebarMenuLayout;
 
     public MainWindow()
     {
@@ -227,7 +227,7 @@ public partial class MainWindow : Window, ISidebarMenuHost
     /// переводится в координаты слоя карточек: сам слой лежит внутри рамки окна и на
     /// пиксель её толщины смещён относительно окна.
     /// </summary>
-    void ISidebarMenuHost.AnchorSidebarMenu(Visual source, Rect anchor, bool alignRight)
+    void ISidebarMenuHost.AnchorSidebarMenu(Visual source, Rect anchor)
     {
         if (_sidebarMenuHost is not { } host || source.TranslatePoint(anchor.Position, host) is not { } origin)
         {
@@ -235,7 +235,6 @@ public partial class MainWindow : Window, ISidebarMenuHost
         }
 
         _sidebarMenuAnchor = new Rect(origin, anchor.Size);
-        _sidebarMenuAlignRight = alignRight;
         ApplySidebarMenuPlacement();
     }
 
@@ -290,6 +289,31 @@ public partial class MainWindow : Window, ISidebarMenuHost
         }
     }
 
+    /// <summary>
+    /// Пока меню открыто, позиция пересчитывается на каждой раскладке: размер карточки
+    /// становится известен только после неё, а до тех пор край держится выравниванием.
+    /// </summary>
+    private void SyncSidebarMenuLayoutWatch()
+    {
+        var isOpen = HasOpenSidebarMenu;
+        if (isOpen == _watchesSidebarMenuLayout)
+        {
+            return;
+        }
+
+        _watchesSidebarMenuLayout = isOpen;
+        if (isOpen)
+        {
+            LayoutUpdated += OnSidebarMenuLayoutUpdated;
+        }
+        else
+        {
+            LayoutUpdated -= OnSidebarMenuLayoutUpdated;
+        }
+    }
+
+    private void OnSidebarMenuLayoutUpdated(object? sender, EventArgs e) => ApplySidebarMenuPlacement();
+
     private void PlaceSidebarMenuCard(ContentControl panel)
     {
         if (panel.Content is null || _sidebarMenuHost is not { } host)
@@ -297,16 +321,18 @@ public partial class MainWindow : Window, ISidebarMenuHost
             return;
         }
 
-        // Размер карточки нужен до раскладки, поэтому она меряется здесь: без поля,
-        // чтобы в DesiredSize не попал прошлый отступ.
-        panel.Margin = default;
-        panel.Measure(Size.Infinity);
-
-        panel.Margin = CalculateSidebarMenuMargin(
+        // Левый край карточки — левый край якоря, для него размер не нужен: он нужен
+        // только краям окна, а там позицию уточнит раскладка. Размер карточки в момент
+        // открытия ещё нулевой — presenter получает содержимое позже нашего уведомления.
+        var margin = CalculateSidebarMenuMargin(
             _sidebarMenuAnchor,
-            _sidebarMenuAlignRight,
-            panel.DesiredSize,
+            panel.Bounds.Size,
             new Rect(host.Bounds.Size).Deflate(SidebarMenuWindowInset));
+
+        if (panel.Margin != margin)
+        {
+            panel.Margin = margin;
+        }
     }
 
     /// <summary>
@@ -350,20 +376,17 @@ public partial class MainWindow : Window, ISidebarMenuHost
         => _sidebarMenuPanels.Any(panel => panel.Content is not null && IsWithinVisual(source, panel));
 
     /// <summary>
-    /// Карточка встаёт под якорем — кнопкой или точкой клика — и остаётся внутри окна:
-    /// у нижнего края она поднимается, у правого сдвигается влево, а не обрезается.
+    /// Карточка встаёт под якорем — кнопкой или точкой клика — левым краем по его левому
+    /// краю и остаётся внутри окна: у нижнего края она поднимается, у правого сдвигается
+    /// влево, а не обрезается. Пока карточка не измерена, края окна её не двигают:
+    /// поправит следующая раскладка, когда размер уже известен.
     /// </summary>
-    internal static Thickness CalculateSidebarMenuMargin(Rect anchor, bool alignRight, Size card, Rect limits)
-    {
-        var left = alignRight ? anchor.Right - card.Width : anchor.X;
-        var top = anchor.Bottom + (anchor.Height > 0 ? OverlayCardGap : 0);
-
-        return new Thickness(
-            Clamp(left, limits.X, limits.Right - card.Width),
-            Clamp(top, limits.Y, limits.Bottom - card.Height),
+    internal static Thickness CalculateSidebarMenuMargin(Rect anchor, Size card, Rect limits)
+        => new(
+            Clamp(anchor.X, limits.X, limits.Right - card.Width),
+            Clamp(anchor.Bottom + (anchor.Height > 0 ? OverlayCardGap : 0), limits.Y, limits.Bottom - card.Height),
             0,
             0);
-    }
 
     /// <summary>В окне меньше карточки нижняя граница уходит выше верхней — держимся верхней.</summary>
     private static double Clamp(double value, double min, double max)
@@ -566,6 +589,12 @@ public partial class MainWindow : Window, ISidebarMenuHost
         foreach (var panel in _sidebarMenuPanels)
         {
             panel.PropertyChanged -= OnSidebarMenuPanelPropertyChanged;
+        }
+
+        if (_watchesSidebarMenuLayout)
+        {
+            LayoutUpdated -= OnSidebarMenuLayoutUpdated;
+            _watchesSidebarMenuLayout = false;
         }
 
         Closing -= OnWindowClosing;
@@ -892,6 +921,7 @@ public partial class MainWindow : Window, ISidebarMenuHost
         {
             SyncOverlayWindowClasses();
             SyncSidebarMenuFocus();
+            SyncSidebarMenuLayoutWatch();
             return;
         }
 
