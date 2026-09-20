@@ -20,8 +20,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia.Desktop" Version="12.1.2" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
   </ItemGroup>
 
   <!-- Apple's linker asserts on large addends in arm64 AOT objects before .NET 10.0.12 (dotnet/runtime#119380). -->
