@@ -9,9 +9,9 @@ namespace MarkMello.Presentation.Views;
 /// <summary>
 /// Иконка Lucide: геометрия из <c>Themes/Icons.axaml</c> в исходной сетке 24×24,
 /// вписанная в заданные <c>Width</c>/<c>Height</c>. Рисуется как в оригинале:
-/// скруглённые концы и стыки, без заливки. Обводка задана в пикселях готовой
-/// иконки (<see cref="StrokeThickness"/>), а не в единицах сетки, поэтому линия
-/// одинаковой толщины у значка любого размера.
+/// скруглённые концы и стыки, без заливки. Обводка (<see cref="StrokeThickness"/>)
+/// задана в единицах сетки и масштабируется вместе со значком, как
+/// <c>stroke-width</c> у SVG с <c>viewBox="0 0 24 24"</c>.
 /// </summary>
 /// <remarks>
 /// Цвет наследуется через <see cref="TextElement.ForegroundProperty"/>, как у текста:
@@ -29,10 +29,10 @@ public sealed class LucideIcon : Control
 {
     private const double GridSize = 24;
 
-    /// <summary>Обводка иконки оболочки в пикселях — как на холсте «Варианта A».</summary>
+    /// <summary>Обводка иконки оболочки — 1.75 единицы сетки, как на холсте «Варианта A».</summary>
     private const double DefaultStrokeThickness = 1.75;
 
-    /// <summary>Каноничная обводка Lucide в единицах сетки 24 — ею рисует документ.</summary>
+    /// <summary>Каноничная обводка Lucide — 2 единицы сетки; ею рисует документ.</summary>
     private const double CanonicalStrokeThickness = 2;
 
     public static readonly StyledProperty<Geometry?> DataProperty =
@@ -45,7 +45,6 @@ public sealed class LucideIcon : Control
         TextElement.ForegroundProperty.AddOwner<LucideIcon>();
 
     private Pen? _pen;
-    private double _penSide;
 
     static LucideIcon()
     {
@@ -67,8 +66,8 @@ public sealed class LucideIcon : Control
     }
 
     /// <summary>
-    /// Толщина обводки в пикселях нарисованной иконки. Крупным значкам ставят
-    /// меньше (1.5), иначе линия выглядит жирнее, чем у соседей.
+    /// Толщина обводки в единицах сетки 24. Крупным значкам холст ставит меньше
+    /// (1.5): при том же правиле линия у них иначе выглядела бы тяжелее.
     /// </summary>
     public double StrokeThickness
     {
@@ -85,20 +84,7 @@ public sealed class LucideIcon : Control
             return;
         }
 
-        var side = Math.Min(Bounds.Width, Bounds.Height);
-        if (side <= 0)
-        {
-            return;
-        }
-
-        // Сетка масштабируется вместе с пером, поэтому заданную в пикселях обводку
-        // переводим обратно в единицы сетки: чем крупнее значок, тем тоньше перо.
-        if (_pen is null || _penSide != side)
-        {
-            _pen = CreatePen(foreground, StrokeThickness * GridSize / side);
-            _penSide = side;
-        }
-
+        _pen ??= CreatePen(foreground, StrokeThickness);
         Draw(context, data, _pen, Bounds.Size);
     }
 

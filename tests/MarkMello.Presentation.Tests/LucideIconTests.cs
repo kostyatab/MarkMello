@@ -9,8 +9,8 @@ namespace MarkMello.Presentation.Tests;
 
 /// <summary>
 /// Контрол, которым нарисованы все иконки интерфейса: размер задаёт разметка,
-/// цвет — кнопка, а обводка держится заданной толщины в пикселях независимо
-/// от размера значка.
+/// цвет — кнопка, а обводка задана в единицах сетки 24 и масштабируется вместе
+/// со значком, как stroke-width у SVG.
 /// </summary>
 [Collection(AvaloniaHeadlessTestGroup.Name)]
 public sealed class LucideIconTests
@@ -81,8 +81,7 @@ public sealed class LucideIconTests
 
     /// <summary>
     /// Геометрия рисуется на сетке 24 со скруглёнными концами и стыками, без заливки;
-    /// масштаб — сторона иконки к 24. Перо задано в единицах сетки так, чтобы после
-    /// масштабирования линия вышла заданной толщины в пикселях.
+    /// масштаб — сторона иконки к 24, перо — 1.75 единицы сетки по умолчанию.
     /// </summary>
     [Theory]
     [InlineData(24, 24, 1, 0, 0)]
@@ -108,22 +107,23 @@ public sealed class LucideIconTests
             Assert.Equal(Matrix.CreateScale(expectedScale, expectedScale) * Matrix.CreateTranslation(expectedOffsetX, expectedOffsetY), transform);
             Assert.Equal(data.Bounds, Assert.IsAssignableFrom<Geometry>(drawing.Geometry).Bounds);
             Assert.Null(drawing.Brush);
-            Assert.Equal(1.75, pen.Thickness * expectedScale, 6);
+            Assert.Equal(1.75, pen.Thickness);
             Assert.Equal(PenLineCap.Round, pen.LineCap);
             Assert.Equal(PenLineJoin.Round, pen.LineJoin);
         }, CancellationToken.None);
     }
 
     /// <summary>
-    /// Регресс: обводка задавалась в единицах сетки и росла вместе со значком —
-    /// иконка 28 px выходила вдвое жирнее иконки 14 px. Теперь толщина в пикселях
-    /// та, что задана, а крупным значкам её можно убавить.
+    /// Регресс: обводку однажды перевели в пиксели, и значки 12–14 px стали заметно
+    /// жирнее — на холсте 1.75 стоит у SVG с сеткой 24, то есть это единицы сетки.
+    /// Перо в единицах сетки одно и то же при любом размере, а в пикселях линия
+    /// выходит тоньше у мелких значков: 14 px → 1.02, 28 px со значением 1.5 → 1.75.
     /// </summary>
     [Theory]
-    [InlineData(14, 1.75)]
-    [InlineData(24, 1.75)]
-    [InlineData(28, 1.5)]
-    public Task KeepsTheStrokeAtTheGivenWidthInPixels(double size, double strokeThickness)
+    [InlineData(14, 1.75, 1.75 * 14 / 24)]
+    [InlineData(24, 1.75, 1.75)]
+    [InlineData(28, 1.5, 1.5 * 28 / 24)]
+    public Task ScalesTheStrokeWithTheIconLikeSvgDoes(double size, double strokeThickness, double expectedPixels)
     {
         return _fixture.Session.Dispatch(() =>
         {
@@ -139,7 +139,8 @@ public sealed class LucideIconTests
             var (transform, drawing) = RenderOnce(icon);
             var pen = Assert.IsAssignableFrom<IPen>(drawing.Pen);
 
-            Assert.Equal(strokeThickness, pen.Thickness * transform.M11, 6);
+            Assert.Equal(strokeThickness, pen.Thickness);
+            Assert.Equal(expectedPixels, pen.Thickness * transform.M11, 6);
         }, CancellationToken.None);
     }
 
