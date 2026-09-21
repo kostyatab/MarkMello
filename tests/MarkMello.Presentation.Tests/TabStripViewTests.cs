@@ -19,7 +19,7 @@ namespace MarkMello.Presentation.Tests;
 
 /// <summary>
 /// Полоса вкладок по спецификации A-Tabs (ADR-0009 Rule 3): плашки с заливкой по
-/// состоянию, иконка или крестик слева, точка несохранённого справа, «+» после
+/// состоянию, иконка или крестик слева, точка несохранённого перед именем, «+» после
 /// вкладок. Биндинги на команды идут через $parent[ItemsControl] и в unit-тестах
 /// view-model не проверяются вовсе.
 /// </summary>
@@ -88,7 +88,7 @@ public sealed class TabStripViewTests
                 Assert.Equal(new CornerRadius(8), tab.CornerRadius);
                 Assert.Equal(default, tab.BorderThickness);
                 Assert.Equal(13, Name(tab).FontSize);
-                Assert.Equal(TextTrimming.CharacterEllipsis, Name(tab).TextTrimming);
+                Assert.Equal(TextTrimming.None, Name(tab).TextTrimming);
             }
 
             Assert.Same(Resource(window, "MmTabActiveBrush"), active.Background);
@@ -116,11 +116,12 @@ public sealed class TabStripViewTests
     }
 
     /// <summary>
-    /// Слева — иконка файла 16; у активной вкладки и под курсором на её месте крестик 14.
-    /// Точка несохранённого справа, и крестик её не подменяет.
+    /// Слева — иконка файла 16 в ячейке 18; у активной вкладки и под курсором на её месте
+    /// крестик 14. Точка несохранённого — 6 px по центру промежутка перед именем, и
+    /// крестик её не подменяет.
     /// </summary>
     [Fact]
-    public Task CloseButtonTakesTheIconPlaceAndTheDotStaysOnTheRight()
+    public Task CloseButtonTakesTheIconPlaceAndTheDotSitsBeforeTheName()
     {
         return _fixture.RunAsync(async () =>
         {
@@ -139,6 +140,7 @@ public sealed class TabStripViewTests
             Assert.False(FileIcon(active).IsVisible);
             Assert.True(CloseButton(active).IsEffectivelyVisible);
             Assert.Equal(new Size(14, 14), CloseButton(active).GetVisualDescendants().OfType<LucideIcon>().Single().Bounds.Size);
+            Assert.Equal(new Size(18, 18), ((Control)CloseButton(active).GetVisualParent()!).Bounds.Size);
 
             ((IPseudoClasses)inactive.Classes).Add(":pointerover");
             window.UpdateLayout();
@@ -146,16 +148,36 @@ public sealed class TabStripViewTests
             Assert.False(FileIcon(inactive).IsVisible);
             Assert.True(CloseButton(inactive).IsEffectivelyVisible);
 
-            // Крестик слева, точка справа: у активной несохранённой вкладки видны оба.
             Assert.False(Dot(active).IsVisible);
+            var cleanName = NameBox(active);
+
             ((DocumentTabViewModel)active.DataContext!).IsDirty = true;
             window.UpdateLayout();
 
+            // Крестик и точка видны вместе; точка кликов не ловит.
             Assert.True(Dot(active).IsEffectivelyVisible);
             Assert.True(CloseButton(active).IsEffectivelyVisible);
-            Assert.Equal(new Size(7, 7), Dot(active).Bounds.Size);
+            Assert.False(Dot(active).IsHitTestVisible);
+            Assert.Equal(new Size(6, 6), Dot(active).Bounds.Size);
             Assert.Same(Resource(window, "MmAccentBrush"), Dot(active).Fill);
-            Assert.True(Dot(active).TranslatePoint(default, active)!.Value.X > Name(active).TranslatePoint(default, active)!.Value.X);
+
+            // 8 · ячейка 18 · промежуток 8 (точка по его центру) · имя · 8.
+            var dot = Dot(active).TranslatePoint(default, active)!.Value;
+            Assert.Equal(27, dot.X);
+            Assert.Equal(12, dot.Y);
+            Assert.Equal(cleanName, NameBox(active));
+            Assert.Equal(34, cleanName.X);
+            Assert.Equal(active.Bounds.Width - 8, cleanName.Right);
+
+            // И у сохранённой вкладки с иконкой: та же точка, то же место имени.
+            ((DocumentTabViewModel)inactive.DataContext!).IsDirty = true;
+            ((IPseudoClasses)inactive.Classes).Remove(":pointerover");
+            window.UpdateLayout();
+
+            Assert.True(FileIcon(inactive).IsEffectivelyVisible);
+            Assert.True(Dot(inactive).IsEffectivelyVisible);
+            Assert.Equal(27, Dot(inactive).TranslatePoint(default, inactive)!.Value.X);
+            Assert.Equal(new Rect(34, cleanName.Y, inactive.Bounds.Width - 42, cleanName.Height), NameBox(inactive));
 
             window.Close();
         });
@@ -180,19 +202,103 @@ public sealed class TabStripViewTests
         });
     }
 
-    /// <summary>Длинное имя не гаснет маской, а обрывается многоточием в конце.</summary>
-    [Fact]
-    public Task LongNameEndsWithAnEllipsis()
+    /// <summary>
+    /// Длинное имя не обрывается многоточием, а затухает у правого края на 24 px;
+    /// короткое — без маски. Затухание одно на всех состояниях вкладки.
+    /// </summary>
+    [Theory]
+    [InlineData("Light")]
+    [InlineData("Dark")]
+    public Task LongNameFadesOutInsteadOfAnEllipsis(string theme)
     {
         return _fixture.RunAsync(async () =>
         {
             var viewModel = CreateViewModel();
             await viewModel.OpenPathAsync(LongName);
+            await viewModel.OpenPathAsync(First);
+            var window = Show(viewModel, theme == "Dark" ? ThemeVariant.Dark : ThemeVariant.Light);
+
+            var longTab = Tab(window, "installation-guide-for-windows-and-macos.md");
+            var shortTab = Tab(window, "first.md");
+
+            Assert.False(Name(longTab).TextLayout.TextLines.Single().HasCollapsed);
+            Assert.Equal(TrailingFadeDecorator.FadeWidth, Fade(longTab).Fade);
+            AssertMaskMatchesFade(Fade(longTab));
+
+            // Обрезка и маска идут по границам декоратора, а они шире строки сверху,
+            // снизу и слева: срезается только правый край, выступающие глифы целы.
+            var fade = Fade(longTab);
+            var line = new Rect(Name(longTab).TranslatePoint(default, fade)!.Value, Name(longTab).Bounds.Size);
+            Assert.True(line.X > 0 && line.Y > 0 && line.Bottom < fade.Bounds.Height, $"line {line} in {fade.Bounds}");
+            Assert.True(line.Right > fade.Bounds.Width);
+
+            Assert.Equal(0, Fade(shortTab).Fade);
+            Assert.Null(Fade(shortTab).OpacityMask);
+
+            // Неактивная, под курсором и активная — одна и та же маска.
+            var mask = Fade(longTab).OpacityMask;
+            ((IPseudoClasses)longTab.Classes).Add(":pointerover");
+            window.UpdateLayout();
+            Assert.Same(mask, Fade(longTab).OpacityMask);
+
+            await viewModel.OpenDocuments.ActivateCommand.ExecuteAsync((DocumentTabViewModel)longTab.DataContext!);
+            window.UpdateLayout();
+            Assert.Contains("active", longTab.Classes);
+            Assert.Equal(TrailingFadeDecorator.FadeWidth, Fade(longTab).Fade);
+            AssertMaskMatchesFade(Fade(longTab));
+
+            window.Close();
+        });
+    }
+
+    /// <summary>
+    /// Затухание следует за шириной вкладки и текстом: при сжатии до 120 маска
+    /// пересчитывается под новую ширину, суффикс или новое имя, которые не
+    /// помещаются, её добавляют, а снятый суффикс — убирает. Ширина маски — не больше скрытого остатка.
+    /// </summary>
+    [Fact]
+    public Task FadeFollowsTheTabWidthAndTheName()
+    {
+        return _fixture.RunAsync(async () =>
+        {
+            var viewModel = CreateViewModel();
+            await viewModel.OpenPathAsync(LongName);
+            await viewModel.OpenPathAsync(First);
+            await viewModel.OpenPathAsync(Second);
             var window = Show(viewModel, ThemeVariant.Light);
 
-            var name = Name(Tab(window, "installation-guide-for-windows-and-macos.md"));
+            var longTab = Tab(window, "installation-guide-for-windows-and-macos.md");
+            Assert.Equal(OpenDocumentsViewModel.PreferredTabWidth, longTab.Bounds.Width);
+            AssertMaskMatchesFade(Fade(longTab));
 
-            Assert.True(name.TextLayout.TextLines.Single().HasCollapsed);
+            // Полоса сжалась: три вкладки по 120, «+» и промежутки — ровно 408. Второй
+            // проход: ширину вкладок пересчитывает размер полосы после первого.
+            window.GetVisualDescendants().OfType<TabStripView>().Single().Width = 408;
+            window.UpdateLayout();
+            window.UpdateLayout();
+            longTab = Tab(window, "installation-guide-for-windows-and-macos.md");
+
+            Assert.Equal(OpenDocumentsViewModel.MinimumTabWidth, longTab.Bounds.Width);
+            Assert.Equal(OpenDocumentsViewModel.MinimumTabWidth - 42, NameBox(longTab).Width);
+            AssertMaskMatchesFade(Fade(longTab));
+
+            var first = Tab(window, "first.md");
+            var tab = (DocumentTabViewModel)first.DataContext!;
+            Assert.Null(Fade(first).OpacityMask);
+
+            tab.StateSuffix = "(deleted from disk long ago)";
+            window.UpdateLayout();
+            Assert.True(Fade(first).Fade > 0);
+            AssertMaskMatchesFade(Fade(first));
+
+            tab.StateSuffix = null;
+            window.UpdateLayout();
+            Assert.Equal(0, Fade(first).Fade);
+            Assert.Null(Fade(first).OpacityMask);
+
+            tab.Title = "first-chapter-renamed-at-length.md";
+            window.UpdateLayout();
+            AssertMaskMatchesFade(Fade(first));
 
             window.Close();
         });
@@ -377,6 +483,35 @@ public sealed class TabStripViewTests
 
     private static TextBlock Name(Border tab)
         => tab.GetVisualDescendants().OfType<TextBlock>().Single(block => block.Classes.Contains("mm-tab-name"));
+
+    private static TrailingFadeDecorator Fade(Border tab)
+        => tab.GetVisualDescendants().OfType<TrailingFadeDecorator>().Single();
+
+    /// <summary>
+    /// Место имени во вкладке — та ширина, в которой оно видно: декоратор без поля,
+    /// которое он отдаёт наружу под выступающие глифы.
+    /// </summary>
+    private static Rect NameBox(Border tab)
+    {
+        var fade = Fade(tab);
+        return new Rect(fade.TranslatePoint(default, tab)!.Value, fade.Bounds.Size).Deflate(fade.Padding);
+    }
+
+    /// <summary>
+    /// Ширина затухания — не больше скрытого остатка имени, и маска гаснет ровно на
+    /// этой ширине у правого края.
+    /// </summary>
+    private static void AssertMaskMatchesFade(TrailingFadeDecorator fade)
+    {
+        var visible = fade.Bounds.Width - fade.Padding.Left - fade.Padding.Right;
+        var hidden = fade.Child!.Bounds.Width - visible;
+        Assert.True(hidden > 0, $"name fits: {fade.Child.Bounds.Width} in {visible}");
+        Assert.Equal(Math.Min(hidden, TrailingFadeDecorator.FadeWidth), fade.Fade, 3);
+
+        var mask = Assert.IsType<LinearGradientBrush>(fade.OpacityMask);
+        Assert.Equal(1 - fade.Fade / fade.Bounds.Width, mask.GradientStops[1].Offset, 3);
+        Assert.Equal(Colors.Transparent, mask.GradientStops[^1].Color);
+    }
 
     private static Panel FileIcon(Border tab)
         => tab.GetVisualDescendants().OfType<Panel>().Single(panel => panel.Classes.Contains("mm-tab-file-icon"));

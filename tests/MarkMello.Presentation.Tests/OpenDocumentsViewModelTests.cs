@@ -103,7 +103,7 @@ public sealed class OpenDocumentsViewModelTests
 
     /// <summary>
     /// Ширина вкладки не зависит от имени: короткое и длинное имя получают одни 180,
-    /// а длинное гаснет многоточием внутри вкладки.
+    /// а длинное затухает у правого края внутри вкладки.
     /// </summary>
     [Fact]
     public void TabWidthDoesNotDependOnTheName()

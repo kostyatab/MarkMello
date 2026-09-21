@@ -59,7 +59,6 @@
       <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
       <Setter Property="VerticalAlignment" Value="Center" />
       <Setter Property="TextWrapping" Value="NoWrap" />
-      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
     </Style>
     <Style Selector="Border.mm-tab.active TextBlock.mm-tab-name">
       <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
@@ -160,9 +159,9 @@
               <Panel>
                 <Border Classes="mm-tab-focus-ring" />
 
-                <!-- Анатомия A-Tabs: 8 · иконка 18 · 8 · имя · 8 · точка 16 · 8 -->
+                <!-- Анатомия A-Tabs: 8 · иконка 18 · 8 · имя · 8; точка — в промежутке перед именем -->
                 <Grid Margin="8,0"
-                      ColumnDefinitions="18,*,16"
+                      ColumnDefinitions="18,*"
                       ColumnSpacing="8">
                   <Panel Grid.Column="0"
                          Width="18"
@@ -186,18 +185,26 @@
                     </Button>
                   </Panel>
 
-                  <!-- Одно имя с одним многоточием в конце: « · папка» у одноимённых
-                       файлов и «(удалён)» дописываются к нему, а не стоят отдельно.
+                  <!-- Одно имя, которое затухает у края, если не помещается: « · папка» у
+                       одноимённых файлов и «(удалён)» дописываются к нему, а не стоят отдельно.
                        Run-ы вплотную: перенос строки между ними XAML превратил бы в пробел. -->
-                  <TextBlock Grid.Column="1"
-                             Classes="mm-tab-name"><Run Text="{Binding Title}" /><Run Text="{Binding DisambiguatorSuffix}" Foreground="{DynamicResource MmTextFaintBrush}" /><Run Text="{Binding StateSuffixText}" FontStyle="Italic" /></TextBlock>
+                  <views:TrailingFadeDecorator Grid.Column="1"
+                                               VerticalAlignment="Center">
+                    <TextBlock Classes="mm-tab-name"><Run Text="{Binding Title}" /><Run Text="{Binding DisambiguatorSuffix}" Foreground="{DynamicResource MmTextFaintBrush}" /><Run Text="{Binding StateSuffixText}" FontStyle="Italic" /></TextBlock>
+                  </views:TrailingFadeDecorator>
 
-                  <!-- Несохранённые правки — точка справа, крестик её не подменяет -->
-                  <Ellipse Grid.Column="2"
+                  <!-- Несохранённые правки — точка 6 px по центру промежутка 8 px перед
+                       именем: поверх промежутка, места в раскладке не занимает, имя от
+                       неё не сдвигается. Крестик её не подменяет. -->
+                  <Ellipse Grid.Column="1"
                            Classes="mm-tab-dot"
                            IsVisible="{Binding IsDirty}"
-                           Width="7"
-                           Height="7"
+                           IsHitTestVisible="False"
+                           HorizontalAlignment="Left"
+                           VerticalAlignment="Center"
+                           Margin="-7,0,0,0"
+                           Width="6"
+                           Height="6"
                            Fill="{DynamicResource MmAccentBrush}" />
                 </Grid>
               </Panel>
