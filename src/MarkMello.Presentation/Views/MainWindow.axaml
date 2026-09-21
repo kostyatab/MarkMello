@@ -245,9 +245,13 @@
                             IsChecked="{Binding IsSettingsOpen, Mode=OneWay}"
                             Command="{Binding ToggleSettingsCommand}"
                             ToolTip.Tip="{Binding ReadingSettingsTooltip}">
+                <!-- Aa в сетке низкая (~10 из 24 по высоте) и рядом с лупой и
+                     карандашом смотрится мельче. Крупнее на 17/14, а обводка
+                     1.75 × 14/17, чтобы линия осталась толщиной с соседей. -->
                 <views:LucideIcon Data="{DynamicResource LucideALargeSmallGeometry}"
-                                  Width="14"
-                                  Height="14" />
+                                  Width="17"
+                                  Height="17"
+                                  StrokeThickness="1.44" />
               </ToggleButton>
 
               <Button Name="EditTriggerButton"
