@@ -80,6 +80,12 @@ Strikethrough with other inlines: ~~*italic inside strikethrough*~~, ~~`code ins
 
 #### ~~Old~~ new heading with strikethrough
 
+### Highlight, subscript and superscript
+
+A highlight: <mark>the part worth rereading</mark> in the middle of a sentence, and <mark>**bold** with `code` inside</mark>.
+
+Subscript and superscript: H<sub>2</sub>O, CO<sub>2</sub>, E = mc<sup>2</sup>, the 1<sup>st</sup> of May.
+
 ### Inline code and links
 
 Run `dotnet build MarkMello.sln`, then open a file with `Ctrl+O`. A code span with backticks inside: `` `code` ``.
@@ -205,6 +211,20 @@ Task items with more content:
 An empty task item:
 
 - [ ]
+
+### Definition lists
+
+Markdown
+:   A lightweight markup language for plain text files.
+
+Front matter
+:   Metadata at the top of a file, between two `---` lines.
+:   A term can have more than one definition.
+
+A term with a longer definition
+:   The first paragraph of the definition.
+
+    A second paragraph, indented like the first.
 
 ### Quotes
 
