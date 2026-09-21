@@ -19,7 +19,7 @@ namespace MarkMello.Presentation.Tests;
 
 /// <summary>
 /// Полоса вкладок по спецификации A-Tabs (ADR-0009 Rule 3): плашки с заливкой по
-/// состоянию, иконка или крестик слева, точка несохранённого перед именем, «+» после
+/// состоянию, иконка или крестик слева, точка несохранённого в правом верхнем углу, «+» после
 /// вкладок. Биндинги на команды идут через $parent[ItemsControl] и в unit-тестах
 /// view-model не проверяются вовсе.
 /// </summary>
@@ -117,11 +117,11 @@ public sealed class TabStripViewTests
 
     /// <summary>
     /// Слева — иконка файла 16 в ячейке 18; у активной вкладки и под курсором на её месте
-    /// крестик 14. Точка несохранённого — 6 px по центру промежутка перед именем, и
-    /// крестик её не подменяет.
+    /// крестик 14. Имя — через 4 px от ячейки. Точка несохранённого — 6 px в правом
+    /// верхнем углу вкладки; крестик её не подменяет, и имя от неё не сдвигается.
     /// </summary>
     [Fact]
-    public Task CloseButtonTakesTheIconPlaceAndTheDotSitsBeforeTheName()
+    public Task CloseButtonTakesTheIconPlaceAndTheDotSitsInTheTopRightCorner()
     {
         return _fixture.RunAsync(async () =>
         {
@@ -140,7 +140,7 @@ public sealed class TabStripViewTests
             Assert.False(FileIcon(active).IsVisible);
             Assert.True(CloseButton(active).IsEffectivelyVisible);
             Assert.Equal(new Size(14, 14), CloseButton(active).GetVisualDescendants().OfType<LucideIcon>().Single().Bounds.Size);
-            Assert.Equal(new Size(18, 18), ((Control)CloseButton(active).GetVisualParent()!).Bounds.Size);
+            Assert.Equal(new Rect(8, 6, 18, 18), IconCell(active));
 
             ((IPseudoClasses)inactive.Classes).Add(":pointerover");
             window.UpdateLayout();
@@ -151,6 +151,10 @@ public sealed class TabStripViewTests
             Assert.False(Dot(active).IsVisible);
             var cleanName = NameBox(active);
 
+            // 8 · ячейка 18 · 4 · имя · 8.
+            Assert.Equal(30, cleanName.X);
+            Assert.Equal(active.Bounds.Width - 8, cleanName.Right);
+
             ((DocumentTabViewModel)active.DataContext!).IsDirty = true;
             window.UpdateLayout();
 
@@ -158,26 +162,45 @@ public sealed class TabStripViewTests
             Assert.True(Dot(active).IsEffectivelyVisible);
             Assert.True(CloseButton(active).IsEffectivelyVisible);
             Assert.False(Dot(active).IsHitTestVisible);
-            Assert.Equal(new Size(6, 6), Dot(active).Bounds.Size);
             Assert.Same(Resource(window, "MmAccentBrush"), Dot(active).Fill);
-
-            // 8 · ячейка 18 · промежуток 8 (точка по его центру) · имя · 8.
-            var dot = Dot(active).TranslatePoint(default, active)!.Value;
-            Assert.Equal(27, dot.X);
-            Assert.Equal(12, dot.Y);
+            Assert.Equal(new Rect(active.Bounds.Width - 12, 6, 6, 6), DotBox(active));
             Assert.Equal(cleanName, NameBox(active));
-            Assert.Equal(34, cleanName.X);
-            Assert.Equal(active.Bounds.Width - 8, cleanName.Right);
 
-            // И у сохранённой вкладки с иконкой: та же точка, то же место имени.
+            // И у вкладки с иконкой: та же точка, то же место имени.
             ((DocumentTabViewModel)inactive.DataContext!).IsDirty = true;
             ((IPseudoClasses)inactive.Classes).Remove(":pointerover");
             window.UpdateLayout();
 
             Assert.True(FileIcon(inactive).IsEffectivelyVisible);
             Assert.True(Dot(inactive).IsEffectivelyVisible);
-            Assert.Equal(27, Dot(inactive).TranslatePoint(default, inactive)!.Value.X);
-            Assert.Equal(new Rect(34, cleanName.Y, inactive.Bounds.Width - 42, cleanName.Height), NameBox(inactive));
+            Assert.Equal(new Rect(inactive.Bounds.Width - 12, 6, 6, 6), DotBox(inactive));
+            Assert.Equal(new Rect(30, cleanName.Y, inactive.Bounds.Width - 38, cleanName.Height), NameBox(inactive));
+
+            window.Close();
+        });
+    }
+
+    /// <summary>Нажатие по точке проходит во вкладку и открывает её.</summary>
+    [Fact]
+    public Task PressOnTheDotActivatesTheTab()
+    {
+        return _fixture.RunAsync(async () =>
+        {
+            var viewModel = CreateViewModel();
+            await viewModel.OpenPathAsync(First);
+            await viewModel.OpenPathAsync(Second);
+            var window = Show(viewModel, ThemeVariant.Light);
+
+            var inactive = Tab(window, "first.md");
+            ((DocumentTabViewModel)inactive.DataContext!).IsDirty = true;
+            window.UpdateLayout();
+
+            var centre = inactive.TranslatePoint(DotBox(inactive).Center, window)!.Value;
+            window.MouseDown(centre, MouseButton.Left);
+            window.MouseUp(centre, MouseButton.Left);
+            window.UpdateLayout();
+
+            Assert.Equal(First, viewModel.OpenDocuments.ActiveTab!.Path);
 
             window.Close();
         });
@@ -279,7 +302,7 @@ public sealed class TabStripViewTests
             longTab = Tab(window, "installation-guide-for-windows-and-macos.md");
 
             Assert.Equal(OpenDocumentsViewModel.MinimumTabWidth, longTab.Bounds.Width);
-            Assert.Equal(OpenDocumentsViewModel.MinimumTabWidth - 42, NameBox(longTab).Width);
+            Assert.Equal(OpenDocumentsViewModel.MinimumTabWidth - 38, NameBox(longTab).Width);
             AssertMaskMatchesFade(Fade(longTab));
 
             var first = Tab(window, "first.md");
@@ -521,6 +544,14 @@ public sealed class TabStripViewTests
 
     private static Ellipse Dot(Border tab)
         => tab.GetVisualDescendants().OfType<Ellipse>().Single(dot => dot.Classes.Contains("mm-tab-dot"));
+
+    private static Rect DotBox(Border tab) => Box(Dot(tab), tab);
+
+    /// <summary>Ячейка, которую делят иконка файла и крестик.</summary>
+    private static Rect IconCell(Border tab) => Box((Control)CloseButton(tab).GetVisualParent()!, tab);
+
+    private static Rect Box(Control control, Border tab)
+        => new(control.TranslatePoint(default, tab)!.Value, control.Bounds.Size);
 
     private static Border FocusRing(Border tab)
         => tab.GetVisualDescendants().OfType<Border>().Single(ring => ring.Classes.Contains("mm-tab-focus-ring"));

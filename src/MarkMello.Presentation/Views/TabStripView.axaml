@@ -119,10 +119,11 @@
               <Panel>
                 <Border Classes="mm-tab-focus-ring" />
 
-                <!-- Анатомия A-Tabs: 8 · иконка 18 · 8 · имя · 8; точка — в промежутке перед именем -->
+                <!-- Анатомия A-Tabs: 8 · иконка 18 · 4 · имя · 8. У крестика 14 в ячейке 18
+                     свои 2 px поля, поэтому на глаз имя стоит в 6 px от него. -->
                 <Grid Margin="8,0"
                       ColumnDefinitions="18,*"
-                      ColumnSpacing="8">
+                      ColumnSpacing="4">
                   <Panel Grid.Column="0"
                          Width="18"
                          Height="18">
@@ -152,21 +153,21 @@
                                                VerticalAlignment="Center">
                     <TextBlock Classes="mm-tab-name"><Run Text="{Binding Title}" /><Run Text="{Binding DisambiguatorSuffix}" Foreground="{DynamicResource MmTextFaintBrush}" /><Run Text="{Binding StateSuffixText}" FontStyle="Italic" /></TextBlock>
                   </views:TrailingFadeDecorator>
-
-                  <!-- Несохранённые правки — точка 6 px по центру промежутка 8 px перед
-                       именем: поверх промежутка, места в раскладке не занимает, имя от
-                       неё не сдвигается. Крестик её не подменяет. -->
-                  <Ellipse Grid.Column="1"
-                           Classes="mm-tab-dot"
-                           IsVisible="{Binding IsDirty}"
-                           IsHitTestVisible="False"
-                           HorizontalAlignment="Left"
-                           VerticalAlignment="Center"
-                           Margin="-7,0,0,0"
-                           Width="6"
-                           Height="6"
-                           Fill="{DynamicResource MmAccentBrush}" />
                 </Grid>
+
+                <!-- Несохранённые правки — точка 6 px в правом верхнем углу вкладки, в 6 px
+                     от краёв: поверх раскладки, имя не сжимает и не сдвигает, крестик
+                     остаётся на месте. У длинного имени край под точкой уже погашен
+                     затуханием. Нажатие проходит сквозь неё во вкладку. -->
+                <Ellipse Classes="mm-tab-dot"
+                         IsVisible="{Binding IsDirty}"
+                         IsHitTestVisible="False"
+                         HorizontalAlignment="Right"
+                         VerticalAlignment="Top"
+                         Margin="0,6,6,0"
+                         Width="6"
+                         Height="6"
+                         Fill="{DynamicResource MmAccentBrush}" />
               </Panel>
             </Border>
           </DataTemplate>
