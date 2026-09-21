@@ -7,6 +7,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 using Avalonia.Platform;
 using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
@@ -17,7 +18,7 @@ using MarkMello.Presentation.ViewModels;
 
 namespace MarkMello.Presentation.Views;
 
-public partial class MainWindow : Window, ISidebarMenuHost
+public partial class MainWindow : Window, IMenuCardHost
 {
     private const double DefaultWindowWidth = 1280;
     private const double DefaultWindowHeight = 840;
@@ -41,11 +42,11 @@ public partial class MainWindow : Window, ISidebarMenuHost
     /// <summary>Класс области, за пустое место которой тянется окно: строка окна и шапка сайдбара.</summary>
     internal const string WindowDragClass = "mm-window-drag";
 
-    /// <summary>Класс кнопки, раскрывающей меню сайдбара карточкой.</summary>
+    /// <summary>Класс кнопки, раскрывающей меню карточкой: сайдбара или «ещё N».</summary>
     internal const string SidebarMenuTriggerClass = "mm-menu-trigger";
 
     private static readonly string[] SidebarMenuPanelNames =
-        ["FolderMenuPanel", "CreateMenuPanel", "TreeContextMenuPanel"];
+        ["FolderMenuPanel", "CreateMenuPanel", "TreeContextMenuPanel", "TabsOverflowMenuPanel"];
 
     private readonly ShellViewModel _viewModel = default!;
     private double _windowButtonsWidth;
@@ -63,6 +64,9 @@ public partial class MainWindow : Window, ISidebarMenuHost
     private bool _allowConfirmedClose;
     private IFindHost? _findHost;
     private Rect _sidebarMenuAnchor;
+    private Visual? _menuAnchorSource;
+    // Без рамки якорь — сам источник целиком, с его текущим размером.
+    private Rect? _menuAnchorInSource;
     private Panel? _sidebarMenuHost;
     private IReadOnlyList<ContentControl> _sidebarMenuPanels = [];
     private InputElement? _sidebarMenuFocusReturn;
@@ -222,27 +226,48 @@ public partial class MainWindow : Window, ISidebarMenuHost
             0);
 
     /// <summary>
-    /// Меню сайдбара раскрывается от кнопки или от точки клика — сайдбар сообщает их
-    /// окну до того, как меню откроется (<see cref="ISidebarMenuHost"/>). Якорь сразу
-    /// переводится в координаты слоя карточек: сам слой лежит внутри рамки окна и на
-    /// пиксель её толщины смещён относительно окна.
+    /// Меню раскрывается от кнопки или от точки клика — вид сообщает их
+    /// окну до того, как меню откроется (<see cref="IMenuCardHost"/>). Окно помнит сам
+    /// якорь, а не его место: пока меню открыто, позиция считается от него заново.
     /// </summary>
-    void ISidebarMenuHost.AnchorSidebarMenu(Visual source, Rect anchor)
+    void IMenuCardHost.AnchorMenuCard(Visual source, Rect anchor)
     {
-        if (_sidebarMenuHost is not { } host || source.TranslatePoint(anchor.Position, host) is not { } origin)
+        _menuAnchorSource = source;
+        _menuAnchorInSource = anchor;
+        ApplySidebarMenuPlacement();
+    }
+
+    void IMenuCardHost.AnchorMenuCard(Visual trigger)
+    {
+        _menuAnchorSource = trigger;
+        _menuAnchorInSource = null;
+        ApplySidebarMenuPlacement();
+    }
+
+    /// <summary>
+    /// Якорь в координатах слоя карточек: сам слой лежит внутри рамки окна и на пиксель
+    /// её толщины смещён относительно окна. Якорь, ушедший из дерева, оставляет
+    /// последнее известное место — карточку без кнопки закроет view-model.
+    /// </summary>
+    private void UpdateMenuAnchor(Visual host)
+    {
+        if (_menuAnchorSource is not { } source)
         {
             return;
         }
 
-        _sidebarMenuAnchor = new Rect(origin, anchor.Size);
-        ApplySidebarMenuPlacement();
+        var anchor = _menuAnchorInSource ?? new Rect(source.Bounds.Size);
+        if (source.TranslatePoint(anchor.Position, host) is { } origin)
+        {
+            _sidebarMenuAnchor = new Rect(origin, anchor.Size);
+        }
     }
 
     /// <summary>
     /// Фокус в открытой карточке: меню, вызванное с клавиатуры, иначе осталось бы
     /// недосягаемым. По закрытию фокус вернётся туда, откуда пришёл.
     /// </summary>
-    void ISidebarMenuHost.FocusSidebarMenu()
+    void IMenuCardHost.FocusMenuCard()
         => OpenSidebarMenuCard()?.FocusFirstItem();
 
     private void InitializeSidebarMenuHost()
@@ -264,8 +289,12 @@ public partial class MainWindow : Window, ISidebarMenuHost
         }
     }
 
+    /// <summary>Открыта карточка в слое меню — сайдбара или «ещё N» у вкладок.</summary>
     private bool HasOpenSidebarMenu
-        => _viewModel.IsFolderMenuOpen || _viewModel.IsCreateMenuOpen || _viewModel.IsTreeContextMenuOpen;
+        => _viewModel.IsFolderMenuOpen
+            || _viewModel.IsCreateMenuOpen
+            || _viewModel.IsTreeContextMenuOpen
+            || _viewModel.IsTabsOverflowMenuOpen;
 
     private MenuCardView? OpenSidebarMenuCard()
         => _sidebarMenuPanels
@@ -321,13 +350,15 @@ public partial class MainWindow : Window, ISidebarMenuHost
             return;
         }
 
-        // Левый край карточки — левый край якоря, для него размер не нужен: он нужен
-        // только краям окна, а там позицию уточнит раскладка. Размер карточки в момент
-        // открытия ещё нулевой — presenter получает содержимое позже нашего уведомления.
-        var margin = CalculateSidebarMenuMargin(
-            _sidebarMenuAnchor,
-            panel.Bounds.Size,
-            new Rect(host.Bounds.Size).Deflate(SidebarMenuWindowInset));
+        // Край карточки — край якоря, для него размер не нужен: он нужен только краям
+        // окна, а там позицию уточнит раскладка. Размер карточки в момент открытия ещё
+        // нулевой — presenter получает содержимое позже нашего уведомления. Панель,
+        // прижатая вправо, — список «ещё N»: он выровнен по правому краю своей кнопки.
+        UpdateMenuAnchor(host);
+        var limits = new Rect(host.Bounds.Size).Deflate(SidebarMenuWindowInset);
+        var margin = panel.HorizontalAlignment == HorizontalAlignment.Right
+            ? CalculateTrailingMenuMargin(_sidebarMenuAnchor, panel.Bounds.Size, limits, host.Bounds.Width)
+            : CalculateSidebarMenuMargin(_sidebarMenuAnchor, panel.Bounds.Size, limits);
 
         if (panel.Margin != margin)
         {
@@ -386,6 +417,19 @@ public partial class MainWindow : Window, ISidebarMenuHost
             Clamp(anchor.X, limits.X, limits.Right - card.Width),
             Clamp(anchor.Bottom + (anchor.Height > 0 ? OverlayCardGap : 0), limits.Y, limits.Bottom - card.Height),
             0,
+            0);
+
+    /// <summary>
+    /// Список «ещё N» встаёт под кнопкой правым краем по её правому краю, как попап
+    /// <c>BottomEdgeAlignedRight</c>, которым он был. Отступ считается от правого края
+    /// слоя шириной <paramref name="hostWidth"/>, поэтому размер карточки нужен только у
+    /// левого края окна: там карточка сдвигается вправо, а не обрезается.
+    /// </summary>
+    internal static Thickness CalculateTrailingMenuMargin(Rect anchor, Size card, Rect limits, double hostWidth)
+        => new(
+            0,
+            Clamp(anchor.Bottom + OverlayCardGap, limits.Y, limits.Bottom - card.Height),
+            hostWidth - Clamp(anchor.Right, limits.X + card.Width, limits.Right),
             0);
 
     /// <summary>В окне меньше карточки нижняя граница уходит выше верхней — держимся верхней.</summary>
@@ -596,6 +640,8 @@ public partial class MainWindow : Window, ISidebarMenuHost
             LayoutUpdated -= OnSidebarMenuLayoutUpdated;
             _watchesSidebarMenuLayout = false;
         }
+
+        _menuAnchorSource = null;
 
         Closing -= OnWindowClosing;
         SizeChanged -= OnWindowSizeChanged;
@@ -2001,9 +2047,9 @@ public partial class MainWindow : Window, ISidebarMenuHost
             }
         }
 
-        // Меню сайдбара закрывается повторным нажатием своей кнопки, поэтому нажатие
+        // Меню-карточка закрывается повторным нажатием своей кнопки, поэтому нажатие
         // по ней — не «клик мимо»: иначе меню закрылось бы здесь и тут же открылось снова.
-        if (_viewModel.IsFolderMenuOpen || _viewModel.IsCreateMenuOpen || _viewModel.IsTreeContextMenuOpen)
+        if (HasOpenSidebarMenu)
         {
             return IsWithinSidebarMenu(source) || IsSidebarMenuTriggerSource(source);
         }
@@ -2012,7 +2058,7 @@ public partial class MainWindow : Window, ISidebarMenuHost
         return appMenuTrigger is not null && IsWithinVisual(source, appMenuTrigger);
     }
 
-    /// <summary>Кнопка, под которой раскрывается меню сайдбара: её нажатие меню не «мимо».</summary>
+    /// <summary>Кнопка, под которой раскрывается меню-карточка: её нажатие меню не «мимо».</summary>
     internal static bool IsSidebarMenuTriggerSource(Visual source)
     {
         for (Visual? current = source; current is not null; current = current.GetVisualParent())
@@ -2030,9 +2076,7 @@ public partial class MainWindow : Window, ISidebarMenuHost
     {
         Classes.Set("mm-reading-settings-open", _viewModel.IsSettingsOpen);
         Classes.Set("mm-app-menu-open", _viewModel.IsAppMenuOpen);
-        Classes.Set(
-            "mm-sidebar-menu-open",
-            _viewModel.IsFolderMenuOpen || _viewModel.IsCreateMenuOpen || _viewModel.IsTreeContextMenuOpen);
+        Classes.Set("mm-sidebar-menu-open", HasOpenSidebarMenu);
     }
 
     private void OnViewModelCloseRequested(object? sender, EventArgs e)

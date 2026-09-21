@@ -41,7 +41,7 @@ public partial class TabStripView : UserControl
     private void OnStripPointerPressedTunnel(object? sender, PointerPressedEventArgs e)
     {
         if (e.Source is Visual source
-            && source.GetSelfAndVisualAncestors().OfType<Control>().FirstOrDefault(IsTab) is { } tab)
+            && source.GetSelfAndVisualAncestors().OfType<Control>().FirstOrDefault(KeepsFocusOffOnClick) is { } tab)
         {
             _pressedTab = tab;
             tab.Focusable = false;
@@ -95,6 +95,34 @@ public partial class TabStripView : UserControl
         viewModel.OpenDocuments.ActivateCommand.Execute(tab);
         e.Handled = true;
     }
+
+    /// <summary>
+    /// «ещё N» раскрывает список скрытых вкладок карточкой в слое меню окна
+    /// (ADR-0009 Rule 4): позиция считается от самой кнопки, поэтому окно узнаёт её
+    /// до того, как меню откроется. Повторное нажатие меню закрывает.
+    /// </summary>
+    private void OnTabsOverflowButtonClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not ShellViewModel viewModel)
+        {
+            return;
+        }
+
+        if (TopLevel.GetTopLevel(this) is IMenuCardHost host)
+        {
+            host.AnchorMenuCard(TabsOverflowButton);
+        }
+
+        viewModel.ToggleTabsOverflowMenuCommand.Execute(null);
+    }
+
+    /// <summary>
+    /// Мышью фокус не берут ни вкладка, ни «ещё N»: фокус остаётся в документе. Кнопка
+    /// «ещё N» пропадает, когда её меню закрывает ✕ последней скрытой вкладки, — и
+    /// фокусу, вернувшемуся из меню на неё, было бы некуда встать.
+    /// </summary>
+    private bool KeepsFocusOffOnClick(Control control)
+        => IsTab(control) || ReferenceEquals(control, TabsOverflowButton);
 
     private static bool IsTab(Control control) => control is Border && control.Classes.Contains(TabClass);
 }

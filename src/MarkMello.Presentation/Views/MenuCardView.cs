@@ -17,6 +17,12 @@ namespace MarkMello.Presentation.Views;
 /// </summary>
 public abstract class MenuCardView : UserControl
 {
+    /// <summary>
+    /// Кнопка внутри пункта, которая меню не закрывает и в обход стрелками не встаёт:
+    /// ✕ у скрытой вкладки в «ещё N» — так можно закрыть несколько вкладок подряд.
+    /// </summary>
+    internal const string KeepsMenuOpenClass = "mm-menu-keep-open";
+
     protected MenuCardView()
     {
         AddHandler(Button.ClickEvent, OnMenuItemClick);
@@ -62,6 +68,20 @@ public abstract class MenuCardView : UserControl
             return;
         }
 
+        // Меню остаётся открытым, но строка, где стоял фокус, могла уйти вместе со своей
+        // вкладкой: тогда фокус возвращается в карточку, иначе стрелки перестанут работать.
+        if (e.Source is StyledElement source && source.Classes.Contains(KeepsMenuOpenClass))
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (IsOpen(viewModel) && !Items().Any(static item => item.IsFocused))
+                {
+                    FocusFirstItem();
+                }
+            });
+            return;
+        }
+
         Dispatcher.UIThread.Post(() =>
         {
             if (IsOpen(viewModel))
@@ -98,5 +118,7 @@ public abstract class MenuCardView : UserControl
     private IEnumerable<Button> Items()
         => this.GetVisualDescendants()
             .OfType<Button>()
-            .Where(static button => button.IsVisible && button.IsEffectivelyEnabled);
+            .Where(static button => button.IsVisible
+                && button.IsEffectivelyEnabled
+                && !button.Classes.Contains(KeepsMenuOpenClass));
 }

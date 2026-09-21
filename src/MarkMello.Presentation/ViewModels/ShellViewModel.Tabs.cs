@@ -44,6 +44,15 @@ public partial class ShellViewModel
             {
                 OnPropertyChanged(nameof(TabsOverflowLabel));
             }
+
+            // Последнюю скрытую вкладку закрыли ✕ или окно стало шире — список пуст,
+            // а кнопка, под которой он висел, пропала: меню закрывается само.
+            if (e.PropertyName is nameof(OpenDocumentsViewModel.HasOverflow)
+                && !OpenDocuments.HasOverflow
+                && IsTabsOverflowMenuOpen)
+            {
+                ShellOverlay = ShellOverlayKind.None;
+            }
         };
     }
 

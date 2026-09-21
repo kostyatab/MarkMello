@@ -453,10 +453,10 @@
 
       </Grid>
 
-      <!-- Меню сайдбара и контекстное меню строки — такие же карточки, как ⋯
-           (ADR-0009 Rule 4), но слой их общий и лежит поверх колонок: карточка шире
-           сайдбара иначе ушла бы под документ вместе с тенью. Позицию — от кнопки
-           или от курсора — ставит code-behind. -->
+      <!-- Меню сайдбара, контекстное меню строки и список «ещё N» у вкладок — такие же
+           карточки, как ⋯ (ADR-0009 Rule 4), но слой их общий и лежит поверх колонок и
+           строки окна: карточка шире сайдбара иначе ушла бы под документ вместе с тенью.
+           Позицию — от кнопки или от курсора — ставит code-behind. -->
       <Panel Name="SidebarMenuHost"
              Grid.Column="0"
              Grid.ColumnSpan="3"
@@ -493,6 +493,19 @@
           <ContentControl.ContentTemplate>
             <DataTemplate x:DataType="vm:ShellViewModel">
               <views:TreeContextMenuView />
+            </DataTemplate>
+          </ContentControl.ContentTemplate>
+        </ContentControl>
+
+        <!-- «ещё N» прижат вправо: карточка выровнена по правому краю своей кнопки -->
+        <ContentControl Name="TabsOverflowMenuPanel"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        ClipToBounds="False"
+                        Content="{Binding TabsOverflowMenuOverlayContent}">
+          <ContentControl.ContentTemplate>
+            <DataTemplate x:DataType="vm:ShellViewModel">
+              <views:TabsOverflowMenuView />
             </DataTemplate>
           </ContentControl.ContentTemplate>
         </ContentControl>

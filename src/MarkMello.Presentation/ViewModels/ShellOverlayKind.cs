@@ -8,5 +8,6 @@ public enum ShellOverlayKind
     ReadingSettings,
     FolderMenu,
     CreateMenu,
-    TreeContextMenu
+    TreeContextMenu,
+    TabsOverflowMenu
 }

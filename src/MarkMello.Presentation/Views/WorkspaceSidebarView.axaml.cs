@@ -152,9 +152,9 @@ public partial class WorkspaceSidebarView : UserControl
     private void AnchorMenuAt(Point point) => SetMenuAnchor(new Rect(point, default(Size)));
 
     private void SetMenuAnchor(Rect anchorInSidebar)
-        => MenuHost()?.AnchorSidebarMenu(this, anchorInSidebar);
+        => MenuHost()?.AnchorMenuCard(this, anchorInSidebar);
 
-    private ISidebarMenuHost? MenuHost() => TopLevel.GetTopLevel(this) as ISidebarMenuHost;
+    private IMenuCardHost? MenuHost() => TopLevel.GetTopLevel(this) as IMenuCardHost;
 
     private void OnTreePointerReleased(object? sender, PointerReleasedEventArgs e)
     {
@@ -257,7 +257,7 @@ public partial class WorkspaceSidebarView : UserControl
         viewModel.OpenTreeContextMenuCommand.Execute(node);
 
         // Мышь оставляет фокус там, где он был, а с клавиатуры меню иначе недосягаемо.
-        MenuHost()?.FocusSidebarMenu();
+        MenuHost()?.FocusMenuCard();
     }
 
     /// <summary>

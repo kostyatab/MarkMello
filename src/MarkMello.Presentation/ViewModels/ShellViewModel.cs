@@ -225,6 +225,8 @@ public partial class ShellViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(FolderMenuOverlayContent))]
     [NotifyPropertyChangedFor(nameof(CreateMenuOverlayContent))]
     [NotifyPropertyChangedFor(nameof(TreeContextMenuOverlayContent))]
+    [NotifyPropertyChangedFor(nameof(IsTabsOverflowMenuOpen))]
+    [NotifyPropertyChangedFor(nameof(TabsOverflowMenuOverlayContent))]
     private ShellOverlayKind _shellOverlay = ShellOverlayKind.None;
 
     /// <summary>
@@ -382,12 +384,16 @@ public partial class ShellViewModel : ObservableObject
     /// <summary>Контекстное меню строки дерева — карточка у курсора, а не попап ОС.</summary>
     public bool IsTreeContextMenuOpen => ShellOverlay == ShellOverlayKind.TreeContextMenu;
 
+    /// <summary>Список скрытых вкладок «ещё N» — карточка под своей кнопкой в строке окна.</summary>
+    public bool IsTabsOverflowMenuOpen => ShellOverlay == ShellOverlayKind.TabsOverflowMenu;
+
     public bool HasOpenOverlay => IsSettingsOpen
         || IsAppMenuOpen
         || IsAppSettingsOpen
         || IsFolderMenuOpen
         || IsCreateMenuOpen
-        || IsTreeContextMenuOpen;
+        || IsTreeContextMenuOpen
+        || IsTabsOverflowMenuOpen;
 
     public object? AppMenuOverlayContent => IsAppMenuOpen ? this : null;
 
@@ -397,6 +403,8 @@ public partial class ShellViewModel : ObservableObject
     public object? CreateMenuOverlayContent => IsCreateMenuOpen ? this : null;
 
     public object? TreeContextMenuOverlayContent => IsTreeContextMenuOpen && TreeContextNode is not null ? this : null;
+
+    public object? TabsOverflowMenuOverlayContent => IsTabsOverflowMenuOpen ? this : null;
 
     /// <summary>Карточка «Настройки» строится по первому открытию, а не на старте (ADR-0009 Rule 12).</summary>
     public object? AppSettingsContent => IsAppSettingsOpen ? this : null;
@@ -1227,6 +1235,21 @@ public partial class ShellViewModel : ObservableObject
         ShellOverlay = IsCreateMenuOpen
             ? ShellOverlayKind.None
             : ShellOverlayKind.CreateMenu;
+    }
+
+    /// <summary>
+    /// Список «ещё N» открывается и закрывается той же кнопкой, как меню сайдбара:
+    /// карточка внутри окна, а не попап ОС (ADR-0009 Rule 4).
+    /// </summary>
+    [RelayCommand]
+    private void ToggleTabsOverflowMenu()
+    {
+        MarkSecondaryFeaturesReady();
+
+        IsFindBarOpen = false;
+        ShellOverlay = IsTabsOverflowMenuOpen
+            ? ShellOverlayKind.None
+            : ShellOverlayKind.TabsOverflowMenu;
     }
 
     /// <summary>
@@ -2255,7 +2278,8 @@ public partial class ShellViewModel : ObservableObject
             or ShellOverlayKind.Settings
             or ShellOverlayKind.FolderMenu
             or ShellOverlayKind.CreateMenu
-            or ShellOverlayKind.TreeContextMenu)
+            or ShellOverlayKind.TreeContextMenu
+            or ShellOverlayKind.TabsOverflowMenu)
         {
             ShellOverlay = ShellOverlayKind.None;
         }

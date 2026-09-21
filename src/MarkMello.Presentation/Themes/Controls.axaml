@@ -237,11 +237,14 @@
     <Setter Property="IsVisible" Value="False" />
   </Style>
 
-  <!-- Крестик в списке «ещё N»: 14×14, проявляется под курсором строки -->
+  <!-- Крестик в списке «ещё N»: 14×14, проявляется под курсором строки. Фокус не
+       берёт, как крестик вкладки: невидимым он встал бы в обход по Tab, а нажатый —
+       унёс бы фокус из меню вместе с удалённой строкой. -->
   <Style Selector="Button.mm-icon-button.mm-tab-overflow-close">
     <Setter Property="Width" Value="14" />
     <Setter Property="Height" Value="14" />
     <Setter Property="CornerRadius" Value="3" />
+    <Setter Property="Focusable" Value="False" />
     <Setter Property="Opacity" Value="0" />
   </Style>
 
@@ -375,7 +378,7 @@
     <Setter Property="Background" Value="{DynamicResource MmTabHoverBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
   </Style>
-  <Style Selector="Button.mm-tab-overflow:pressed /template/ ContentPresenter, Button.mm-tab-overflow:flyout-open /template/ ContentPresenter">
+  <Style Selector="Button.mm-tab-overflow:pressed /template/ ContentPresenter, Button.mm-tab-overflow.open /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource MmTabActiveBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
   </Style>
@@ -481,13 +484,6 @@
     <Setter Property="Padding" Value="8,4" />
     <Setter Property="Margin" Value="0,1" />
     <Setter Property="CornerRadius" Value="4" />
-  </Style>
-  <!-- Пункт списка «ещё N» -->
-  <Style Selector="Button.mm-list-item.mm-tab-overflow-item">
-    <Setter Property="Padding" Value="8,7" />
-    <Setter Property="CornerRadius" Value="6" />
-    <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
-    <Setter Property="FontSize" Value="12.5" />
   </Style>
   <!-- «имя папки ▾»: кнопка с меню действий над папкой (ADR-0009 Rule 4) -->
   <Style Selector="Button.mm-list-item.mm-sidebar-folder">

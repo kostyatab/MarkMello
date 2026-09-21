@@ -473,6 +473,14 @@ public partial class ShellViewModel
         _dirtyPromptKind = kind;
         _dirtyPromptErrorResult = null;
         RefreshDirtyPromptTexts();
+
+        // «ещё N» — единственное меню, пункт которого (✕) меню не закрывает: вопрос
+        // о правках под ним встал бы вторым оверлеем поверх открытой карточки.
+        if (IsTabsOverflowMenuOpen)
+        {
+            ShellOverlay = ShellOverlayKind.None;
+        }
+
         IsDirtyPromptOpen = true;
     }
 
