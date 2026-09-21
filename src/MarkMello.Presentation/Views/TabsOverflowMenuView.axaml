@@ -39,8 +39,10 @@
     <Style Selector="Button.mm-tab-overflow-item:pointerover Button.mm-tab-overflow-close">
       <Setter Property="Opacity" Value="1" />
     </Style>
+    <!-- Прячем прозрачностью: IsVisible у точки — локальная привязка к IsDirty,
+         а локальное значение сильнее сеттера стиля -->
     <Style Selector="Button.mm-tab-overflow-item:pointerover Ellipse.mm-tab-dirty">
-      <Setter Property="IsVisible" Value="False" />
+      <Setter Property="Opacity" Value="0" />
     </Style>
   </UserControl.Styles>
 

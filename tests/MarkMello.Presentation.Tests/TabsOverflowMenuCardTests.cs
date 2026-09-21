@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Markup.Xaml;
@@ -310,6 +311,60 @@ public sealed class TabsOverflowMenuCardTests
         });
     }
 
+    /// <summary>
+    /// Точка несохранённого и ✕ делят одно место: без курсора видна точка, под курсором
+    /// строки — только ✕. У сохранённой вкладки точки нет вовсе. В обеих темах.
+    /// </summary>
+    [Theory]
+    [InlineData("Light")]
+    [InlineData("Dark")]
+    public Task CloseButtonReplacesTheDirtyDotUnderThePointer(string theme)
+    {
+        return _fixture.RunAsync(async () =>
+        {
+            var (window, viewModel) = await ShowAsync(theme == "Dark" ? ThemeVariant.Dark : ThemeVariant.Light);
+
+            // Черновик с правками уходит в «ещё N»: активной становится первая вкладка.
+            await viewModel.CreateNewDocumentCommand.ExecuteAsync(null);
+            var draft = viewModel.OpenDocuments.ActiveTab!;
+            viewModel.EditorSession!.SourceText = "# draft";
+            await viewModel.OpenPathAsync(Documents[0]);
+            Render(window);
+            Assert.True(draft.IsDirty);
+            Assert.Contains(draft, viewModel.OpenDocuments.OverflowTabs);
+
+            Click(window, OverflowButton(window));
+            var row = Rows(window).Single(candidate => candidate.DataContext == draft);
+            var dot = DirtyDot(row);
+            var close = CloseButton(row);
+            var accent = Resource(window, "MmAccentBrush");
+
+            Assert.True(dot.IsEffectivelyVisible);
+            Assert.Equal(1, dot.Opacity);
+            Assert.Equal(0, close.Opacity);
+            Assert.Same(accent, dot.Fill);
+
+            window.MouseMove(Center(window, row));
+            Render(window);
+
+            Assert.Equal(0, dot.Opacity);
+            Assert.Equal(1, close.Opacity);
+            Assert.Same(accent, dot.Fill);
+
+            window.MouseMove(new Point(window.Bounds.Width - 40, window.Bounds.Height - 40));
+            Render(window);
+
+            Assert.Equal(1, dot.Opacity);
+            Assert.Equal(0, close.Opacity);
+
+            var saved = Rows(window).First(row => row.DataContext != draft);
+            Assert.False(DirtyDot(saved).IsVisible);
+            Assert.Equal(0, CloseButton(saved).Opacity);
+
+            window.Hide();
+        });
+    }
+
     /// <summary>Повторный клик по кнопке, Esc и клик мимо закрывают карточку.</summary>
     [Fact]
     public Task CardClosesOnSecondClickEscapeAndClickOutside()
@@ -418,6 +473,9 @@ public sealed class TabsOverflowMenuCardTests
 
     private static Button CloseButton(Button row)
         => row.GetVisualDescendants().OfType<Button>().Single(static button => button.Classes.Contains("mm-tab-overflow-close"));
+
+    private static Ellipse DirtyDot(Button row)
+        => row.GetVisualDescendants().OfType<Ellipse>().Single(static dot => dot.Classes.Contains("mm-tab-dirty"));
 
     private static Border Card(Window window)
         => window.GetControl<ContentControl>(Panel)
