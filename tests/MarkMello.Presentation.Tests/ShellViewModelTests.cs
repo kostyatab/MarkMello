@@ -1234,28 +1234,28 @@ public sealed class ShellViewModelTests
         await OpenSampleAsync(harness);
         var viewModel = harness.ViewModel;
 
-        Assert.Equal(18, viewModel.ReadingPreferences.FontSize);
-        Assert.Equal("18 px", viewModel.FontSizeLabel);
+        Assert.Equal(14, viewModel.ReadingPreferences.FontSize);
+        Assert.Equal("14 px", viewModel.FontSizeLabel);
 
         viewModel.IncreaseTextSizeCommand.Execute(null);
-        Assert.Equal(19, viewModel.ReadingPreferences.FontSize);
-        Assert.Equal(19, viewModel.FontSizeSetting);
-        Assert.Equal("19 px", viewModel.FontSizeLabel);
-        await WaitUntilAsync(() => harness.Settings.Preferences.FontSize == 19);
+        Assert.Equal(15, viewModel.ReadingPreferences.FontSize);
+        Assert.Equal(15, viewModel.FontSizeSetting);
+        Assert.Equal("15 px", viewModel.FontSizeLabel);
+        await WaitUntilAsync(() => harness.Settings.Preferences.FontSize == 15);
 
         // Каждое сохранение идёт в фоне отдельной задачей: ждём его перед следующим
-        // шагом, иначе запись «18» могла бы лечь после «17».
+        // шагом, иначе запись «14» могла бы лечь после «13».
         viewModel.DecreaseTextSizeCommand.Execute(null);
-        Assert.Equal(18, viewModel.ReadingPreferences.FontSize);
-        await WaitUntilAsync(() => harness.Settings.Preferences.FontSize == 18);
+        Assert.Equal(14, viewModel.ReadingPreferences.FontSize);
+        await WaitUntilAsync(() => harness.Settings.Preferences.FontSize == 14);
 
         viewModel.DecreaseTextSizeCommand.Execute(null);
-        Assert.Equal(17, viewModel.ReadingPreferences.FontSize);
-        await WaitUntilAsync(() => harness.Settings.Preferences.FontSize == 17);
+        Assert.Equal(13, viewModel.ReadingPreferences.FontSize);
+        await WaitUntilAsync(() => harness.Settings.Preferences.FontSize == 13);
 
         viewModel.ResetTextSizeCommand.Execute(null);
         Assert.Equal(ReadingPreferences.Default.FontSize, viewModel.ReadingPreferences.FontSize);
-        await WaitUntilAsync(() => harness.Settings.Preferences.FontSize == 18);
+        await WaitUntilAsync(() => harness.Settings.Preferences.FontSize == 14);
     }
 
     [Fact]
@@ -1275,10 +1275,10 @@ public sealed class ShellViewModelTests
         Assert.False(viewModel.DecreaseTextSizeCommand.CanExecute(null));
         Assert.True(viewModel.IncreaseTextSizeCommand.CanExecute(null));
         viewModel.DecreaseTextSizeCommand.Execute(null);
-        Assert.Equal(14, viewModel.ReadingPreferences.FontSize);
+        Assert.Equal(12, viewModel.ReadingPreferences.FontSize);
 
         viewModel.ResetTextSizeCommand.Execute(null);
-        Assert.Equal(18, viewModel.ReadingPreferences.FontSize);
+        Assert.Equal(14, viewModel.ReadingPreferences.FontSize);
         Assert.False(viewModel.ResetTextSizeCommand.CanExecute(null));
     }
 
@@ -1297,8 +1297,8 @@ public sealed class ShellViewModelTests
 
         viewModel.IncreaseTextSizeCommand.Execute(null);
 
-        Assert.Equal(19, viewModel.ReadingPreferences.FontSize);
-        Assert.Equal(19, viewModel.EditorSession!.ReadingPreferences.FontSize);
+        Assert.Equal(15, viewModel.ReadingPreferences.FontSize);
+        Assert.Equal(15, viewModel.EditorSession!.ReadingPreferences.FontSize);
     }
 
     [Fact]

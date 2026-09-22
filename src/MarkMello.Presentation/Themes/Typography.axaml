@@ -38,8 +38,6 @@
   <StaticResource x:Key="ContentControlThemeFontFamily"
                   ResourceKey="MmDocumentSansFontFamily" />
 
-  <sys:Double x:Key="MmDocumentFontSize">17</sys:Double>
-  <sys:Double x:Key="MmDocumentLineHeight">1.7</sys:Double>
   <sys:Double x:Key="MmDocumentMaxWidth">820</sys:Double>
 
 </ResourceDictionary>

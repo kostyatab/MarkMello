@@ -26,17 +26,17 @@ public sealed class TextSizeShortcutTests
 
     [Theory]
     // Больше: «=», «+» (Shift+=) и «+» цифрового блока.
-    [InlineData(Key.OemPlus, Ctrl, PhysicalKey.Equal, "=", 19)]
-    [InlineData(Key.OemPlus, Ctrl | Shift, PhysicalKey.Equal, "+", 19)]
-    [InlineData(Key.Add, Ctrl, PhysicalKey.NumPadAdd, "+", 19)]
-    [InlineData(Key.OemPlus, Cmd, PhysicalKey.Equal, "=", 19)]
-    [InlineData(Key.OemPlus, Cmd | Shift, PhysicalKey.Equal, "+", 19)]
+    [InlineData(Key.OemPlus, Ctrl, PhysicalKey.Equal, "=", 15)]
+    [InlineData(Key.OemPlus, Ctrl | Shift, PhysicalKey.Equal, "+", 15)]
+    [InlineData(Key.Add, Ctrl, PhysicalKey.NumPadAdd, "+", 15)]
+    [InlineData(Key.OemPlus, Cmd, PhysicalKey.Equal, "=", 15)]
+    [InlineData(Key.OemPlus, Cmd | Shift, PhysicalKey.Equal, "+", 15)]
     // Меньше: «−» и «−» цифрового блока.
-    [InlineData(Key.OemMinus, Ctrl, PhysicalKey.Minus, "-", 17)]
-    [InlineData(Key.Subtract, Ctrl, PhysicalKey.NumPadSubtract, "-", 17)]
-    [InlineData(Key.OemMinus, Cmd, PhysicalKey.Minus, "-", 17)]
+    [InlineData(Key.OemMinus, Ctrl, PhysicalKey.Minus, "-", 13)]
+    [InlineData(Key.Subtract, Ctrl, PhysicalKey.NumPadSubtract, "-", 13)]
+    [InlineData(Key.OemMinus, Cmd, PhysicalKey.Minus, "-", 13)]
     // Без модификатора — обычная клавиша, размер не меняется.
-    [InlineData(Key.OemPlus, RawInputModifiers.None, PhysicalKey.Equal, "=", 18)]
+    [InlineData(Key.OemPlus, RawInputModifiers.None, PhysicalKey.Equal, "=", 14)]
     public Task ShortcutStepsTextSizeByOnePixel(Key key, RawInputModifiers modifiers, PhysicalKey physicalKey, string symbol, int expected)
     {
         return _fixture.RunAsync(async () =>

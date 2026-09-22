@@ -62,33 +62,6 @@ public sealed class MarkdownDocumentView : UserControl
     private const double CodeCopyIconSize = 13;
     private const double CodeCopyIconInkInset = (CodeCopyButtonSize - CodeCopyIconSize) / 2 + CodeCopyIconSize * 2 / 24;
 
-    // Сторона иконки чекбокса task list относительно размера шрифта: рамка Lucide
-    // занимает 20/24 сетки, то есть почти 1 em — выше заглавных букв, и галочка
-    // внутри контура читается с первого взгляда.
-    private const double TaskCheckboxSizeToFontSize = 1.15;
-
-    // Отступ текста пункта списка от маркера.
-    private const double ListItemTextIndent = 12;
-
-    // В списке с чекбоксами зазоры меньше: чекбокс шире «•», и с обычным
-    // отступом пункт распадается на номер, иконку и текст. От чекбокса до текста —
-    // вдвое меньше обычного, от номера до чекбокса — ещё меньше: номер «1. » уже
-    // заканчивается пробелом.
-    private const double TaskListItemTextIndent = ListItemTextIndent / 2;
-    private const double TaskCheckboxIndentAfterNumber = 3;
-
-    // Расстояние между пунктами списка. Loose-список (пункты через пустую
-    // строку) разделён как абзацы, tight — чуть больше межстрочного интервала,
-    // и вложенный список читается продолжением пункта.
-    private const double LooseListItemSpacing = 18;
-    private const double TightListItemSpacing = 6;
-
-    // Шапка GitHub alert: иконка заметно выше строчных букв заголовка и вплотную
-    // к нему — читается как одна метка; и отступ шапки от текста alert.
-    private const double AlertIconSizeToFontSize = 1.25;
-    private const double AlertIconTitleGap = 4;
-    private const double AlertHeaderBottomMargin = 4;
-
     private static readonly DataFormat<byte[]> WindowsHtmlClipboardFormat = DataFormat.CreateBytesPlatformFormat("HTML Format");
     private static readonly DataFormat<byte[]> HtmlClipboardFormat = DataFormat.CreateBytesPlatformFormat("text/html");
 
@@ -123,6 +96,9 @@ public sealed class MarkdownDocumentView : UserControl
     private readonly List<MarkdownSourceLineVisualAnchor> _sourceLineAnchors = [];
     private List<BuiltTopLevelBlock> _builtBlocks = [];
     private MarkdownDocumentTextMap _textMap = MarkdownDocumentTextMap.Empty;
+
+    // Метрики текущих настроек чтения; пересчитываются в начале каждой пересборки.
+    private MarkdownDocumentMetrics _metrics = new(ReadingPreferences.Default);
 
     // Заголовки GitHub alerts, с которыми построены текстовая карта и блоки.
     private MarkdownAlertTitles _alertTitles = MarkdownAlertTitles.Create(GetLocalizedString);
@@ -811,6 +787,7 @@ public sealed class MarkdownDocumentView : UserControl
         ResetPointerState();
 
         var document = Document;
+        _metrics = new MarkdownDocumentMetrics(ReadingPreferences);
 
         // Заголовки alert — часть текстового потока: если язык сменился, а в
         // документе были alert, блоки строятся заново, иначе у переиспользованного
@@ -850,6 +827,7 @@ public sealed class MarkdownDocumentView : UserControl
         _builtBlocks = rebuilt;
         DisposeReplacedBlocks(previous, rebuilt);
         SyncRootChildren(rebuilt);
+        ApplyTopLevelRhythm(rebuilt);
         RebuildHeadingAnchorIndex();
 
         // Метка, к которой вернёт номер сноски, могла уйти вместе с изменившимся блоком.
@@ -947,7 +925,7 @@ public sealed class MarkdownDocumentView : UserControl
         var anchorStart = _sourceLineAnchors.Count;
         var headingStart = _headingAnchorRegistrations.Count;
 
-        var control = BuildBlock(block, path, nested: false);
+        var control = BuildBlock(block, path);
 
         var fragmentCount = _selectionFragments.Count - fragmentStart;
         var fragments = new MarkdownDocumentSelectionFragmentBase[fragmentCount];
@@ -1046,6 +1024,45 @@ public sealed class MarkdownDocumentView : UserControl
             {
                 _root.Children.Insert(index, control);
             }
+        }
+    }
+
+    /// <summary>
+    /// Просвет над блоком зависит от соседа выше, а переиспользованный блок мог
+    /// оказаться под другим соседом, поэтому просветы верхнего уровня
+    /// расставляются заново на каждой пересборке.
+    /// </summary>
+    private void ApplyTopLevelRhythm(List<BuiltTopLevelBlock> blocks)
+    {
+        for (var index = 0; index < blocks.Count; index++)
+        {
+            SetBlockGap(
+                blocks[index].Control,
+                index == 0 ? 0 : _metrics.GapBetween(blocks[index - 1].Block, blocks[index].Block));
+        }
+    }
+
+    /// <summary>
+    /// Расставляет просветы между блоками одного контейнера: первый — без
+    /// просвета, дальше — больший из соседних (<see cref="MarkdownDocumentMetrics.GapBetween"/>)
+    /// или <paramref name="uniformGap"/>, если он задан.
+    /// </summary>
+    private void ApplyBlockRhythm(IReadOnlyList<MarkdownBlock> blocks, IReadOnlyList<Control> controls, double? uniformGap = null)
+    {
+        for (var index = 0; index < controls.Count; index++)
+        {
+            SetBlockGap(
+                controls[index],
+                index == 0 ? 0 : uniformGap ?? _metrics.GapBetween(blocks[index - 1], blocks[index]));
+        }
+    }
+
+    private static void SetBlockGap(Control control, double top)
+    {
+        var margin = control.Margin;
+        if (margin.Top != top || margin.Bottom != 0)
+        {
+            control.Margin = new Thickness(margin.Left, top, margin.Right, 0);
         }
     }
 
@@ -1391,14 +1408,14 @@ public sealed class MarkdownDocumentView : UserControl
         _builtBlocks = [];
     }
 
-    private Control BuildBlock(MarkdownBlock block, string path, bool nested, bool insideQuote = false)
+    private Control BuildBlock(MarkdownBlock block, string path)
     {
         var control = block switch
         {
             MarkdownHeadingBlock heading => BuildHeading(heading, path),
-            MarkdownParagraphBlock paragraph => BuildParagraph(paragraph, path, nested, insideQuote),
+            MarkdownParagraphBlock paragraph => BuildParagraph(paragraph, path),
             MarkdownQuoteBlock quote => BuildQuote(quote, path),
-            MarkdownListBlock list => BuildList(list, path, insideQuote),
+            MarkdownListBlock list => BuildList(list, path),
             MarkdownHorizontalRuleBlock => BuildHorizontalRule(),
             MarkdownCodeBlock code => BuildCodeBlock(code, path),
             MarkdownTableBlock table => BuildTable(table, path),
@@ -1436,58 +1453,42 @@ public sealed class MarkdownDocumentView : UserControl
             height: block.Height,
             baseDirectory: Document?.BaseDirectory)
         {
-            Margin = new Thickness(0, 12, 0, 22),
             HorizontalAlignment = HorizontalAlignment.Stretch,
             MaxWidth = 1200,
         };
 
     private Control BuildHeading(MarkdownHeadingBlock block, string path)
     {
-        var fontSize = GetHeadingFontSize(block.Level);
-        var lineHeight = Math.Max(fontSize * 1.25, fontSize + 4);
-        var margin = block.Level == 1
-            ? new Thickness(0, 0, 0, 10)
-            : block.Level == 2
-                ? new Thickness(0, 28, 0, 14)
-                : new Thickness(0, 18, 0, 10);
-
-        // Design: h1 -> 700, h2+ -> 600. Previous code had this inverted.
-        var weight = block.Level == 1 ? FontWeight.Bold : FontWeight.SemiBold;
-
-        // h5 / h6 render with the soft text colour in the design.
-        var baseForeground = block.Level >= 5 ? LookupBrush("MmTextSoftBrush") : null;
+        // Все уровни полужирные; H5 и H6 одного размера с текстом, H6 отличается
+        // мягким цветом — ресурсом темы, чтобы цвет менялся вместе с ней. Просвет
+        // над заголовком — в ритме блоков (MarkdownDocumentMetrics).
+        var foregroundResourceKey = block.Level >= 6 ? "MmTextSoftBrush" : null;
 
         var headingControl = BuildSelectionFragment(
             path,
             block.Inlines,
-            margin,
-            fontSize,
-            lineHeight,
-            weight,
+            margin: default,
+            _metrics.GetHeadingFontSize(block.Level),
+            _metrics.GetHeadingLineHeight(block.Level),
+            FontWeight.SemiBold,
             FontStyle.Normal,
             fallbackClassName: "mm-md-heading",
-            baseForeground: baseForeground);
+            baseForegroundResourceKey: foregroundResourceKey);
 
         RegisterHeadingAnchor(block, headingControl);
         return headingControl;
     }
 
-    private Control BuildParagraph(MarkdownParagraphBlock block, string path, bool nested, bool insideQuote)
-    {
-        var fontStyle = insideQuote ? FontStyle.Italic : FontStyle.Normal;
-        var baseForeground = insideQuote ? LookupBrush("MmTextSoftBrush") : null;
-
-        return BuildSelectionFragment(
+    private Control BuildParagraph(MarkdownParagraphBlock block, string path)
+        => BuildSelectionFragment(
             path,
             block.Inlines,
-            nested ? new Thickness(0, 0, 0, 10) : new Thickness(0, 0, 0, 18),
+            margin: default,
             ReadingPreferences.FontSize,
             GetBodyLineHeight(),
             FontWeight.Normal,
-            fontStyle,
-            fallbackClassName: "mm-md-paragraph",
-            baseForeground: baseForeground);
-    }
+            FontStyle.Normal,
+            fallbackClassName: "mm-md-paragraph");
 
     private Border BuildQuote(MarkdownQuoteBlock block, string path)
     {
@@ -1500,8 +1501,17 @@ public sealed class MarkdownDocumentView : UserControl
         var border = new Border
         {
             Classes = { "mm-md-quote" },
+            Padding = new Thickness(_metrics.QuoteHorizontalPadding, _metrics.QuoteVerticalPadding, 0, _metrics.QuoteVerticalPadding),
             Child = stack
         };
+
+        var children = new Control[block.Blocks.Count];
+        for (var index = 0; index < block.Blocks.Count; index++)
+        {
+            children[index] = BuildBlock(block.Blocks[index], $"{path}.b{index}");
+        }
+
+        ApplyBlockRhythm(block.Blocks, children);
 
         if (block.AlertKind is { } alertKind)
         {
@@ -1509,49 +1519,16 @@ public sealed class MarkdownDocumentView : UserControl
             border.Classes.Add("mm-md-alert");
             border.Classes.Add(kindClass);
             stack.Children.Add(BuildAlertHeader(alertKind, kindClass, path));
+
+            // Шапка — не блок документа: от неё до текста alert свой, меньший просвет.
+            if (children.Length > 0)
+            {
+                SetBlockGap(children[0], _metrics.AlertHeaderGap);
+            }
         }
 
-        // Every descendant of a plain quote receives insideQuote: true so
-        // nested lists and paragraphs pick up the italic/soft treatment.
-        // The body of a GitHub alert is plain text, as on GitHub.
-        var insideQuote = block.AlertKind is null;
-        for (var index = 0; index < block.Blocks.Count; index++)
-        {
-            stack.Children.Add(BuildBlock(block.Blocks[index], $"{path}.b{index}", nested: true, insideQuote: insideQuote));
-        }
-
-        // Нижний отступ блока — расстояние до следующего блока. У последнего
-        // блока цитаты следующего нет, и отступ оставлял бы под текстом пустое
-        // место больше, чем над ним, — у вложенных цитат на каждом уровне.
-        RemoveTrailingBottomMargin(stack);
-
+        stack.Children.AddRange(children);
         return border;
-    }
-
-    /// <summary>
-    /// Убирает нижний отступ у контрола и у последнего контрола внутри него —
-    /// абзаца в конце стека, содержимого последнего пункта списка или вложенной
-    /// цитаты. Внутренний отступ вложенной цитаты остаётся: он симметричен
-    /// верхнему, и полоса цитаты заканчивается чуть ниже текста. В блок кода и
-    /// таблицу не заходим — отступы внутри них часть их собственной вёрстки.
-    /// </summary>
-    private static void RemoveTrailingBottomMargin(Control control)
-    {
-        var margin = control.Margin;
-        control.Margin = new Thickness(margin.Left, margin.Top, margin.Right, 0);
-
-        var last = control switch
-        {
-            StackPanel { Orientation: Orientation.Vertical, Children.Count: > 0 } stack => stack.Children[^1],
-            Grid { RowDefinitions.Count: > 0 } list => list.Children.LastOrDefault(child => Grid.GetRow(child) == list.RowDefinitions.Count - 1),
-            Border { Child: Control child } quote when quote.Classes.Contains("mm-md-quote") => child,
-            _ => null
-        };
-
-        if (last is not null)
-        {
-            RemoveTrailingBottomMargin(last);
-        }
     }
 
     /// <summary>
@@ -1562,7 +1539,7 @@ public sealed class MarkdownDocumentView : UserControl
     /// </summary>
     private StackPanel BuildAlertHeader(MarkdownAlertKind kind, string kindClass, string path)
     {
-        var iconSize = Math.Round(ReadingPreferences.FontSize * AlertIconSizeToFontSize);
+        var iconSize = _metrics.AlertIconSize;
         var icon = new LucideIcon
         {
             Width = iconSize,
@@ -1587,8 +1564,7 @@ public sealed class MarkdownDocumentView : UserControl
         return new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Spacing = AlertIconTitleGap,
-            Margin = new Thickness(0, 0, 0, AlertHeaderBottomMargin),
+            Spacing = _metrics.AlertIconTitleGap,
             Children = { icon, title }
         };
     }
@@ -1654,18 +1630,23 @@ public sealed class MarkdownDocumentView : UserControl
     /// пункта, в своей колонке — она появляется, только если в списке есть пункты
     /// task list. Текст обычного пункта начинается там же, где чекбоксы.
     /// </remarks>
-    private Grid BuildList(MarkdownListBlock block, string path, bool insideQuote = false)
+    private Grid BuildList(MarkdownListBlock block, string path)
     {
-        var itemSpacing = block.IsLoose ? LooseListItemSpacing : TightListItemSpacing;
+        // Loose-список (пункты через пустую строку) разделён как абзацы, tight —
+        // чуть больше межстрочного интервала, и вложенный список читается
+        // продолжением пункта.
         var grid = new Grid
         {
-            RowSpacing = itemSpacing,
-            Margin = new Thickness(0, 0, 0, 18)
+            RowSpacing = block.IsLoose ? _metrics.LooseListItemGap : _metrics.TightListItemSpacing
         };
 
+        // В списке с чекбоксами зазоры меньше: чекбокс шире «•», и с обычным
+        // отступом пункт распадается на номер, иконку и текст. От чекбокса до
+        // текста — вдвое меньше обычного, от номера до чекбокса — ещё меньше:
+        // номер «1. » уже заканчивается пробелом.
         var hasTasks = block.Items.Any(static item => item.IsChecked is not null);
         var hasCheckboxColumn = block.IsOrdered && hasTasks;
-        var textIndent = hasTasks ? TaskListItemTextIndent : ListItemTextIndent;
+        var textIndent = hasTasks ? _metrics.ListItemTextIndent / 2 : _metrics.ListItemTextIndent;
         grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
         if (hasCheckboxColumn)
         {
@@ -1686,13 +1667,13 @@ public sealed class MarkdownDocumentView : UserControl
             if (hasCheckboxColumn && item.IsChecked is null)
             {
                 // Текст обычного пункта встаёт туда же, где у соседей чекбокс.
-                var content = BuildListItemContent(block, item, itemPath, insideQuote, TaskCheckboxIndentAfterNumber);
+                var content = BuildListItemContent(block, item, itemPath, _metrics.TaskCheckboxIndentAfterNumber);
                 AddToGrid(grid, content, index, column: 1);
                 Grid.SetColumnSpan(content, 2);
             }
             else
             {
-                AddToGrid(grid, BuildListItemContent(block, item, itemPath, insideQuote, textIndent), index, contentColumn);
+                AddToGrid(grid, BuildListItemContent(block, item, itemPath, textIndent), index, contentColumn);
             }
         }
 
@@ -1727,21 +1708,19 @@ public sealed class MarkdownDocumentView : UserControl
         if (item.IsChecked is { } isOrderedChecked)
         {
             var checkbox = BuildTaskCheckbox(isOrderedChecked, $"{path}.t");
-            checkbox.Margin = new Thickness(TaskCheckboxIndentAfterNumber, 0, 0, 0);
+            checkbox.Margin = new Thickness(_metrics.TaskCheckboxIndentAfterNumber, 0, 0, 0);
             AddToGrid(grid, checkbox, index, column: 1);
         }
     }
 
     /// <summary>
-    /// Содержимое пункта. Расстояние до следующего пункта задаёт сетка списка,
-    /// поэтому нижний отступ последнего блока пункта убирается — иначе после
-    /// вложенного списка он складывался бы с отступом самого вложенного списка.
+    /// Содержимое пункта. Расстояние до следующего пункта задаёт сетка списка.
     /// </summary>
     /// <remarks>
-    /// В tight-списке абзац пункта отделён от следующего блока — обычно
-    /// вложенного списка — тем же интервалом, что и пункты друг от друга.
+    /// В tight-списке блоки пункта — обычно абзац и вложенный список — отделены
+    /// друг от друга тем же интервалом, что и пункты.
     /// </remarks>
-    private StackPanel BuildListItemContent(MarkdownListBlock list, MarkdownListItem item, string path, bool insideQuote, double indent)
+    private StackPanel BuildListItemContent(MarkdownListBlock list, MarkdownListItem item, string path, double indent)
     {
         var content = new StackPanel
         {
@@ -1752,17 +1731,10 @@ public sealed class MarkdownDocumentView : UserControl
 
         for (var blockIndex = 0; blockIndex < item.Blocks.Count; blockIndex++)
         {
-            var block = item.Blocks[blockIndex];
-            var control = BuildBlock(block, $"{path}.b{blockIndex}", nested: true, insideQuote: insideQuote);
-            if (!list.IsLoose && block is MarkdownParagraphBlock)
-            {
-                control.Margin = new Thickness(0, 0, 0, TightListItemSpacing);
-            }
-
-            content.Children.Add(control);
+            content.Children.Add(BuildBlock(item.Blocks[blockIndex], $"{path}.b{blockIndex}"));
         }
 
-        RemoveTrailingBottomMargin(content);
+        ApplyBlockRhythm(item.Blocks, content.Children, list.IsLoose ? null : _metrics.TightListItemSpacing);
         return content;
     }
 
@@ -1787,7 +1759,7 @@ public sealed class MarkdownDocumentView : UserControl
     {
         var checkbox = new MarkdownTaskCheckboxFragment(isChecked)
         {
-            IconSize = Math.Round(ReadingPreferences.FontSize * TaskCheckboxSizeToFontSize),
+            IconSize = _metrics.TaskCheckboxSize,
             LineHeight = GetBodyLineHeight(),
             VerticalAlignment = VerticalAlignment.Top
         };
@@ -1802,21 +1774,12 @@ public sealed class MarkdownDocumentView : UserControl
         return checkbox;
     }
 
-    private static Grid BuildHorizontalRule()
-    {
-        // Design: 40% wide, horizontally centered. Avalonia has no percentage
-        // widths, so we model it as a three-column grid in 3*,4*,3* ratio with
-        // the rule in the middle column.
-        var grid = new Grid
-        {
-            ColumnDefinitions = new ColumnDefinitions("3*,4*,3*"),
-            Margin = new Thickness(0, 32, 0, 32),
-        };
-        var line = new Border { Classes = { "mm-md-hr" } };
-        Grid.SetColumn(line, 1);
-        grid.Children.Add(line);
-        return grid;
-    }
+    /// <summary>
+    /// Разделитель — линия во всю ширину колонки; просветы над и под ней задаёт
+    /// ритм блоков.
+    /// </summary>
+    private static Border BuildHorizontalRule()
+        => new() { Classes = { "mm-md-hr" } };
 
     /// <summary>
     /// Блок сносок в конце документа: короткая черта слева, как в книге, и под ней
@@ -1829,11 +1792,11 @@ public sealed class MarkdownDocumentView : UserControl
         var ruleRow = new Grid
         {
             ColumnDefinitions = new ColumnDefinitions("*,2*"),
-            Margin = new Thickness(0, 14, 0, 16),
+            Margin = new Thickness(0, _metrics.FootnoteRuleTop, 0, _metrics.FootnoteRuleBottom),
             Children = { rule }
         };
 
-        var grid = new Grid { RowSpacing = 8 };
+        var grid = new Grid { RowSpacing = _metrics.FootnoteRowGap };
         grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
         grid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
 
@@ -1849,13 +1812,15 @@ public sealed class MarkdownDocumentView : UserControl
             {
                 Orientation = Orientation.Vertical,
                 Spacing = 0,
-                Margin = new Thickness(ListItemTextIndent, 0, 0, 0)
+                Margin = new Thickness(_metrics.ListItemTextIndent, 0, 0, 0)
             };
 
             for (var blockIndex = 0; blockIndex < footnote.Blocks.Count; blockIndex++)
             {
-                content.Children.Add(BuildBlock(footnote.Blocks[blockIndex], $"{footnotePath}.b{blockIndex}", nested: true));
+                content.Children.Add(BuildBlock(footnote.Blocks[blockIndex], $"{footnotePath}.b{blockIndex}"));
             }
+
+            ApplyBlockRhythm(footnote.Blocks, content.Children);
 
             AddToGrid(grid, content, index, column: 1);
         }
@@ -1864,7 +1829,6 @@ public sealed class MarkdownDocumentView : UserControl
         {
             Orientation = Orientation.Vertical,
             Spacing = 0,
-            Margin = new Thickness(0, 0, 0, 18),
             Classes = { "mm-md-footnotes" },
             Children = { ruleRow, grid }
         };
@@ -2092,9 +2056,7 @@ public sealed class MarkdownDocumentView : UserControl
         return new Border
         {
             Classes = { "mm-md-table" },
-            Child = new MarkdownTableHost(panel, TableHorizontalScrollBarReserve),
-            // Design `.mm-table` margin is 1.4em top and bottom.
-            Margin = new Thickness(0, (int)(ReadingPreferences.FontSize * 1.4), 0, (int)(ReadingPreferences.FontSize * 1.4))
+            Child = new MarkdownTableHost(panel, TableHorizontalScrollBarReserve)
         };
     }
 
@@ -2245,6 +2207,11 @@ public sealed class MarkdownDocumentView : UserControl
             if (baseForeground is not null)
             {
                 fallback.Foreground = baseForeground;
+            }
+            else if (baseForegroundResourceKey is not null)
+            {
+                // Как у фрагмента: цвет ресурсом темы, который следует за её сменой.
+                fallback.Bind(TextBlock.ForegroundProperty, fallback.GetResourceObservable(baseForegroundResourceKey));
             }
 
             if (baseFontFeatures is not null)
@@ -3088,22 +3055,7 @@ public sealed class MarkdownDocumentView : UserControl
         };
     }
 
-    private double GetBodyLineHeight() => Math.Max(ReadingPreferences.FontSize * ReadingPreferences.LineHeight, ReadingPreferences.FontSize + 4);
-
-    private double GetHeadingFontSize(int level)
-    {
-        var baseSize = ReadingPreferences.FontSize;
-        return level switch
-        {
-            1 => baseSize * 2.1,
-            2 => baseSize * 1.5,
-            3 => baseSize * 1.2,
-            4 => baseSize * 1.05,
-            5 => baseSize * 0.95,
-            6 => baseSize * 0.95,
-            _ => baseSize
-        };
-    }
+    private double GetBodyLineHeight() => _metrics.BodyLineHeight;
 
     private IBrush? LookupBrush(string resourceKey)
         => this.TryFindResource(resourceKey, ActualThemeVariant, out var value) && value is IBrush brush

@@ -175,4 +175,15 @@
   <!-- octagon-alert — [!CAUTION] -->
   <StreamGeometry x:Key="LucideOctagonAlertGeometry">M12 16h.01 M12 8v4 M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z</StreamGeometry>
 
+  <!-- ======================= Цитаты, картинки, сноски в документе ======================= -->
+
+  <!-- quote — значок на плашке цитаты -->
+  <StreamGeometry x:Key="LucideQuoteGeometry">M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z M5 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z</StreamGeometry>
+
+  <!-- image-off — битая картинка и ошибка диаграммы -->
+  <StreamGeometry x:Key="LucideImageOffGeometry">M2 2L22 22 M10.41 10.41a2 2 0 1 1-2.83-2.83 M13.5 13.5L6 21 M18 12L21 15 M3.59 3.59A1.99 1.99 0 0 0 3 5v14a2 2 0 0 0 2 2h14c.55 0 1.052-.22 1.41-.59 M21 15V5a2 2 0 0 0-2-2H9</StreamGeometry>
+
+  <!-- corner-up-left — возврат из сноски к метке в тексте -->
+  <StreamGeometry x:Key="LucideCornerUpLeftGeometry">M20 20v-7a4 4 0 0 0-4-4H4 M9 14 4 9l5-5</StreamGeometry>
+
 </ResourceDictionary>

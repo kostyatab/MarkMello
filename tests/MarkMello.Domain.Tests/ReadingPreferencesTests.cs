@@ -14,6 +14,16 @@ public sealed class ReadingPreferencesTests
     }
 
     [Fact]
+    public void DefaultsAreSans14WithLineHeight16()
+    {
+        Assert.Equal(
+            new ReadingPreferences(FontFamilyMode.Sans, 14, 1.6, 820, DocumentMinimapMode.Auto),
+            ReadingPreferences.Default);
+        Assert.Equal(12, ReadingPreferences.MinFontSize);
+        Assert.Equal(24, ReadingPreferences.MaxFontSize);
+    }
+
+    [Fact]
     public void NormalizeClampsAndRoundsOutOfRangeValues()
     {
         var candidate = new ReadingPreferences(
@@ -25,7 +35,7 @@ public sealed class ReadingPreferencesTests
 
         var normalized = ReadingPreferences.Normalize(candidate);
 
-        Assert.Equal(FontFamilyMode.Serif, normalized.FontFamily);
+        Assert.Equal(FontFamilyMode.Sans, normalized.FontFamily);
         Assert.Equal(ReadingPreferences.MaxFontSize, normalized.FontSize);
         Assert.Equal(ReadingPreferences.MinLineHeight, normalized.LineHeight);
         Assert.Equal(ReadingPreferences.MinContentWidth, normalized.ContentWidth);

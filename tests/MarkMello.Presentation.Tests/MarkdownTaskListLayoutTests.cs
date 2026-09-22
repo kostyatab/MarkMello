@@ -181,7 +181,8 @@ public sealed class MarkdownTaskListLayoutTests
             var lineHeight = preferences.FontSize * preferences.LineHeight;
 
             Assert.True(text.Bounds.Height > 1.5 * lineHeight, "the item text should wrap");
-            Assert.Equal(lineHeight, checkbox.Bounds.Height, Tolerance);
+            // Раскладка округляет высоту вверх до целого пикселя.
+            Assert.Equal(Math.Ceiling(lineHeight), checkbox.Bounds.Height, Tolerance);
             Assert.Equal(text.TranslatePoint(default, list)!.Value.Y, checkbox.TranslatePoint(default, list)!.Value.Y, Tolerance);
 
             window.Close();

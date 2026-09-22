@@ -52,6 +52,15 @@
       <SolidColorBrush x:Key="MmKeyboardBorderBrush">#D0C9C3</SolidColorBrush>
       <!-- oklch(0.80 0.012 60) -->
       <SolidColorBrush x:Key="MmQuoteBarBrush">#C4BCB6</SolidColorBrush>
+      <!-- Плашка цитаты и фон шапки таблицы -->
+      <!-- oklch(0.957 0.009 80) -->
+      <SolidColorBrush x:Key="MmQuoteBackgroundBrush">#F4F0EA</SolidColorBrush>
+      <!-- Полоса и значок цитаты -->
+      <!-- oklch(0.76 0.017 65) -->
+      <SolidColorBrush x:Key="MmQuoteMarkBrush">#B9AFA6</SolidColorBrush>
+      <!-- Блок кода: светлый лист в рамке, светлее фона страницы -->
+      <!-- oklch(0.995 0.004 80) -->
+      <SolidColorBrush x:Key="MmCodeBlockBackgroundBrush">#FFFDFA</SolidColorBrush>
       <!-- Selection: warm highlight aligned with accent-soft -->
       <SolidColorBrush x:Key="MmSelectionBrush">#F5D9C4</SolidColorBrush>
       <!-- Find (search): non-active matches, soft amber -->
@@ -120,6 +129,15 @@
       <SolidColorBrush x:Key="MmKeyboardBorderBrush">#554E49</SolidColorBrush>
       <!-- oklch(0.45 0.012 60) -->
       <SolidColorBrush x:Key="MmQuoteBarBrush">#5A544F</SolidColorBrush>
+      <!-- Плашка цитаты и фон шапки таблицы -->
+      <!-- oklch(0.265 0.012 65) -->
+      <SolidColorBrush x:Key="MmQuoteBackgroundBrush">#29241F</SolidColorBrush>
+      <!-- Полоса и значок цитаты -->
+      <!-- oklch(0.505 0.014 60) -->
+      <SolidColorBrush x:Key="MmQuoteMarkBrush">#6B635D</SolidColorBrush>
+      <!-- Блок кода: в тёмной теме фон блока равен фону страницы, его держит рамка -->
+      <!-- oklch(0.23 0.008 60) -->
+      <SolidColorBrush x:Key="MmCodeBlockBackgroundBrush">#201C19</SolidColorBrush>
       <!-- Selection: warm highlight, aligned with dark accent-soft -->
       <SolidColorBrush x:Key="MmSelectionBrush">#4B382C</SolidColorBrush>
       <!-- Find (search): non-active matches, soft amber -->

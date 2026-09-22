@@ -416,7 +416,13 @@ public sealed class MarkdownTableLayoutTests
     {
         return _fixture.Session.Dispatch(() =>
         {
-            var view = CreateView(WideTable());
+            // На середине прокрутки таблица должна уходить за оба края дальше, чем
+            // на ширину затухания, — крупный текст делает её для этого достаточно широкой.
+            var view = new MarkdownDocumentView
+            {
+                ReadingPreferences = ReadingPreferences.Default with { FontSize = 18 },
+                Document = WideTable()
+            };
             var (window, _) = ShowOnPage(view);
             var host = Host(view);
             var scrollViewer = host.ScrollViewer;

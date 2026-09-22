@@ -7,6 +7,7 @@ internal sealed class MarkdownDisplayLayoutModel
 {
     private const char LeftCodePaddingMarker = '\uE000';
     private const char RightCodePaddingMarker = '\uE001';
+    private const char KeyboardGapMarker = '\uE002';
 
     private readonly int[] _displayCaretToCanonicalCaret;
     private readonly int[] _canonicalCaretToDisplayStart;
@@ -219,6 +220,17 @@ internal sealed class MarkdownDisplayLayoutModel
 
         private void AppendCodeSegment(string text, MarkdownInlineStyleState style)
         {
+            // Клавиши вплотную (<kbd>Ctrl</kbd><kbd>C</kbd>) разделены небольшим
+            // зазором — вне рамок обеих.
+            if (style.IsKeyboard
+                && _codeBoxes.Count > 0
+                && _codeBoxes[^1] is { IsKeyboard: true } previous
+                && previous.CanonicalRange.End == _canonicalOffset
+                && previous.DisplayEnd == _displayOffset)
+            {
+                AppendPadding(MarkdownDisplaySegmentKind.KeyboardGap, KeyboardGapMarker, style);
+            }
+
             var canonicalStart = _canonicalOffset;
             var displayStart = _displayOffset;
 
@@ -409,5 +421,8 @@ internal enum MarkdownDisplaySegmentKind
     Image,
     CodePaddingLeft,
     CodePaddingRight,
-    FootnoteReference
+    FootnoteReference,
+
+    /// <summary>Зазор между клавишами, стоящими вплотную.</summary>
+    KeyboardGap
 }

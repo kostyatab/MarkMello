@@ -30,7 +30,9 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
         TextDecorationCollection? linkDecorations,
         MarkdownInlineImagePlaceholderBrushes imagePlaceholderBrushes,
         IBrush? footnoteReferenceForeground = null,
-        FontFeatureCollection? baseFontFeatures = null)
+        FontFeatureCollection? baseFontFeatures = null,
+        IBrush? inlineCodeForeground = null,
+        IBrush? keyboardForeground = null)
     {
         _displayModel = MarkdownDisplayLayoutModel.Create(styledText);
         var textProperties = new MarkdownTextRunPropertiesFactory(
@@ -41,14 +43,20 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
             baseFontStyle,
             foreground,
             linkDecorations,
-            baseFontFeatures);
+            baseFontFeatures,
+            inlineCodeForeground,
+            keyboardForeground);
         var padMetrics = MarkdownInlineCodePadMetrics.Create(
             inlineCodeFontFamily,
-            baseFontSize * MarkdownTextRunPropertiesFactory.InlineCodeFontScale,
+            baseFontSize * MarkdownDocumentMetrics.InlineCodeFontScale,
             baseFontWeight,
             baseFontStyle,
             foreground);
         _codePadMetrics = padMetrics;
+        // Клавиши — только в тех абзацах, где они есть: замер подписи лишний остальным.
+        var keyboardMetrics = _displayModel.CodeBoxes.Any(static box => box.IsKeyboard)
+            ? new MarkdownKeyboardKeyMetrics(textProperties.KeyboardTypeface, textProperties.KeyboardFontSize, baseFontSize, padMetrics.BoxHeight)
+            : null;
         var imageMetrics = MarkdownInlineImageMetrics.Create(
             baseFontFamily,
             baseFontSize,
@@ -73,7 +81,8 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
             padMetrics,
             imageMetrics,
             maxWidth,
-            _footnoteMetrics);
+            _footnoteMetrics,
+            keyboardMetrics);
         var paragraphProperties = new GenericTextParagraphProperties(
             new GenericTextRunProperties(
                 new Typeface(baseFontFamily, baseFontStyle, baseFontWeight),
@@ -150,14 +159,17 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
                 continue;
             }
 
+            // Плашка кода и клавиша одной высоты и стоят по центру строки: их верх
+            // вровень, а при тесном межстрочном плашка выходит за строку поровну
+            // сверху и снизу, но строку не раздвигает.
             foreach (var bounds in line.TextLine.GetTextBounds(overlapStart, overlapEnd - overlapStart))
             {
-                var centeredY = line.Y + Math.Max(0, (line.TextLine.Height - _codePadMetrics.Height) / 2);
+                var centeredY = line.Y + (line.TextLine.Height - _codePadMetrics.BoxHeight) / 2;
                 rects.Add(new Rect(
                     bounds.Rectangle.X,
                     centeredY,
                     bounds.Rectangle.Width,
-                    _codePadMetrics.Height));
+                    _codePadMetrics.BoxHeight));
             }
         }
 
@@ -349,6 +361,11 @@ internal sealed class MarkdownTextSource : ITextSource
     private readonly MarkdownInlineCodePadMetrics _padMetrics;
     private readonly MarkdownInlineImageMetrics _imageMetrics;
     private readonly MarkdownFootnoteReferenceMetrics? _footnoteMetrics;
+    private readonly MarkdownKeyboardKeyMetrics? _keyboardMetrics;
+
+    // Поле клавиши по индексу сегмента её левого и правого поля; считается один
+    // раз на абзац, а не на каждую раскладку строки.
+    private Dictionary<int, double>? _keyboardSideWidths;
 
     public MarkdownTextSource(
         MarkdownDisplayLayoutModel displayModel,
@@ -358,7 +375,8 @@ internal sealed class MarkdownTextSource : ITextSource
         MarkdownInlineCodePadMetrics padMetrics,
         MarkdownInlineImageMetrics imageMetrics,
         double maxWidth = 100_000,
-        MarkdownFootnoteReferenceMetrics? footnoteMetrics = null)
+        MarkdownFootnoteReferenceMetrics? footnoteMetrics = null,
+        MarkdownKeyboardKeyMetrics? keyboardMetrics = null)
     {
         _displayModel = displayModel;
         _images = images;
@@ -367,6 +385,7 @@ internal sealed class MarkdownTextSource : ITextSource
         _padMetrics = padMetrics;
         _imageMetrics = imageMetrics;
         _footnoteMetrics = footnoteMetrics;
+        _keyboardMetrics = keyboardMetrics;
         MaxWidth = maxWidth;
     }
 
@@ -395,12 +414,54 @@ internal sealed class MarkdownTextSource : ITextSource
                 _propertiesFactory.Get(segment.Style)),
             MarkdownDisplaySegmentKind.LineBreak => new TextEndOfLine(1),
             MarkdownDisplaySegmentKind.Image => CreateImageRun(segment),
+            MarkdownDisplaySegmentKind.CodePaddingLeft or MarkdownDisplaySegmentKind.CodePaddingRight
+                when segment.Style.IsKeyboard && _keyboardMetrics is not null
+                => MarkdownSpacerTextRun.Create(GetKeyboardSideWidth(_keyboardMetrics, segmentIndex), _padMetrics),
             MarkdownDisplaySegmentKind.CodePaddingLeft => MarkdownSpacerTextRun.Left(_padMetrics),
             MarkdownDisplaySegmentKind.CodePaddingRight => MarkdownSpacerTextRun.Right(_padMetrics),
+            MarkdownDisplaySegmentKind.KeyboardGap when _keyboardMetrics is not null
+                => MarkdownSpacerTextRun.Create(_keyboardMetrics.Gap, _padMetrics),
             MarkdownDisplaySegmentKind.FootnoteReference when _footnoteMetrics is not null
                 => new MarkdownFootnoteReferenceTextRun(segment.Text, _footnoteMetrics),
             _ => new TextEndOfParagraph(1)
         };
+    }
+
+    private double GetKeyboardSideWidth(MarkdownKeyboardKeyMetrics metrics, int paddingSegmentIndex)
+    {
+        _keyboardSideWidths ??= MeasureKeyboardSides(metrics);
+        return _keyboardSideWidths.TryGetValue(paddingSegmentIndex, out var width) ? width : 0;
+    }
+
+    /// <summary>
+    /// Подпись клавиши — текст между её левым и правым полем; оба поля одной ширины.
+    /// </summary>
+    private Dictionary<int, double> MeasureKeyboardSides(MarkdownKeyboardKeyMetrics metrics)
+    {
+        var widths = new Dictionary<int, double>();
+        var segments = _displayModel.Segments;
+        var label = new System.Text.StringBuilder();
+        for (var index = 0; index < segments.Count; index++)
+        {
+            if (segments[index] is not { Kind: MarkdownDisplaySegmentKind.CodePaddingLeft, Style.IsKeyboard: true })
+            {
+                continue;
+            }
+
+            label.Clear();
+            var right = index + 1;
+            for (; right < segments.Count && segments[right].Kind == MarkdownDisplaySegmentKind.Text; right++)
+            {
+                label.Append(segments[right].Text);
+            }
+
+            var side = metrics.GetSideWidth(label.ToString());
+            widths[index] = side;
+            widths[right] = side;
+            index = right;
+        }
+
+        return widths;
     }
 
     private MarkdownInlineImageTextRun CreateImageRun(MarkdownDisplaySegment segment)
@@ -418,8 +479,6 @@ internal sealed class MarkdownTextSource : ITextSource
 
 internal sealed class MarkdownTextRunPropertiesFactory
 {
-    internal const double InlineCodeFontScale = 0.92;
-
     /// <summary>
     /// Код показывается символ в символ: лигатуры моноширинного шрифта рисуют
     /// <c>-|</c> как <c>⊣</c>, а <c>=&gt;</c> как <c>⇒</c>, и читатель видит не то,
@@ -441,7 +500,11 @@ internal sealed class MarkdownTextRunPropertiesFactory
     private readonly IBrush _foreground;
     private readonly TextDecorationCollection? _linkDecorations;
     private readonly FontFeatureCollection? _baseFontFeatures;
+    private readonly IBrush _inlineCodeForeground;
+    private readonly IBrush _keyboardForeground;
 
+    /// <param name="inlineCodeForeground">Цвет инлайн-кода; без него — цвет текста.</param>
+    /// <param name="keyboardForeground">Цвет подписи клавиши; без него — цвет текста.</param>
     public MarkdownTextRunPropertiesFactory(
         FontFamily baseFontFamily,
         FontFamily inlineCodeFontFamily,
@@ -450,7 +513,9 @@ internal sealed class MarkdownTextRunPropertiesFactory
         FontStyle fontStyle,
         IBrush foreground,
         TextDecorationCollection? linkDecorations,
-        FontFeatureCollection? baseFontFeatures = null)
+        FontFeatureCollection? baseFontFeatures = null,
+        IBrush? inlineCodeForeground = null,
+        IBrush? keyboardForeground = null)
     {
         _baseFontFamily = baseFontFamily;
         _inlineCodeFontFamily = inlineCodeFontFamily;
@@ -460,7 +525,17 @@ internal sealed class MarkdownTextRunPropertiesFactory
         _foreground = foreground;
         _linkDecorations = linkDecorations;
         _baseFontFeatures = baseFontFeatures;
+        _inlineCodeForeground = inlineCodeForeground ?? foreground;
+        _keyboardForeground = keyboardForeground ?? foreground;
     }
+
+    /// <summary>
+    /// Подпись клавиши — шрифтом текста, мельче его и всегда прямым нормальным
+    /// начертанием, даже внутри жирного или курсива.
+    /// </summary>
+    public Typeface KeyboardTypeface => new(_baseFontFamily, FontStyle.Normal, FontWeight.Normal);
+
+    public double KeyboardFontSize => _fontSize * MarkdownDocumentMetrics.KeyboardFontScale;
 
     public TextRunProperties Get(MarkdownInlineStyleState style)
     {
@@ -469,19 +544,28 @@ internal sealed class MarkdownTextRunPropertiesFactory
             return properties;
         }
 
-        var family = style.IsBoxed ? _inlineCodeFontFamily : _baseFontFamily;
-        var fontSize = style.IsBoxed ? _fontSize * InlineCodeFontScale : _fontSize;
-        var weight = style.IsBold ? FontWeight.Bold : _fontWeight;
-        var fontStyle = style.IsItalic ? FontStyle.Italic : _fontStyle;
-        properties = new GenericTextRunProperties(
-            new Typeface(family, fontStyle, weight),
-            fontSize,
-            ResolveDecorations(style),
-            _foreground,
-            backgroundBrush: null,
-            BaselineAlignment.Baseline,
-            CultureInfo.CurrentUICulture,
-            style.IsBoxed ? CodeFontFeatures : _baseFontFeatures);
+        properties = style.IsKeyboard
+            ? new GenericTextRunProperties(
+                KeyboardTypeface,
+                KeyboardFontSize,
+                ResolveDecorations(style),
+                _keyboardForeground,
+                backgroundBrush: null,
+                BaselineAlignment.Baseline,
+                CultureInfo.CurrentUICulture,
+                _baseFontFeatures)
+            : new GenericTextRunProperties(
+                new Typeface(
+                    style.IsCode ? _inlineCodeFontFamily : _baseFontFamily,
+                    style.IsItalic ? FontStyle.Italic : _fontStyle,
+                    style.IsBold ? FontWeight.Bold : _fontWeight),
+                style.IsCode ? _fontSize * MarkdownDocumentMetrics.InlineCodeFontScale : _fontSize,
+                ResolveDecorations(style),
+                style.IsCode ? _inlineCodeForeground : _foreground,
+                backgroundBrush: null,
+                BaselineAlignment.Baseline,
+                CultureInfo.CurrentUICulture,
+                style.IsCode ? CodeFontFeatures : _baseFontFeatures);
         _cache.Add(style, properties);
         return properties;
     }
@@ -666,12 +750,20 @@ internal sealed class MarkdownFootnoteReferenceTextRun : DrawableTextRun
         => _numberLayout.Draw(drawingContext, new Point(origin.X + HorizontalPadding, origin.Y + _textOffsetY));
 }
 
+/// <summary>
+/// Поля инлайн-кода. <paramref name="Height"/> и <paramref name="Baseline"/> —
+/// строки текста кода: по ним поля стоят в строке и не раздвигают её.
+/// <paramref name="BoxHeight"/> — высота плашки вместе с полями сверху и снизу;
+/// клавиша той же высоты.
+/// </summary>
 internal readonly record struct MarkdownInlineCodePadMetrics(
     double LeftWidth,
     double RightWidth,
     double Height,
-    double Baseline)
+    double Baseline,
+    double BoxHeight)
 {
+    /// <param name="fontSize">Кегль кода: поля — в его долях, как em в CSS.</param>
     public static MarkdownInlineCodePadMetrics Create(
         FontFamily fontFamily,
         double fontSize,
@@ -698,7 +790,55 @@ internal readonly record struct MarkdownInlineCodePadMetrics(
 
         var height = Math.Max(1, probe.Height);
         var baseline = Math.Clamp(probe.Baseline, 0, height);
-        return new MarkdownInlineCodePadMetrics(4, 4, height, baseline);
+        var side = fontSize * MarkdownDocumentMetrics.InlineCodeHorizontalPadding;
+        var boxHeight = height + 2 * fontSize * MarkdownDocumentMetrics.InlineCodeVerticalPadding;
+        return new MarkdownInlineCodePadMetrics(side, side, height, baseline, boxHeight);
+    }
+}
+
+/// <summary>
+/// Размеры клавиши (<c>&lt;kbd&gt;</c>) в долях размера текста: поля по бокам,
+/// ширина не меньше высоты — «O» и «S» квадратные — и зазор между клавишами
+/// вплотную. Ширина подписи замеряется один раз на подпись.
+/// </summary>
+internal sealed class MarkdownKeyboardKeyMetrics
+{
+    private readonly Dictionary<string, double> _sideWidths = new(StringComparer.Ordinal);
+    private readonly Typeface _typeface;
+    private readonly double _keyFontSize;
+    private readonly double _padding;
+    private readonly double _minWidth;
+
+    public MarkdownKeyboardKeyMetrics(Typeface typeface, double keyFontSize, double textFontSize, double height)
+    {
+        _typeface = typeface;
+        _keyFontSize = keyFontSize;
+        _padding = textFontSize * MarkdownDocumentMetrics.KeyboardHorizontalPadding;
+        _minWidth = height;
+        Gap = textFontSize * MarkdownDocumentMetrics.KeyboardGap;
+    }
+
+    /// <summary>Зазор между клавишами, стоящими вплотную.</summary>
+    public double Gap { get; }
+
+    /// <summary>Поле с каждой стороны подписи: не меньше заданного, а узкую подпись — по центру квадрата.</summary>
+    public double GetSideWidth(string text)
+    {
+        if (_sideWidths.TryGetValue(text, out var side))
+        {
+            return side;
+        }
+
+        using var layout = new TextLayout(
+            text,
+            _typeface,
+            _keyFontSize,
+            Brushes.Black,
+            TextAlignment.Left,
+            TextWrapping.NoWrap);
+        side = Math.Max(_padding, (_minWidth - layout.WidthIncludingTrailingWhitespace) / 2);
+        _sideWidths.Add(text, side);
+        return side;
     }
 }
 
@@ -919,6 +1059,10 @@ internal sealed class MarkdownSpacerTextRun : DrawableTextRun
 
     public static MarkdownSpacerTextRun Right(MarkdownInlineCodePadMetrics metrics)
         => new(metrics.RightWidth, metrics.Height, metrics.Baseline);
+
+    /// <summary>Пустое место заданной ширины высотой в строку кода.</summary>
+    public static MarkdownSpacerTextRun Create(double width, MarkdownInlineCodePadMetrics metrics)
+        => new(width, metrics.Height, metrics.Baseline);
 
     public override int Length => 1;
 

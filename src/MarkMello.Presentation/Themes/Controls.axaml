@@ -1375,9 +1375,8 @@
     <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
   </Style>
 
+  <!-- Просветы вокруг цитаты и поля внутри неё задаёт MarkdownDocumentMetrics -->
   <Style Selector="Border.mm-md-quote">
-    <Setter Property="Margin" Value="0,0,0,20" />
-    <Setter Property="Padding" Value="20,4,0,4" />
     <Setter Property="BorderThickness" Value="2,0,0,0" />
     <Setter Property="BorderBrush" Value="{DynamicResource MmQuoteBarBrush}" />
   </Style>
@@ -1429,7 +1428,6 @@
   </Style>
 
   <Style Selector="Border.mm-md-codeblock">
-    <Setter Property="Margin" Value="0,0,0,22" />
     <Setter Property="Padding" Value="16,12" />
     <Setter Property="CornerRadius" Value="8" />
     <Setter Property="BorderThickness" Value="1" />

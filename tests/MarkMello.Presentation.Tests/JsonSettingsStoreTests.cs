@@ -144,6 +144,38 @@ public sealed class JsonSettingsStoreTests
     }
 
     [Fact]
+    public async Task LoadKeepsSavedPreferencesThatDifferFromTheCurrentDefaults()
+    {
+        // Умолчания сменились с Serif 18 / 1,7 на Sans 14 / 1,6 (MM-60): у того,
+        // кто уже сохранял настройки, они остаются прежними.
+        var rootDirectory = CreateTempDirectory();
+        const string json = """
+        {
+          "preferences": {
+            "fontFamily": "Serif",
+            "fontSize": 18,
+            "lineHeight": 1.7,
+            "contentWidth": 820
+          }
+        }
+        """;
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(rootDirectory, "settings.json"), json);
+
+            var store = new JsonSettingsStore(rootDirectory);
+            var preferences = await store.LoadPreferencesAsync();
+
+            Assert.Equal(new ReadingPreferences(FontFamilyMode.Serif, 18, 1.7, 820), preferences);
+        }
+        finally
+        {
+            DeleteDirectory(rootDirectory);
+        }
+    }
+
+    [Fact]
     public async Task LoadFallsBackToNullWindowPlacementWhenPlacementIsInvalid()
     {
         var rootDirectory = CreateTempDirectory();

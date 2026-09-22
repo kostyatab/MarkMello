@@ -7,9 +7,9 @@ using MarkMello.Presentation.Views.Markdown;
 namespace MarkMello.Presentation.Tests;
 
 /// <summary>
-/// Клавиша (<c>&lt;kbd&gt;</c>) рисуется как клавиша: моноширинным шрифтом, как код,
-/// в рамке с отступами по бокам, но своими цветами темы — чтобы не читаться как
-/// inline-код. Текст клавиши — часть текста абзаца.
+/// Клавиша (<c>&lt;kbd&gt;</c>) рисуется как в Raycast: подпись шрифтом текста .8em,
+/// рамка 1 px с полями по бокам, высотой с плашку инлайн-кода, и свои цвета темы —
+/// чтобы не читаться как инлайн-код. Текст клавиши — часть текста абзаца.
 /// </summary>
 [Collection(AvaloniaHeadlessTestGroup.Name)]
 public sealed class MarkdownKeyboardStyleTests
@@ -52,12 +52,31 @@ public sealed class MarkdownKeyboardStyleTests
             [(new DocumentTextRange(0, 4), true), (new DocumentTextRange(4, 5), true), (new DocumentTextRange(5, 9), false)],
             model.CodeBoxes.Select(static box => (box.CanonicalRange, box.IsKeyboard)));
 
-        // Отступы по бокам каждой рамки — только на экране, в тексте их нет.
-        Assert.Equal(styled.Text.Length + 2 * model.CodeBoxes.Count, model.DisplayLength);
+        // Поля по бокам каждой рамки и зазор между клавишами вплотную — только на
+        // экране, в тексте их нет.
+        Assert.Equal(styled.Text.Length + 2 * model.CodeBoxes.Count + 1, model.DisplayLength);
+        var gap = Assert.Single(model.Segments, static segment => segment.Kind == MarkdownDisplaySegmentKind.KeyboardGap);
+        Assert.Equal(model.CodeBoxes[0].DisplayEnd, gap.DisplayStart);
+        Assert.Equal(gap.DisplayEnd, model.CodeBoxes[1].DisplayStart);
     }
 
     [Fact]
-    public Task KeyUsesTheCodeFont()
+    public void KeysSeparatedByTextHaveNoExtraGap()
+    {
+        var styled = MarkdownStyledText.FromInlines(
+        [
+            new MarkdownKeyboardInline("Ctrl"),
+            new MarkdownTextInline(" + "),
+            new MarkdownKeyboardInline("O")
+        ]);
+
+        var model = MarkdownDisplayLayoutModel.Create(styled);
+
+        Assert.DoesNotContain(model.Segments, static segment => segment.Kind == MarkdownDisplaySegmentKind.KeyboardGap);
+    }
+
+    [Fact]
+    public Task KeyUsesTheTextFontSmallerAndUpright()
     {
         return _fixture.Session.Dispatch(() =>
         {
@@ -72,12 +91,13 @@ public sealed class MarkdownKeyboardStyleTests
                 Brushes.Black,
                 linkDecorations: null);
 
-            var key = factory.Get(MarkdownInlineStyleState.Default with { IsKeyboard = true });
-            var code = factory.Get(MarkdownInlineStyleState.Default with { IsCode = true });
+            var key = factory.Get(MarkdownInlineStyleState.Default with { IsKeyboard = true, IsBold = true, IsItalic = true });
 
-            Assert.Equal(mono, key.Typeface.FontFamily);
-            Assert.Equal(code.FontRenderingEmSize, key.FontRenderingEmSize);
-            Assert.Same(MarkdownTextRunPropertiesFactory.CodeFontFeatures, key.FontFeatures);
+            Assert.Equal(serif, key.Typeface.FontFamily);
+            Assert.Equal(18 * 0.8, key.FontRenderingEmSize, 3);
+            Assert.Equal(FontWeight.Normal, key.Typeface.Weight);
+            Assert.Equal(FontStyle.Normal, key.Typeface.Style);
+            Assert.NotSame(MarkdownTextRunPropertiesFactory.CodeFontFeatures, key.FontFeatures);
         }, CancellationToken.None);
     }
 

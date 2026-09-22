@@ -87,9 +87,8 @@ public sealed class MarkdownAlertLayoutTests
             var nestedQuotePadding = Body(alert)[^1] is Border nested ? nested.Padding.Bottom : 0;
             Assert.Equal(above + nestedQuotePadding, below, 0.5);
 
-            // Между блоками внутри alert отступ остаётся.
-            var first = Assert.IsType<MarkdownSelectionTextFragment>(Body(alert)[0]);
-            Assert.True(first.Margin.Bottom > 0);
+            // Между блоками внутри alert просвет остаётся.
+            Assert.True(Body(alert)[1].Margin.Top > 0);
 
             window.Close();
         }, CancellationToken.None);
@@ -117,7 +116,7 @@ public sealed class MarkdownAlertLayoutTests
     }
 
     [Fact]
-    public Task PlainQuoteStaysAnItalicQuoteWithoutHeader()
+    public Task PlainQuoteIsUprightTextWithoutHeader()
     {
         return _fixture.Session.Dispatch(() =>
         {
@@ -131,7 +130,9 @@ public sealed class MarkdownAlertLayoutTests
 
             var paragraph = Assert.IsType<MarkdownSelectionTextFragment>(Assert.Single(Stack(quote).Children));
             Assert.Equal("Just a quote.", paragraph.StyledText.Text);
-            Assert.Equal(FontStyle.Italic, paragraph.BaseFontStyle);
+            // Несколько строк курсивом читать тяжело: цитата — прямым шрифтом цветом текста.
+            Assert.Equal(FontStyle.Normal, paragraph.BaseFontStyle);
+            Assert.Null(paragraph.BaseForeground);
             Assert.Empty(quote.GetVisualDescendants().OfType<LucideIcon>());
         }, CancellationToken.None);
     }

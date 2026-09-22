@@ -35,8 +35,8 @@ public sealed class MarkdownQuoteLayoutTests
             Assert.Equal(quote.Padding.Top, SpaceAboveFirstText(quote), Tolerance);
             Assert.Equal(quote.Padding.Bottom, SpaceBelowLastText(quote), Tolerance);
 
-            // Между абзацами внутри цитаты отступ остаётся.
-            Assert.True(Text(view, "First.").Margin.Bottom > 0);
+            // Между абзацами внутри цитаты просвет остаётся.
+            Assert.True(Text(view, "Last.").Margin.Top > 0);
 
             window.Close();
         }, CancellationToken.None);

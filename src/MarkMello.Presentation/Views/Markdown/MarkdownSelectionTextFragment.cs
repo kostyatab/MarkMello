@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Media.Immutable;
 using Avalonia.Media.TextFormatting;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -12,6 +13,8 @@ namespace MarkMello.Presentation.Views.Markdown;
 
 internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionFragmentBase
 {
+    private const double LinkUnderlineOpacity = 0.5;
+
     private MarkdownStyledText _styledText = MarkdownStyledText.Empty;
     private readonly Dictionary<int, MarkdownInlineImageState> _inlineImages = [];
     private readonly HashSet<int> _pendingInlineImages = [];
@@ -536,7 +539,9 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
             BuildLinkTextDecorations(),
             ResolveImagePlaceholderBrushes(),
             ResolveOptionalBrush("MmAccentBrush"),
-            BaseFontFeatures);
+            BaseFontFeatures,
+            inlineCodeForeground: ResolveOptionalBrush("MmAccentBrush"),
+            keyboardForeground: ResolveOptionalBrush("MmTextBrush"));
 
         return _textLayout;
     }
@@ -553,21 +558,29 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
     }
 
     /// <summary>
-    /// Links keep the body text colour; their accent is expressed by a 1px
-    /// underline drawn in MmAccentBrush, positioned a bit below the baseline.
+    /// Ссылка — цветом текста; акцент только в подчёркивании: акцент темы
+    /// с прозрачностью 50 %, толщина .07em, верх линии в .2em под базовой линией —
+    /// ниже выносных g, p, y. Отсчёт от базовой линии, а не от позиции
+    /// подчёркивания шрифта: так линия стоит одинаково у всех гарнитур. Размеры —
+    /// в пикселях от кегля фрагмента, а не от кегля прогона: под инлайн-кодом и
+    /// клавишей внутри ссылки линия та же, что под её текстом.
     /// </summary>
-    private TextDecorationCollection BuildLinkTextDecorations()
+    internal TextDecorationCollection BuildLinkTextDecorations()
     {
-        var stroke = ResolveOptionalBrush("MmAccentBrush") ?? ResolveBaseTextBrush();
+        var accent = ResolveOptionalBrush("MmAccentBrush") as ISolidColorBrush;
+        IBrush stroke = accent is null
+            ? ResolveBaseTextBrush()
+            : new ImmutableSolidColorBrush(accent.Color, LinkUnderlineOpacity);
+
         return new TextDecorationCollection
         {
             new TextDecoration
             {
-                Location = TextDecorationLocation.Underline,
+                Location = TextDecorationLocation.Baseline,
                 Stroke = stroke,
-                StrokeThickness = 1,
+                StrokeThickness = MarkdownDocumentMetrics.GetLinkUnderlineThickness(BaseFontSize),
                 StrokeThicknessUnit = TextDecorationUnit.Pixel,
-                StrokeOffset = 2,
+                StrokeOffset = MarkdownDocumentMetrics.GetLinkUnderlineCenterOffset(BaseFontSize),
                 StrokeOffsetUnit = TextDecorationUnit.Pixel,
             }
         };
@@ -605,13 +618,14 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
             return;
         }
 
+        // Инлайн-код — плашка без рамки, скругление в долях кегля кода; клавиша —
+        // рамка 1 px со всех сторон, скругление в долях текста.
         var codeFill = ResolveOptionalBrush("MmCodeBackgroundBrush");
-        var codeBorder = ResolveOptionalBrush("MmCodeBorderBrush");
-        var codePen = codeBorder is null ? null : new Pen(codeBorder, 1);
+        var codeRadius = BaseFontSize * MarkdownDocumentMetrics.InlineCodeFontScale * MarkdownDocumentMetrics.InlineCodeCornerRadius;
         var keyFill = ResolveOptionalBrush("MmKeyboardBackgroundBrush");
         var keyEdge = ResolveOptionalBrush("MmKeyboardBorderBrush");
-
-        const double cornerRadius = 3;
+        var keyPen = keyEdge is null ? null : new Pen(keyEdge, 1);
+        var keyRadius = BaseFontSize * MarkdownDocumentMetrics.KeyboardCornerRadius;
 
         foreach (var codeBox in layout.CodeBoxes)
         {
@@ -619,30 +633,15 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
             {
                 if (codeBox.IsKeyboard)
                 {
-                    DrawKeyboardKey(context, rect, keyFill, keyEdge, cornerRadius);
+                    // Линия рамки — по центру своей толщины, внутрь клавиши на полпикселя.
+                    context.DrawRectangle(keyFill, keyPen, rect.Deflate(0.5), keyRadius, keyRadius);
                 }
                 else if (codeFill is not null)
                 {
-                    context.DrawRectangle(codeFill, codePen, rect, cornerRadius, cornerRadius);
+                    context.DrawRectangle(codeFill, null, rect, codeRadius, codeRadius);
                 }
             }
         }
-    }
-
-    /// <summary>
-    /// Клавиша рисуется как на клавиатуре: рамка с толстым нижним краем, будто у
-    /// клавиши есть высота. Под крышку клавиши кладётся прямоугольник цвета края,
-    /// и крышка открывает его на 1px сверху и по бокам и на 2px снизу.
-    /// </summary>
-    private static void DrawKeyboardKey(DrawingContext context, Rect rect, IBrush? fill, IBrush? edge, double cornerRadius)
-    {
-        if (fill is null || edge is null)
-        {
-            return;
-        }
-
-        context.DrawRectangle(edge, null, rect, cornerRadius, cornerRadius);
-        context.DrawRectangle(fill, null, rect.Deflate(new Thickness(1, 1, 1, 2)), cornerRadius - 1, cornerRadius - 1);
     }
 
     private IBrush? ResolveOptionalBrush(string resourceKey)

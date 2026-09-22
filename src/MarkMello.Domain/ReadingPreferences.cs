@@ -15,7 +15,7 @@ public sealed record ReadingPreferences(
     int ContentWidth,
     DocumentMinimapMode DocumentMinimapMode = DocumentMinimapMode.Auto)
 {
-    public const int MinFontSize = 14;
+    public const int MinFontSize = 12;
     public const int MaxFontSize = 24;
     public const double MinLineHeight = 1.4;
     public const double MaxLineHeight = 2.0;
@@ -35,9 +35,9 @@ public sealed record ReadingPreferences(
     /// Безопасные значения по умолчанию. Используются при отсутствии или повреждении сохранённых настроек.
     /// </summary>
     public static ReadingPreferences Default { get; } = new(
-        FontFamily: FontFamilyMode.Serif,
-        FontSize: 18,
-        LineHeight: 1.7,
+        FontFamily: FontFamilyMode.Sans,
+        FontSize: 14,
+        LineHeight: 1.6,
         ContentWidth: MediumContentWidth,
         DocumentMinimapMode: DocumentMinimapMode.Auto);
 
