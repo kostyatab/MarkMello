@@ -145,6 +145,19 @@ public sealed class TextMateCodeHighlighterTests
     }
 
     [Fact]
+    public void CrlfLinesHighlightLikeLf()
+    {
+        const string code = "jobs:\r\n  timeout-minutes: 20   # minutes\r\n  name: \"tests\"\r\n";
+
+        var tokens = Highlight("yml", code);
+
+        AssertToken(tokens, code, "20", MarkdownCodeTokenKind.Constant);
+        AssertToken(tokens, code, "# minutes", MarkdownCodeTokenKind.Comment);
+        AssertToken(tokens, code, "\"tests\"", MarkdownCodeTokenKind.StringLiteral);
+        Assert.DoesNotContain(tokens, token => code.AsSpan(token.Start, token.End - token.Start).Contains('\r'));
+    }
+
+    [Fact]
     public void DiffLinesAreInsertedAndDeleted()
     {
         const string code = """

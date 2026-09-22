@@ -158,9 +158,17 @@ public sealed class TextMateCodeHighlighter : ICodeHighlighter, IDisposable
             var newline = code.IndexOf('\n', lineStart);
             var lineEnd = newline < 0 ? code.Length : newline;
 
+            // \r из CRLF грамматики за конец строки не считают: «# comment\r» в YAML
+            // уже не комментарий. Такую строку отдаём без перевода.
+            var crlf = lineEnd > lineStart && code[lineEnd - 1] == '\r';
+            if (crlf)
+            {
+                lineEnd--;
+            }
+
             // С переводом строки, если он есть: TextMateSharp сам дописывает его
             // к строке без него, копируя её.
-            var line = code.AsMemory(lineStart, (newline < 0 ? lineEnd : lineEnd + 1) - lineStart);
+            var line = code.AsMemory(lineStart, (newline < 0 || crlf ? lineEnd : lineEnd + 1) - lineStart);
             var result = grammar.TokenizeLine(new LineText(line), state, remaining);
 
             // Разбор строки прерывается по лимиту молча — узнаём по времени.
