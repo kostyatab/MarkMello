@@ -81,7 +81,7 @@ public sealed class MarkdownKeyboardStyleTests
         return _fixture.Session.Dispatch(() =>
         {
             var serif = new FontFamily("Georgia");
-            var mono = new FontFamily("JetBrains Mono");
+            var mono = new FontFamily("Maple Mono NL");
             var factory = new MarkdownTextRunPropertiesFactory(
                 serif,
                 mono,

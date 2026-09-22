@@ -306,7 +306,7 @@ public sealed class MarkdownDocumentStyleTests
         }, CancellationToken.None);
     }
 
-    private static readonly FontFamily Mono = new("avares://MarkMello.Presentation/Assets/Fonts/JetBrainsMono#JetBrains Mono");
+    private static readonly FontFamily Mono = new("avares://MarkMello.Presentation/Assets/Fonts/MapleMono#Maple Mono NL");
     private static readonly FontFamily Sans = new("avares://MarkMello.Presentation/Assets/Fonts/Inter#Inter");
 
     private static MarkdownTextRunPropertiesFactory CreateFactory()

@@ -90,6 +90,10 @@ Subscript and superscript: H<sub>2</sub>O, CO<sub>2</sub>, E = mc<sup>2</sup>, t
 
 Run `dotnet build MarkMello.sln`, then open a file with `Ctrl+O`. A code span with backticks inside: `` `code` ``.
 
+Operators stay as written, never joined into ligatures: `=> -> != :: <= >= === -| __ \\ www [INFO]`. Letters with alternate shapes in the code font: `$ % & @ Q a i k l x`, Cyrillic `а і ї х ж`.
+
+Code inside emphasis uses the italic and bold faces of the code font: *italic with `a k l x $ % & @ Q` inside*, **bold with `a k l x` inside**, and ***bold italic with `a k l x` inside***.
+
 A link with formatting inside: [read the **CommonMark** rules for `code spans`](https://spec.commonmark.org/0.31.2/#code-spans).
 
 ### Line breaks
@@ -400,6 +404,16 @@ jobs:
 +| Line height   | 1.4 – 2.0                  | 1.7     |
  
  Changes apply instantly.
+```
+
+### Operators and glyph variants
+
+Every character is shown as written: arrows, comparisons and other operators are not joined into ligatures.
+
+```csharp
+// comment: a k l x $ % & @ Q
+var items = list.Where(x => x.Id != 0 && x.Name is not null).ToList();
+if (a <= b || c >= d) { return "Привет, мир"; }  // === -| :: __ \\ www
 ```
 
 ### A long block

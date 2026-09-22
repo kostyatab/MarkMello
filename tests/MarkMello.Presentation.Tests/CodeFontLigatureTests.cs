@@ -10,41 +10,80 @@ using MarkMello.Presentation.Views.Markdown;
 namespace MarkMello.Presentation.Tests;
 
 /// <summary>
-/// Код показывается символ в символ: лигатуры JetBrains Mono рисуют <c>-|</c> как
-/// <c>⊣</c>, а <c>=&gt;</c> как <c>⇒</c>. Шрифт склеивает их через <c>calt</c>
+/// Код показывается символ в символ: лигатуры моноширинных шрифтов рисуют <c>-|</c>
+/// как <c>⊣</c>, а <c>=&gt;</c> как <c>⇒</c>. Шрифты склеивают их через <c>calt</c>
 /// с глифами-распорками, и ширина строки при этом не меняется, поэтому тесты
 /// сравнивают сами глифы с глифами символов из <c>cmap</c> шрифта.
+/// Встроенный шрифт собран без лигатур, поэтому код обязан выключать их сам:
+/// набрать его может и шрифт из fallback-стека, у которого лигатуры есть.
 /// </summary>
 [Collection(AvaloniaHeadlessTestGroup.Name)]
 public sealed class CodeFontLigatureTests
 {
     private const string Operators = "-| => != -> <= >= ===";
-    private const string MonoFamilyName = "JetBrains Mono";
+    private const string MonoFamilyName = "Maple Mono NL";
 
     private readonly AvaloniaHeadlessFixture _fixture;
 
     public CodeFontLigatureTests(AvaloniaHeadlessFixture fixture) => _fixture = fixture;
 
     [Fact]
-    public Task BundledMonoFontJoinsOperatorsUnlessToldNotTo()
+    public Task BundledMonoFontKeepsOperatorsApartEvenWithLigaturesOn()
     {
         return _fixture.Session.Dispatch(() =>
         {
-            // Без этой проверки тесты ниже прошли бы и без исправления: например,
-            // если бы шрифт или шейпер перестал склеивать операторы сам.
+            // Поэтому тесты на блок кода и инлайн-код ниже проходят и без -liga/-calt:
+            // выключены ли лигатуры, проверяют тесты на CodeFontFeatures.
             var typeface = new Typeface(LoadMonoFontFamily());
-            using var joined = new TextLayout(Operators, typeface, 16, Brushes.Black);
-            using var separate = new TextLayout(
+            using var withLigatures = new TextLayout(
                 Operators,
                 typeface,
                 16,
                 Brushes.Black,
-                fontFeatures: MarkdownTextRunPropertiesFactory.CodeFontFeatures);
+                fontFeatures: [FontFeature.Parse("+liga"), FontFeature.Parse("+calt")]);
 
-            var joinedRun = Assert.Single(GlyphRuns(joined));
-            Assert.True(IsMonoFont(joinedRun.GlyphTypeface), $"Operators are set in {joinedRun.GlyphTypeface.FamilyName}.");
-            Assert.NotEqual(NominalGlyphs(joinedRun), ShapedGlyphs(joinedRun));
-            AssertNominal(Assert.Single(GlyphRuns(separate)));
+            AssertNominal(Assert.Single(GlyphRuns(withLigatures)));
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public void CodeFontFeaturesTurnLigaturesOff()
+    {
+        var features = MarkdownTextRunPropertiesFactory.CodeFontFeatures;
+
+        Assert.Contains(features, static feature => feature.Tag == "liga" && feature.Value == 0);
+        Assert.Contains(features, static feature => feature.Tag == "calt" && feature.Value == 0);
+    }
+
+    [Fact]
+    public Task CodeBlockIsSetWithCodeFontFeatures()
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var fragment = LayOut(new MarkdownCodeBlock("csharp", Operators))
+                .Single(candidate => candidate.Classes.Contains("mm-md-codeblock-text"));
+
+            Assert.Same(MarkdownTextRunPropertiesFactory.CodeFontFeatures, fragment.BaseFontFeatures);
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public Task InlineCodeIsSetWithCodeFontFeatures()
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var factory = new MarkdownTextRunPropertiesFactory(
+                new FontFamily("Georgia"),
+                LoadMonoFontFamily(),
+                fontSize: 18,
+                FontWeight.Normal,
+                FontStyle.Normal,
+                Brushes.Black,
+                linkDecorations: null);
+
+            var code = factory.Get(MarkdownInlineStyleState.Default with { IsCode = true });
+
+            Assert.Same(MarkdownTextRunPropertiesFactory.CodeFontFeatures, code.FontFeatures);
         }, CancellationToken.None);
     }
 
@@ -79,10 +118,35 @@ public sealed class CodeFontLigatureTests
         }, CancellationToken.None);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public Task ItalicCodeIsSetWithTheItalicFace(bool bold)
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            // Рукописные a k l x есть только в курсивных файлах шрифта; без них
+            // Avalonia наклонила бы прямое начертание сама.
+            MarkdownInline code = new MarkdownEmphasisInline([new MarkdownCodeInline("a k l x")]);
+            if (bold)
+            {
+                code = new MarkdownStrongInline([code]);
+            }
+
+            var fragment = Assert.Single(LayOut(new MarkdownParagraphBlock([code])));
+
+            var run = Assert.Single(Render(fragment));
+            Assert.True(IsMonoFont(run.GlyphTypeface), $"Code is set in {run.GlyphTypeface.FamilyName}.");
+            Assert.Equal(FontStyle.Italic, run.GlyphTypeface.Style);
+            Assert.Equal(bold ? FontWeight.Bold : FontWeight.Normal, run.GlyphTypeface.Weight);
+            Assert.Equal(FontSimulations.None, run.GlyphTypeface.FontSimulations);
+        }, CancellationToken.None);
+    }
+
     private static List<MarkdownSelectionTextFragment> LayOut(MarkdownBlock block)
     {
         // Тестовая сессия идёт без темы, а без Typography.axaml код набирался бы
-        // системным моноширинным шрифтом, у которого может не быть лигатур.
+        // системным моноширинным шрифтом, и проверка на встроенный шрифт упала бы.
         // Документ — только в окне: шрифты блоков ищутся по ресурсам, когда
         // блоки строятся.
         var view = new MarkdownDocumentView();

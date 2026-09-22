@@ -40,7 +40,7 @@ public sealed class MarkdownInlineCodePadMetricsTests
             // Инлайн-код .85em текста, поля .2em × .4em кегля кода, как em в CSS.
             var codeFontSize = textFontSize * 0.85;
             var metrics = MarkdownInlineCodePadMetrics.Create(
-                new FontFamily("avares://MarkMello.Presentation/Assets/Fonts/JetBrainsMono#JetBrains Mono"),
+                new FontFamily("avares://MarkMello.Presentation/Assets/Fonts/MapleMono#Maple Mono NL"),
                 codeFontSize,
                 FontWeight.Normal,
                 FontStyle.Normal,

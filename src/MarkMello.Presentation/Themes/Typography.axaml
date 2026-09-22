@@ -7,7 +7,7 @@
 
       Document (serif):  Source Serif 4, Source Serif Pro, Iowan Old Style, Georgia, serif
       UI/document sans:  Inter, Segoe UI Variable, Segoe UI, system-ui, sans-serif
-      Mono:              JetBrains Mono, Consolas, monospace
+      Mono:              Maple Mono NL, Cascadia Code, Consolas, Menlo, monospace
 
     Дизайн-шрифты встроены в сборку через AvaloniaResource
     (Assets/Fonts/**/*.ttf) и подгружаются первыми; системные fallback идут
@@ -16,7 +16,14 @@
       Source Serif 4  — Assets/Fonts/*.ttf        (static: Regular/Bold/Italic/BoldIt)
       Inter           — Assets/Fonts/Inter        (static: Regular/Medium/SemiBold/Bold,
                                                    Italic/SemiBoldItalic/BoldItalic)
-      JetBrains Mono  — Assets/Fonts/JetBrainsMono (static: Regular/Bold)
+      Maple Mono NL   — Assets/Fonts/MapleMono    (static: Regular/Bold/Italic/BoldItalic)
+
+    Maple Mono NL — сборка без лигатур (NL) с вшитыми вариантами глифов из
+    конструктора font.subf.dev/en/playground поверх MapleMonoNL-TTF-AutoHint.zip
+    релиза github.com/subframe7536/maple-font (сейчас v7.9). Настройки
+    конструктора — Assets/Fonts/MapleMono/patch-in-browser.json: загрузить его
+    туда же, чтобы собрать заново. Курсив — отдельные файлы: рукописные a k l x
+    есть только в них, а без файла Avalonia наклоняет Regular сама.
 
     Только статические начертания: Avalonia не применяет ось wght variable-шрифта
     и рисует любой вес из такого файла как Regular. Новый вес Inter в разметке —
@@ -27,7 +34,7 @@
 
   <FontFamily x:Key="MmDocumentSerifFontFamily">avares://MarkMello.Presentation/Assets/Fonts#Source Serif 4, Source Serif Pro, Iowan Old Style, Georgia, Cambria, serif</FontFamily>
   <FontFamily x:Key="MmDocumentSansFontFamily">avares://MarkMello.Presentation/Assets/Fonts/Inter#Inter, Segoe UI Variable, Segoe UI, system-ui, sans-serif</FontFamily>
-  <FontFamily x:Key="MmDocumentMonoFontFamily">avares://MarkMello.Presentation/Assets/Fonts/JetBrainsMono#JetBrains Mono, Cascadia Code, Consolas, Menlo, monospace</FontFamily>
+  <FontFamily x:Key="MmDocumentMonoFontFamily">avares://MarkMello.Presentation/Assets/Fonts/MapleMono#Maple Mono NL, Cascadia Code, Consolas, Menlo, monospace</FontFamily>
 
   <!--
     Шрифт интерфейса по умолчанию. Fluent берёт его из этого ключа, а сам

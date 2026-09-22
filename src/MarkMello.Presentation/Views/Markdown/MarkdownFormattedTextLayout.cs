@@ -786,8 +786,9 @@ internal sealed class MarkdownTextRunPropertiesFactory
     /// <summary>
     /// Код показывается символ в символ: лигатуры моноширинного шрифта рисуют
     /// <c>-|</c> как <c>⊣</c>, а <c>=&gt;</c> как <c>⇒</c>, и читатель видит не то,
-    /// что написано в файле. У JetBrains Mono они живут в <c>calt</c>, у других
-    /// шрифтов бывают и в <c>liga</c>.
+    /// что написано в файле. Встроенный Maple Mono NL собран без лигатур, но
+    /// код может набрать шрифт из fallback-стека: у Cascadia Code лигатуры живут
+    /// в <c>calt</c>, у других шрифтов бывают и в <c>liga</c>.
     /// </summary>
     internal static FontFeatureCollection CodeFontFeatures { get; } =
     [

@@ -638,7 +638,7 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
             return family;
         }
 
-        return new FontFamily("JetBrains Mono, Cascadia Code, Consolas, Menlo, monospace");
+        return new FontFamily("Maple Mono NL, Cascadia Code, Consolas, Menlo, monospace");
     }
 
     /// <summary>
