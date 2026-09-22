@@ -3229,27 +3229,15 @@ public sealed class MarkdownDocumentView : UserControl
     /// <summary>
     /// Пока указатель захвачен, Avalonia показывает курсор захватившего
     /// элемента, а не того, что под мышью. Документ на время нажатия берёт
-    /// курсор элемента, над которым нажали, чтобы захват его не сбрасывал;
-    /// с началом протягивания курсор становится текстовым.
+    /// курсор элемента, над которым нажали (курсор наследуется, так что у
+    /// элемента он уже итоговый), чтобы захват его не сбрасывал; с началом
+    /// протягивания курсор становится текстовым.
     /// </summary>
     private void CapturePointer(PointerPressedEventArgs e)
     {
-        Cursor = ResolveCursorAt(e.Source);
+        Cursor = (e.Source as InputElement)?.Cursor;
         _capturedPointer = e.Pointer;
         e.Pointer.Capture(this);
-    }
-
-    private Cursor? ResolveCursorAt(object? source)
-    {
-        for (var element = source as Visual; element is not null && !ReferenceEquals(element, this); element = element.GetVisualParent())
-        {
-            if (element is InputElement { Cursor: { } cursor })
-            {
-                return cursor;
-            }
-        }
-
-        return null;
     }
 
     private int ResolveDocumentOffset(Point position)

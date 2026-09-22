@@ -33,8 +33,28 @@ public sealed class MarkdownSelectionCursorTests
             window.MouseMove(end);
             Assert.Equal(nameof(StandardCursorType.Ibeam), view.Cursor?.ToString());
 
-            // Ниже абзаца — пустое поле документа, где своего курсора нет.
-            window.MouseMove(new Point(end.X, end.Y + 100));
+            window.MouseUp(end, MouseButton.Left);
+            Assert.Null(view.Cursor);
+
+            window.Close();
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public Task DraggingAfterDoubleClickShowsTextCursor()
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var (window, view, fragment) = ShowParagraph();
+            var start = PointOnCharacter(window, fragment, 1);
+            var end = PointOnCharacter(window, fragment, 12);
+
+            window.MouseDown(start, MouseButton.Left);
+            window.MouseUp(start, MouseButton.Left);
+            window.MouseDown(start, MouseButton.Left);
+            Assert.Equal("See", view.SelectedText);
+
+            window.MouseMove(end);
             Assert.Equal(nameof(StandardCursorType.Ibeam), view.Cursor?.ToString());
 
             window.MouseUp(end, MouseButton.Left);
