@@ -214,9 +214,12 @@ jobs:
         shell: pwsh
         run: |
           $publishDir = Join-Path $env:GITHUB_WORKSPACE "publish" "${{ matrix.runtime_id }}"
+          # libonigwrap.dll — regex engine of code highlighting (ADR-0010 §6),
+          # shipped unsigned by its NuGet package.
           $paths = @(
             (Join-Path $publishDir "MarkMello.exe"),
-            (Join-Path $publishDir "MarkMello.dll")
+            (Join-Path $publishDir "MarkMello.dll"),
+            (Join-Path $publishDir "libonigwrap.dll")
           ) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf }
 
           .\packaging\windows\sign-files.ps1 `

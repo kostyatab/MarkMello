@@ -1,0 +1,107 @@
+<Project>
+
+  <!--
+    Грамматики подсветки (ADR-0010 §6). TextMateSharp.Grammars.dll хранит
+    грамматики VS Code встроенными ресурсами — вместе со сниппетами, темами,
+    настройками языков и переводами, около 6 МБ. В приложение сборка не
+    попадает: при сборке из неё берутся только package.json и syntaxes/*
+    каждой грамматики и складываются в один zip, встроенный ресурсом в
+    MarkMello.Infrastructure. Имена записей — хвосты имён ресурсов после
+    «Resources.Grammars.», например «csharp.package.json».
+  -->
+  <UsingTask TaskName="MarkMelloPackTextMateGrammars"
+             TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <SourceAssembly ParameterType="System.String" Required="true" />
+      <OutputFile ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.IO.Compression" />
+      <Using Namespace="System.Reflection" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        const string Prefix = "TextMateSharp.Grammars.Resources.Grammars.";
+        var count = 0;
+        // Из байтов, а не с диска: файл в кэше NuGet не блокируется, код сборки
+        // не выполняется — читаются только ресурсы.
+        var assembly = Assembly.Load(File.ReadAllBytes(SourceAssembly));
+        var names = assembly.GetManifestResourceNames();
+        Array.Sort(names, StringComparer.Ordinal);
+        Directory.CreateDirectory(Path.GetDirectoryName(OutputFile));
+        using (var output = File.Create(OutputFile))
+        using (var archive = new ZipArchive(output, ZipArchiveMode.Create))
+        {
+            foreach (var name in names)
+            {
+                if (!name.StartsWith(Prefix, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                var entryName = name.Substring(Prefix.Length);
+                var dot = entryName.IndexOf('.');
+                if (dot <= 0)
+                {
+                    continue;
+                }
+
+                var rest = entryName.Substring(dot + 1);
+                if (rest != "package.json" && !rest.StartsWith("syntaxes.", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                var entry = archive.CreateEntry(entryName, CompressionLevel.Optimal);
+                entry.LastWriteTime = new DateTimeOffset(2000, 1, 1, 0, 0, 0, TimeSpan.Zero);
+                using (var resource = assembly.GetManifestResourceStream(name))
+                using (var stream = entry.Open())
+                {
+                    resource.CopyTo(stream);
+                }
+
+                count++;
+            }
+        }
+
+        if (count == 0)
+        {
+            Log.LogError("No TextMate grammars found in " + SourceAssembly);
+            return false;
+        }
+
+        Log.LogMessage(MessageImportance.Low, "Packed " + count + " TextMate grammar files into " + OutputFile);
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="_MarkMelloTextMateGrammarsPaths">
+    <PropertyGroup>
+      <MarkMelloGrammarsSource>$(PkgTextMateSharp_Grammars)/lib/netstandard2.0/TextMateSharp.Grammars.dll</MarkMelloGrammarsSource>
+      <MarkMelloGrammarsArchive>$(IntermediateOutputPath)textmate-grammars.zip</MarkMelloGrammarsArchive>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="_MarkMelloPackTextMateGrammars"
+          DependsOnTargets="_MarkMelloTextMateGrammarsPaths"
+          Inputs="$(MarkMelloGrammarsSource);$(MSBuildThisFileFullPath)"
+          Outputs="$(MarkMelloGrammarsArchive)">
+    <Error Condition="!Exists('$(MarkMelloGrammarsSource)')"
+           Text="TextMateSharp.Grammars is not restored: $(MarkMelloGrammarsSource)" />
+    <MarkMelloPackTextMateGrammars SourceAssembly="$(MarkMelloGrammarsSource)" OutputFile="$(MarkMelloGrammarsArchive)" />
+  </Target>
+
+  <Target Name="MarkMelloEmbedTextMateGrammars"
+          BeforeTargets="PrepareResources"
+          DependsOnTargets="_MarkMelloPackTextMateGrammars">
+    <ItemGroup>
+      <EmbeddedResource Include="$(MarkMelloGrammarsArchive)"
+                        LogicalName="MarkMello.Infrastructure.Highlighting.Grammars.zip"
+                        WithCulture="false"
+                        Type="Non-Resx" />
+      <FileWrites Include="$(MarkMelloGrammarsArchive)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

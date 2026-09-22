@@ -144,4 +144,9 @@ Diagram support in MarkMello is built on open-source projects:
 - [Naiad](https://github.com/NaiadDiagrams/Naiad) — a .NET library that renders Mermaid diagrams to SVG in-process, without a browser or external runtime. MIT License.
 - [Mermaid](https://github.com/mermaid-js/mermaid) — diagram syntax and specification.
 
+Syntax highlighting in code blocks is built on:
+
+- [TextMateSharp](https://github.com/danipen/TextMateSharp) — a .NET port of the TextMate grammar engine; its grammar package bundles the language grammars of [Visual Studio Code](https://github.com/microsoft/vscode). MIT License.
+- [Onigwrap](https://github.com/aikawayataro/Onigwrap) — a .NET wrapper for the [Oniguruma](https://github.com/kkos/oniguruma) regular expression library. MIT License; Oniguruma is under the BSD 2-Clause License.
+
 Interface icons come from [Lucide](https://lucide.dev) — ISC License (icons inherited from Feather are MIT); the full notice is in [LUCIDE_LICENSE.txt](src/MarkMello.Presentation/Themes/LUCIDE_LICENSE.txt).

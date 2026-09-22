@@ -22,6 +22,9 @@ public partial class ViewerView : UserControl, IFindHost
     private int _minimapBuildGeneration;
     private bool _isMinimapBuildQueued;
     private bool _hasRenderedDocument;
+
+    // Идёт пересборка после докраски кода (ADR-0010 §4), а не новый документ.
+    private bool _isRecolorRender;
     private Size _lastMinimapExtent;
     private Size _lastMinimapViewport;
     private ShellViewModel? _viewModel;
@@ -98,6 +101,7 @@ public partial class ViewerView : UserControl, IFindHost
         _isMinimapBuildQueued = false;
         RemoveMinimap();
         _hasRenderedDocument = false;
+        _isRecolorRender = false;
         _lastMinimapExtent = default;
         _lastMinimapViewport = default;
         _minimapHost = null;
@@ -220,9 +224,20 @@ public partial class ViewerView : UserControl, IFindHost
 
     private void OnDocumentRendered(object? sender, EventArgs e)
     {
+        if (_isRecolorRender)
+        {
+            // Докраска кода: тот же документ, другие только цвета. Фокус,
+            // прокрутка к совпадению поиска и миникарта остаются как были —
+            // миникарта лишь обновляет снимок уже без мигания.
+            _isRecolorRender = false;
+            QueueMinimapBuild();
+            return;
+        }
+
         if (DataContext is ShellViewModel vm)
         {
             vm.MarkReadableDocumentRendered();
+            vm.StartPendingCodeHighlighting();
             RestorePendingScrollOffset(vm);
         }
 
@@ -283,6 +298,14 @@ public partial class ViewerView : UserControl, IFindHost
 
     private void OnDocumentRenderInvalidated(object? sender, EventArgs e)
     {
+        _isRecolorRender = _hasRenderedDocument
+            && DataContext is ShellViewModel vm
+            && vm.ConsumeRecolor(_documentView?.Document);
+        if (_isRecolorRender)
+        {
+            return;
+        }
+
         _hasRenderedDocument = false;
         _lastMinimapExtent = default;
         _lastMinimapViewport = default;

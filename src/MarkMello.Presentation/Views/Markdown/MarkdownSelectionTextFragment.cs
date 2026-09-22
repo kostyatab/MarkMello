@@ -31,6 +31,8 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
     private FontStyle _fontStyle = FontStyle.Normal;
     private double _lineHeight = double.NaN;
     private MarkdownFormattedTextLayout? _textLayout;
+    private MarkdownFormattedTextLayout? _miniatureTextLayout;
+    private bool _layoutHasSyntax;
     private double _layoutWidth = double.NaN;
     private TextWrapping _textWrapping = TextWrapping.Wrap;
     private TextAlignment _textAlignment = TextAlignment.Left;
@@ -308,7 +310,7 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
 
     internal void RenderMiniature(DrawingContext context)
     {
-        var layout = GetOrCreateTextLayout(Bounds.Width);
+        var layout = GetOrCreateMiniatureTextLayout(Bounds.Width);
         DrawHighlightBackgrounds(context, layout);
         DrawInlineCodeBackgrounds(context, layout);
         layout.Draw(context);
@@ -557,6 +559,13 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
         return true;
     }
 
+    /// <summary>
+    /// Прямоугольники строк отрезка текста фрагмента — в координатах фрагмента,
+    /// по строке на прямоугольник.
+    /// </summary>
+    internal IReadOnlyList<Rect> GetLineRects(DocumentTextRange localRange)
+        => GetOrCreateTextLayout(Math.Max(Bounds.Width, 1)).GetSelectionRects(localRange);
+
     private MarkdownFormattedTextLayout GetOrCreateTextLayout(double availableWidth)
     {
         var normalizedWidth = NormalizeLayoutWidth(availableWidth);
@@ -567,7 +576,29 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
 
         InvalidateTextLayout();
         _layoutWidth = normalizedWidth;
-        _textLayout = new MarkdownFormattedTextLayout(
+        _layoutHasSyntax = StyledText.HasSyntax;
+        _textLayout = CreateTextLayout(normalizedWidth, _layoutHasSyntax ? MarkdownSyntaxBrushes.Resolve(ResolveOptionalBrush) : null);
+        return _textLayout;
+    }
+
+    /// <summary>
+    /// Миникарта подсветку синтаксиса не показывает (ADR-0010 §8): для блока
+    /// кода с цветами у неё своя раскладка без них, у остальных — общая.
+    /// </summary>
+    private MarkdownFormattedTextLayout GetOrCreateMiniatureTextLayout(double availableWidth)
+    {
+        var layout = GetOrCreateTextLayout(availableWidth);
+        if (!_layoutHasSyntax)
+        {
+            return layout;
+        }
+
+        return _miniatureTextLayout ??= CreateTextLayout(_layoutWidth, syntaxBrushes: null);
+    }
+
+    private MarkdownFormattedTextLayout CreateTextLayout(double normalizedWidth, MarkdownSyntaxBrushes? syntaxBrushes)
+    {
+        return new MarkdownFormattedTextLayout(
             StyledText,
             _inlineImages,
             BaseFontFamily,
@@ -587,9 +618,8 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
             BaseFontFeatures,
             inlineCodeForeground: ResolveOptionalBrush("MmAccentBrush"),
             keyboardForeground: ResolveOptionalBrush("MmTextBrush"),
-            backReferenceIcon: ResolveBackReferenceIcon());
-
-        return _textLayout;
+            backReferenceIcon: ResolveBackReferenceIcon(),
+            syntaxBrushes: syntaxBrushes);
     }
 
     /// <summary>Иконка возврата к метке сноски — приглушённым цветом темы.</summary>
@@ -806,6 +836,8 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
     {
         _textLayout?.Dispose();
         _textLayout = null;
+        _miniatureTextLayout?.Dispose();
+        _miniatureTextLayout = null;
         _layoutWidth = double.NaN;
     }
 

@@ -36,6 +36,58 @@ internal sealed record MarkdownStyledText(
         Array.Empty<MarkdownInlineImageSpan>());
 
     /// <summary>
+    /// Текст блока кода с подсветкой синтаксиса: текст — ровно
+    /// <paramref name="code"/>, токены — спаны со своим цветом. Без токенов —
+    /// один текст, как у неподсвеченного блока. У строк вставки и удаления
+    /// diff цветом выделен только знак: строку отмечает фон
+    /// (<see cref="MarkdownCodeLineBands"/>), а текст остаётся цветом текста.
+    /// </summary>
+    public static MarkdownStyledText FromCode(string code, IReadOnlyList<MarkdownCodeToken>? tokens)
+    {
+        ArgumentNullException.ThrowIfNull(code);
+
+        if (code.Length == 0)
+        {
+            return Empty;
+        }
+
+        var spans = new List<MarkdownTextStyleSpan>(tokens?.Count ?? 0);
+        if (tokens is not null)
+        {
+            var previousEnd = 0;
+            foreach (var token in tokens)
+            {
+                var start = Math.Max(token.Start, previousEnd);
+                var end = Math.Min(token.End, code.Length);
+                if (end <= start)
+                {
+                    continue;
+                }
+
+                var style = MarkdownInlineStyleState.Default with { Syntax = token.Kind };
+                if (token.Kind is MarkdownCodeTokenKind.Inserted or MarkdownCodeTokenKind.Deleted)
+                {
+                    foreach (var line in MarkdownCodeLineBands.SplitLines(code, start, end))
+                    {
+                        spans.Add(new MarkdownTextStyleSpan(new DocumentTextRange(line.Start, line.Start + 1), style));
+                    }
+                }
+                else
+                {
+                    spans.Add(new MarkdownTextStyleSpan(new DocumentTextRange(start, end), style));
+                }
+
+                previousEnd = end;
+            }
+        }
+
+        return new MarkdownStyledText(code, spans, Array.Empty<MarkdownLinkSpan>(), Array.Empty<MarkdownInlineImageSpan>());
+    }
+
+    /// <summary>Есть ли спаны подсветки синтаксиса — нужны ли кисти <c>MmSyntax*</c>.</summary>
+    public bool HasSyntax => Spans.Any(static span => span.Style.Syntax is not null);
+
+    /// <summary>
     /// Номер сноски в блоке сносок («1 »): сам номер — ссылка обратно к метке в тексте.
     /// </summary>
     public static MarkdownStyledText ForFootnoteMarker(int number)
@@ -346,6 +398,9 @@ internal readonly record struct MarkdownInlineImageSpan(
 
 /// <param name="IsKeyboard">Клавиша (<c>&lt;kbd&gt;</c>).</param>
 /// <param name="Script">Индекс (<c>&lt;sub&gt;</c>, <c>&lt;sup&gt;</c>) или обычная строка.</param>
+/// <param name="Syntax">
+/// Вид токена подсветки в блоке кода (ADR-0010): меняет только цвет текста.
+/// </param>
 internal readonly record struct MarkdownInlineStyleState(
     bool IsBold,
     bool IsItalic,
@@ -353,7 +408,8 @@ internal readonly record struct MarkdownInlineStyleState(
     bool IsLink,
     bool IsStrikethrough,
     bool IsKeyboard = false,
-    MarkdownScriptPosition Script = MarkdownScriptPosition.None)
+    MarkdownScriptPosition Script = MarkdownScriptPosition.None,
+    MarkdownCodeTokenKind? Syntax = null)
 {
     public static MarkdownInlineStyleState Default { get; } = new(false, false, false, false, false);
 

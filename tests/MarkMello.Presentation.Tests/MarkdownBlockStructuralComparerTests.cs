@@ -38,6 +38,36 @@ public sealed class MarkdownBlockStructuralComparerTests
         Assert.False(MarkdownBlockStructuralComparer.Instance.Equals(RenderSingleBlock(before), RenderSingleBlock(after)));
     }
 
+    [Fact]
+    public void HighlightedCodeBlockDiffersFromThePlainOne()
+    {
+        var plain = new MarkdownCodeBlock("csharp", "var x = 1;");
+        var highlighted = plain with { Tokens = [new MarkdownCodeToken(0, 3, MarkdownCodeTokenKind.Keyword)] };
+
+        Assert.False(MarkdownBlockStructuralComparer.Instance.Equals(plain, highlighted));
+        Assert.False(MarkdownBlockStructuralComparer.Instance.Equals(
+            highlighted,
+            plain with { Tokens = [new MarkdownCodeToken(0, 3, MarkdownCodeTokenKind.Type)] }));
+    }
+
+    [Fact]
+    public void CodeBlocksWithEqualTokensAreEqual()
+    {
+        var first = new MarkdownCodeBlock("csharp", "var x = 1;")
+        {
+            Tokens = [new MarkdownCodeToken(0, 3, MarkdownCodeTokenKind.Keyword)],
+        };
+        var second = new MarkdownCodeBlock("csharp", "var x = 1;")
+        {
+            Tokens = [new MarkdownCodeToken(0, 3, MarkdownCodeTokenKind.Keyword)],
+        };
+
+        Assert.True(MarkdownBlockStructuralComparer.Instance.Equals(first, second));
+        Assert.Equal(
+            MarkdownBlockStructuralComparer.Instance.GetHashCode(first),
+            MarkdownBlockStructuralComparer.Instance.GetHashCode(second));
+    }
+
     private static MarkdownBlock RenderSingleBlock(string markdown)
         => Assert.Single(new MarkdigMarkdownDocumentRenderer().Render(markdown).Blocks);
 }

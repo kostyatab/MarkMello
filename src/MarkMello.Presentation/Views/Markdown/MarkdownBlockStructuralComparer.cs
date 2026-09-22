@@ -54,7 +54,8 @@ internal sealed class MarkdownBlockStructuralComparer : IEqualityComparer<Markdo
             MarkdownHorizontalRuleBlock => y is MarkdownHorizontalRuleBlock,
             MarkdownCodeBlock code => y is MarkdownCodeBlock other
                 && string.Equals(code.Info, other.Info, StringComparison.Ordinal)
-                && string.Equals(code.Code, other.Code, StringComparison.Ordinal),
+                && string.Equals(code.Code, other.Code, StringComparison.Ordinal)
+                && CodeTokensEqual(code.Tokens, other.Tokens),
             MarkdownTableBlock table => y is MarkdownTableBlock other
                 && table.ColumnAlignments.SequenceEqual(other.ColumnAlignments)
                 && CellsEqual(table.Header, other.Header)
@@ -192,6 +193,23 @@ internal sealed class MarkdownBlockStructuralComparer : IEqualityComparer<Markdo
         }
 
         return hash.ToHashCode();
+    }
+
+    /// <summary>
+    /// Токены подсветки входят в равенство, но не в хэш (как
+    /// <see cref="MarkdownDiagramBlock.RenderResult"/>): блок, получивший цвета
+    /// после докраски (ADR-0010 §4), пересобирается, остальные переиспользуются.
+    /// </summary>
+    private static bool CodeTokensEqual(
+        IReadOnlyList<MarkdownCodeToken>? left,
+        IReadOnlyList<MarkdownCodeToken>? right)
+    {
+        if (ReferenceEquals(left, right))
+        {
+            return true;
+        }
+
+        return left is not null && right is not null && left.SequenceEqual(right);
     }
 
     private static bool BlocksEqual(IReadOnlyList<MarkdownBlock> left, IReadOnlyList<MarkdownBlock> right)

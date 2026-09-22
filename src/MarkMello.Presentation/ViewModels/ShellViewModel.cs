@@ -45,6 +45,10 @@ public partial class ShellViewModel : ObservableObject
     private readonly IUpdateService _updateService;
     private readonly IImageSourceResolver? _imageSourceResolver;
     private readonly Func<IEditorPreviewScheduler>? _previewSchedulerFactory;
+    private readonly HighlightCodeBlocksUseCase? _highlightCodeBlocks;
+    private CancellationTokenSource? _highlightCancellation;
+    private RenderedMarkdownDocument? _pendingHighlightDocument;
+    private RenderedMarkdownDocument? _recoloredDocument;
 
     private bool _documentModelReadyMarked;
     private bool _readableDocumentMarked;
@@ -97,7 +101,8 @@ public partial class ShellViewModel : ObservableObject
         Func<string, bool>? fileExists = null,
         IImageSourceResolver? imageSourceResolver = null,
         Func<IEditorPreviewScheduler>? previewSchedulerFactory = null,
-        RecentItemsUseCase? recentItems = null)
+        RecentItemsUseCase? recentItems = null,
+        HighlightCodeBlocksUseCase? highlightCodeBlocks = null)
     {
         _openDocument = openDocument;
         _saveDocument = saveDocument;
@@ -120,6 +125,7 @@ public partial class ShellViewModel : ObservableObject
         _imageSourceResolver = imageSourceResolver;
         _previewSchedulerFactory = previewSchedulerFactory;
         _recentItems = recentItems;
+        _highlightCodeBlocks = highlightCodeBlocks;
         _aboutVersion = AppProductInfo.GetVersion();
         InitializeOpenDocuments();
         _localization.PropertyChanged += OnLocalizationChanged;
@@ -1582,6 +1588,101 @@ public partial class ShellViewModel : ObservableObject
         return true;
     }
 
+    partial void OnRenderedDocumentChanged(RenderedMarkdownDocument value)
+        => ScheduleCodeHighlighting(value);
+
+    /// <summary>
+    /// Докраска кода после показа документа (ADR-0010 §4). Документ запоминается,
+    /// а разбор стартует, когда view его нарисовала
+    /// (<see cref="StartPendingCodeHighlighting"/>), — докраска не отнимает
+    /// время у первого показа. Новый документ или вкладка отменяет
+    /// незавершённую докраску. Документ без блоков кода с меткой языка ничего
+    /// не запускает.
+    /// </summary>
+    private void ScheduleCodeHighlighting(RenderedMarkdownDocument document)
+    {
+        _highlightCancellation?.Cancel();
+        _highlightCancellation?.Dispose();
+        _highlightCancellation = null;
+        _pendingHighlightDocument = _highlightCodeBlocks?.NeedsHighlighting(document) == true ? document : null;
+    }
+
+    /// <summary>
+    /// View нарисовала документ: если он ждёт докраски, разбор уходит в фон,
+    /// а результат применяется, только если на экране всё ещё тот же документ.
+    /// </summary>
+    public void StartPendingCodeHighlighting()
+    {
+        if (_pendingHighlightDocument is not { } document
+            || _highlightCodeBlocks is not { } highlightCodeBlocks
+            || !ReferenceEquals(document, RenderedDocument))
+        {
+            return;
+        }
+
+        _pendingHighlightDocument = null;
+        var cancellation = new CancellationTokenSource();
+        _highlightCancellation = cancellation;
+        CodeHighlighting = HighlightCodeBlocksAsync(highlightCodeBlocks, document, cancellation.Token);
+    }
+
+    /// <summary>Последняя запущенная докраска — для тестов.</summary>
+    internal Task? CodeHighlighting { get; private set; }
+
+    /// <summary>
+    /// Документ только что сменился на его же подсвеченную версию, а не на
+    /// другой документ (ADR-0010 §4). View спрашивает это один раз, в начале
+    /// пересборки: докраска меняет только цвета, поэтому миникарту не нужно
+    /// убирать, а фокус и прокрутку к совпадению поиска — трогать.
+    /// </summary>
+    public bool ConsumeRecolor(RenderedMarkdownDocument? document)
+    {
+        if (_recoloredDocument is null || !ReferenceEquals(document, _recoloredDocument))
+        {
+            return false;
+        }
+
+        _recoloredDocument = null;
+        return true;
+    }
+
+    private async Task HighlightCodeBlocksAsync(
+        HighlightCodeBlocksUseCase highlightCodeBlocks,
+        RenderedMarkdownDocument document,
+        CancellationToken cancellationToken)
+    {
+        RenderedMarkdownDocument highlighted;
+        try
+        {
+            highlighted = await Task.Run(() => highlightCodeBlocks.Execute(document, cancellationToken), cancellationToken)
+                .ConfigureAwait(true);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        if (cancellationToken.IsCancellationRequested
+            || ReferenceEquals(highlighted, document)
+            || !ReferenceEquals(RenderedDocument, document))
+        {
+            return;
+        }
+
+        // Вкладка хранит документ с цветами: возврат к ней не мигает без них.
+        foreach (var tab in OpenDocuments.Tabs)
+        {
+            tab.ApplyHighlightedDocument(document, highlighted);
+        }
+
+        _recoloredDocument = highlighted;
+        RenderedDocument = highlighted;
+
+        // Отметка разовая: если view её не забрала, при возврате на вкладку с
+        // этим же документом он пересобирается как обычный.
+        _recoloredDocument = null;
+    }
+
     partial void OnDocumentChanged(MarkdownSource? value)
     {
         RefreshDocumentSummary();
@@ -1727,7 +1828,8 @@ public partial class ShellViewModel : ObservableObject
             _renderMarkdown,
             _imageSourceResolver,
             _localization,
-            CreatePreviewScheduler());
+            CreatePreviewScheduler(),
+            highlightCodeBlocks: _highlightCodeBlocks);
 
         if (!_editorActivationMarked)
         {
@@ -1780,7 +1882,8 @@ public partial class ShellViewModel : ObservableObject
                 _renderMarkdown,
                 _imageSourceResolver,
                 _localization,
-                CreatePreviewScheduler());
+                CreatePreviewScheduler(),
+                highlightCodeBlocks: _highlightCodeBlocks);
         }
 
         if (!_editorActivationMarked)
@@ -1827,9 +1930,9 @@ public partial class ShellViewModel : ObservableObject
 
     private void ApplyLoadedDocument(MarkdownSource source, bool preserveEditModeAfterLoad)
     {
-        var rendered = _renderMarkdown.Execute(
+        var rendered = WithCachedHighlighting(_renderMarkdown.Execute(
             source.Content,
-            baseDirectory: TryGetDirectory(source.Path));
+            baseDirectory: TryGetDirectory(source.Path)));
 
         // Вкладку переключаем до того, как трогаем EditorSession: иначе сброс сессии
         // прилетит в предыдущую вкладку и заберёт с собой её несохранённые правки.
@@ -1852,7 +1955,8 @@ public partial class ShellViewModel : ObservableObject
                     _renderMarkdown,
                     _imageSourceResolver,
                     _localization,
-                    CreatePreviewScheduler());
+                    CreatePreviewScheduler(),
+                    highlightCodeBlocks: _highlightCodeBlocks);
             }
             else
             {
@@ -1877,6 +1981,13 @@ public partial class ShellViewModel : ObservableObject
         RefreshWindowTitle();
         UpdateCommandStates();
     }
+
+    /// <summary>
+    /// Блоки, уже подсвеченные раньше (тот же файл, другая вкладка), получают
+    /// цвета сразу — из кэша, без движка; остальное докрасит фон.
+    /// </summary>
+    private RenderedMarkdownDocument WithCachedHighlighting(RenderedMarkdownDocument rendered)
+        => _highlightCodeBlocks?.ApplyCached(rendered) ?? rendered;
 
     private void MarkSecondaryFeaturesReady()
     {
@@ -1910,9 +2021,9 @@ public partial class ShellViewModel : ObservableObject
         }
 
         Document = source;
-        RenderedDocument = _renderMarkdown.Execute(
+        RenderedDocument = WithCachedHighlighting(_renderMarkdown.Execute(
             source.Content,
-            baseDirectory: TryGetDirectory(source.Path));
+            baseDirectory: TryGetDirectory(source.Path)));
         _currentPath = source.Path;
 
         if (EditorSession is null)
@@ -1923,7 +2034,8 @@ public partial class ShellViewModel : ObservableObject
                 _renderMarkdown,
                 _imageSourceResolver,
                 _localization,
-                CreatePreviewScheduler());
+                CreatePreviewScheduler(),
+                highlightCodeBlocks: _highlightCodeBlocks);
         }
         else
         {

@@ -9,11 +9,17 @@
     <PackageReference Include="Markdig" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="Naiad" />
+    <PackageReference Include="TextMateSharp" />
+    <!-- Not referenced at run time: Highlighting/TextMateGrammars.targets packs
+         its grammar files into one compressed resource (ADR-0010 §6). -->
+    <PackageReference Include="TextMateSharp.Grammars" ExcludeAssets="all" PrivateAssets="all" GeneratePathProperty="true" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\MarkMello.Application\MarkMello.Application.csproj" />
     <ProjectReference Include="..\MarkMello.Domain\MarkMello.Domain.csproj" />
   </ItemGroup>
+
+  <Import Project="Highlighting\TextMateGrammars.targets" />
 
 </Project>

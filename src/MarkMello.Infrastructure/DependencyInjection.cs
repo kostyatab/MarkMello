@@ -2,6 +2,7 @@ using System.Globalization;
 using MarkMello.Application.Abstractions;
 using MarkMello.Infrastructure.Diagrams;
 using MarkMello.Infrastructure.Documents;
+using MarkMello.Infrastructure.Highlighting;
 using MarkMello.Infrastructure.Images;
 using MarkMello.Infrastructure.Markdown;
 using MarkMello.Infrastructure.Platform;
@@ -33,6 +34,10 @@ public static class DependencyInjection
         services.AddSingleton<IDocumentSaver, FileDocumentSaver>();
         services.AddSingleton<IMarkdownDocumentRenderer, MarkdigMarkdownDocumentRenderer>();
         services.AddSingleton<IDiagramRenderer, MermaidDiagramRenderer>();
+
+        // Конструктор ничего не загружает: грамматики и TextMateSharp — при
+        // первом блоке кода знакомого языка, вне UI-потока (ADR-0010 §4).
+        services.AddSingleton<ICodeHighlighter, TextMateCodeHighlighter>();
         services.AddSingleton<IImageSourceResolver, DefaultImageSourceResolver>();
         services.AddSingleton<IWorkspaceFileSystem, DirectoryWorkspaceFileSystem>();
 

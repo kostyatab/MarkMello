@@ -137,6 +137,18 @@ public sealed partial class DocumentTabViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
+    /// Докраска кода закончилась (ADR-0010 §4): документ вкладки заменяется
+    /// подсвеченным, только если это всё ещё тот, что докрашивался.
+    /// </summary>
+    public void ApplyHighlightedDocument(RenderedMarkdownDocument source, RenderedMarkdownDocument highlighted)
+    {
+        if (ReferenceEquals(RenderedDocument, source))
+        {
+            RenderedDocument = highlighted;
+        }
+    }
+
+    /// <summary>
     /// Файл вкладки не прочитался. Снимок документа уходит: показывать старый текст
     /// под экраном ошибки значило бы выдавать его за содержимое файла.
     /// </summary>

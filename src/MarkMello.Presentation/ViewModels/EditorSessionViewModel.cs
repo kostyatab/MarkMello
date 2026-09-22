@@ -14,6 +14,8 @@ namespace MarkMello.Presentation.ViewModels;
 public sealed class EditorSessionViewModel : ObservableObject, IDisposable
 {
     private readonly RenderMarkdownDocumentUseCase _renderMarkdown;
+    private readonly HighlightCodeBlocksUseCase? _highlightCodeBlocks;
+    private CancellationTokenSource? _previewHighlightCancellation;
     private readonly ILocalizationService _localization;
     private readonly IEditorPreviewScheduler _previewScheduler;
     private string _sourceText;
@@ -31,7 +33,8 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
         RenderMarkdownDocumentUseCase renderMarkdown,
         IImageSourceResolver? imageSourceResolver,
         ILocalizationService? localization = null,
-        IEditorPreviewScheduler? previewScheduler = null)
+        IEditorPreviewScheduler? previewScheduler = null,
+        HighlightCodeBlocksUseCase? highlightCodeBlocks = null)
         : this(
             source.Path,
             source.FileName,
@@ -40,7 +43,8 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
             renderMarkdown,
             imageSourceResolver,
             localization,
-            previewScheduler)
+            previewScheduler,
+            highlightCodeBlocks)
     {
         ArgumentNullException.ThrowIfNull(source);
     }
@@ -52,7 +56,8 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
         RenderMarkdownDocumentUseCase renderMarkdown,
         IImageSourceResolver? imageSourceResolver,
         ILocalizationService? localization = null,
-        IEditorPreviewScheduler? previewScheduler = null)
+        IEditorPreviewScheduler? previewScheduler = null,
+        HighlightCodeBlocksUseCase? highlightCodeBlocks = null)
         : this(
             currentPath: null,
             fileName,
@@ -61,7 +66,8 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
             renderMarkdown,
             imageSourceResolver,
             localization,
-            previewScheduler)
+            previewScheduler,
+            highlightCodeBlocks)
     {
     }
 
@@ -73,12 +79,14 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
         RenderMarkdownDocumentUseCase renderMarkdown,
         IImageSourceResolver? imageSourceResolver,
         ILocalizationService? localization,
-        IEditorPreviewScheduler? previewScheduler)
+        IEditorPreviewScheduler? previewScheduler,
+        HighlightCodeBlocksUseCase? highlightCodeBlocks)
     {
         ArgumentNullException.ThrowIfNull(renderMarkdown);
         ArgumentException.ThrowIfNullOrWhiteSpace(fileName);
 
         _renderMarkdown = renderMarkdown;
+        _highlightCodeBlocks = highlightCodeBlocks;
         _localization = localization ?? new LocalizationService();
         _previewScheduler = previewScheduler ?? ImmediateEditorPreviewScheduler.Instance;
         ImageSourceResolver = imageSourceResolver;
@@ -87,9 +95,10 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
         _readingPreferences = readingPreferences;
         _lastPersistedSource = initialContent ?? string.Empty;
         _sourceText = initialContent ?? string.Empty;
-        _renderedPreview = RenderPreview(_sourceText, _currentPath);
+        _renderedPreview = RenderPreviewWithCachedHighlighting(_sourceText, _currentPath);
         _statusMessage = string.Empty;
         _splitRatio = 0.5;
+        ScheduleHighlightingIfNeeded(_renderedPreview);
     }
 
     public IImageSourceResolver? ImageSourceResolver { get; }
@@ -293,6 +302,7 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         _previewScheduler.Cancel();
+        CancelPreviewHighlighting();
         (_previewScheduler as IDisposable)?.Dispose();
     }
 
@@ -304,9 +314,63 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
     {
         var markdown = _sourceText;
         var path = _currentPath;
+
+        // Устаревший рендер бросает разбор кода: он держит общий движок, а его
+        // результат всё равно будет отброшен.
+        CancelPreviewHighlighting();
+        var cancellation = _previewHighlightCancellation = new CancellationTokenSource();
+        var token = cancellation.Token;
         _previewScheduler.Schedule(
-            () => RenderPreview(markdown, path),
+            () => HighlightPreview(RenderPreview(markdown, path), token),
             preview => RenderedPreview = preview);
+    }
+
+    /// <summary>
+    /// Подсветка кода в превью (ADR-0010 §4) — в том же фоновом рендере, что и
+    /// разбор Markdown. Неизменившиеся блоки берут цвета из общего кэша и не
+    /// мигают без них на каждой правке.
+    /// </summary>
+    private RenderedMarkdownDocument HighlightPreview(RenderedMarkdownDocument preview, CancellationToken cancellationToken)
+    {
+        if (_highlightCodeBlocks is null)
+        {
+            return preview;
+        }
+
+        try
+        {
+            return _highlightCodeBlocks.Execute(preview, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // Рендер устарел, его результат планировщик отбросит.
+            return preview;
+        }
+    }
+
+    private void CancelPreviewHighlighting()
+    {
+        // Без Dispose: отменённый токен ещё может читать фоновый рендер.
+        _previewHighlightCancellation?.Cancel();
+        _previewHighlightCancellation = null;
+    }
+
+    /// <summary>
+    /// Синхронный рендер на UI-потоке берёт цвета только из кэша; остальное
+    /// докрасит фоновый рендер (<see cref="ScheduleHighlightingIfNeeded"/>).
+    /// </summary>
+    private RenderedMarkdownDocument RenderPreviewWithCachedHighlighting(string markdown, string? path)
+    {
+        var preview = RenderPreview(markdown, path);
+        return _highlightCodeBlocks?.ApplyCached(preview) ?? preview;
+    }
+
+    private void ScheduleHighlightingIfNeeded(RenderedMarkdownDocument preview)
+    {
+        if (_highlightCodeBlocks?.NeedsHighlighting(preview) == true)
+        {
+            SchedulePreviewRefresh();
+        }
     }
 
     /// <summary>
@@ -316,7 +380,9 @@ public sealed class EditorSessionViewModel : ObservableObject, IDisposable
     private void RefreshPreviewNow()
     {
         _previewScheduler.Cancel();
-        RenderedPreview = RenderPreview(_sourceText, _currentPath);
+        CancelPreviewHighlighting();
+        RenderedPreview = RenderPreviewWithCachedHighlighting(_sourceText, _currentPath);
+        ScheduleHighlightingIfNeeded(RenderedPreview);
     }
 
     private RenderedMarkdownDocument RenderPreview(string markdown, string? path)

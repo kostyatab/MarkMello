@@ -1445,6 +1445,165 @@ public sealed class ShellViewModelTests
         }
     }
 
+    [Fact]
+    public async Task CodeIsHighlightedAfterTheDocumentIsShown()
+    {
+        var highlighter = new GatedCodeHighlighter();
+        var harness = CreateHarness(
+            markdownRenderer: new MarkMello.Infrastructure.Markdown.MarkdigMarkdownDocumentRenderer(),
+            highlightCodeBlocks: new HighlightCodeBlocksUseCase(highlighter));
+        var path = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "code.md");
+        harness.Loader.Sources[path] = CreateSource(path, "# Code\n\n```cs\nvar x = 1;\n```");
+        var highlighted = WaitForHighlightedDocument(harness.ViewModel);
+
+        await harness.ViewModel.OpenPathAsync(path);
+
+        // Документ показан сразу, без цветов; разбор ждёт, пока view его нарисует.
+        Assert.Null(SingleCodeBlock(harness.ViewModel.RenderedDocument).Tokens);
+        Assert.Null(harness.ViewModel.CodeHighlighting);
+        harness.ViewModel.StartPendingCodeHighlighting();
+        Assert.NotNull(harness.ViewModel.CodeHighlighting);
+        highlighter.Release();
+
+        var document = await highlighted.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.NotNull(SingleCodeBlock(document).Tokens);
+        Assert.Same(document, harness.ViewModel.OpenDocuments.ActiveTab!.RenderedDocument);
+    }
+
+    [Fact]
+    public async Task OpeningAnotherDocumentCancelsHighlighting()
+    {
+        var highlighter = new GatedCodeHighlighter();
+        var harness = CreateHarness(
+            markdownRenderer: new MarkMello.Infrastructure.Markdown.MarkdigMarkdownDocumentRenderer(),
+            highlightCodeBlocks: new HighlightCodeBlocksUseCase(highlighter));
+        var codePath = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "code.md");
+        var textPath = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "text.md");
+        harness.Loader.Sources[codePath] = CreateSource(codePath, "```cs\nvar x = 1;\n```");
+        harness.Loader.Sources[textPath] = CreateSource(textPath, "Just text.");
+
+        await harness.ViewModel.OpenPathAsync(codePath);
+        harness.ViewModel.StartPendingCodeHighlighting();
+        var cancellation = await highlighter.Entered.WaitAsync(TimeSpan.FromSeconds(10));
+        var codeTab = harness.ViewModel.OpenDocuments.ActiveTab!;
+        var codeDocument = codeTab.RenderedDocument;
+        await harness.ViewModel.OpenPathAsync(textPath);
+
+        Assert.True(cancellation.IsCancellationRequested);
+        Assert.IsType<MarkdownParagraphBlock>(Assert.Single(harness.ViewModel.RenderedDocument.Blocks));
+        Assert.Same(codeDocument, codeTab.RenderedDocument);
+    }
+
+    [Fact]
+    public async Task DocumentWithoutLabelledCodeDoesNotStartHighlighting()
+    {
+        var highlighter = new GatedCodeHighlighter();
+        var harness = CreateHarness(
+            markdownRenderer: new MarkMello.Infrastructure.Markdown.MarkdigMarkdownDocumentRenderer(),
+            highlightCodeBlocks: new HighlightCodeBlocksUseCase(highlighter));
+        var path = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "plain.md");
+        harness.Loader.Sources[path] = CreateSource(path, "# Title\n\n```\nno label\n```");
+
+        await harness.ViewModel.OpenPathAsync(path);
+        harness.ViewModel.StartPendingCodeHighlighting();
+
+        Assert.Null(harness.ViewModel.CodeHighlighting);
+        Assert.False(highlighter.Entered.IsCompleted);
+    }
+
+    [Fact]
+    public async Task DocumentReplacedBeforeItWasDrawnIsNotHighlighted()
+    {
+        var highlighter = new GatedCodeHighlighter();
+        var harness = CreateHarness(
+            markdownRenderer: new MarkMello.Infrastructure.Markdown.MarkdigMarkdownDocumentRenderer(),
+            highlightCodeBlocks: new HighlightCodeBlocksUseCase(highlighter));
+        var codePath = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "code.md");
+        var textPath = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "text.md");
+        harness.Loader.Sources[codePath] = CreateSource(codePath, "```cs\nvar x = 1;\n```");
+        harness.Loader.Sources[textPath] = CreateSource(textPath, "Just text.");
+
+        await harness.ViewModel.OpenPathAsync(codePath);
+        await harness.ViewModel.OpenPathAsync(textPath);
+        harness.ViewModel.StartPendingCodeHighlighting();
+
+        Assert.Null(harness.ViewModel.CodeHighlighting);
+        Assert.False(highlighter.Entered.IsCompleted);
+    }
+
+    [Fact]
+    public async Task RecolorIsReportedOnceWhileTheHighlightedDocumentIsApplied()
+    {
+        var highlighter = new GatedCodeHighlighter();
+        highlighter.Release();
+        var harness = CreateHarness(
+            markdownRenderer: new MarkMello.Infrastructure.Markdown.MarkdigMarkdownDocumentRenderer(),
+            highlightCodeBlocks: new HighlightCodeBlocksUseCase(highlighter));
+        var path = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "code.md");
+        harness.Loader.Sources[path] = CreateSource(path, "```cs\nvar x = 1;\n```");
+        await harness.ViewModel.OpenPathAsync(path);
+        var plain = harness.ViewModel.RenderedDocument;
+        var answers = new List<bool>();
+        harness.ViewModel.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(ShellViewModel.RenderedDocument))
+            {
+                // Так спрашивает view в начале пересборки — дважды, как при повторе.
+                answers.Add(harness.ViewModel.ConsumeRecolor(harness.ViewModel.RenderedDocument));
+                answers.Add(harness.ViewModel.ConsumeRecolor(harness.ViewModel.RenderedDocument));
+            }
+        };
+
+        Assert.False(harness.ViewModel.ConsumeRecolor(plain));
+        harness.ViewModel.StartPendingCodeHighlighting();
+        await harness.ViewModel.CodeHighlighting!.WaitAsync(TimeSpan.FromSeconds(10));
+
+        Assert.Equal([true, false], answers);
+        Assert.False(harness.ViewModel.ConsumeRecolor(harness.ViewModel.RenderedDocument));
+    }
+
+    private static Task<RenderedMarkdownDocument> WaitForHighlightedDocument(ShellViewModel viewModel)
+    {
+        var completion = new TaskCompletionSource<RenderedMarkdownDocument>(TaskCreationOptions.RunContinuationsAsynchronously);
+        viewModel.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(ShellViewModel.RenderedDocument)
+                && viewModel.RenderedDocument.Blocks.OfType<MarkdownCodeBlock>().Any(block => block.Tokens is not null))
+            {
+                completion.TrySetResult(viewModel.RenderedDocument);
+            }
+        };
+        return completion.Task;
+    }
+
+    private static MarkdownCodeBlock SingleCodeBlock(RenderedMarkdownDocument document)
+        => document.Blocks.OfType<MarkdownCodeBlock>().Single();
+
+    /// <summary>
+    /// Движок, который держит разбор, пока тест его не отпустит, и отдаёт
+    /// тесту токен отмены первого вызова.
+    /// </summary>
+    private sealed class GatedCodeHighlighter : MarkMello.Application.Abstractions.ICodeHighlighter
+    {
+        private readonly TaskCompletionSource<CancellationToken> _entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task<CancellationToken> Entered => _entered.Task;
+
+        public void Release() => _gate.TrySetResult();
+
+        public IReadOnlyList<MarkdownCodeToken>? Highlight(
+            string language,
+            string code,
+            TimeSpan timeout,
+            CancellationToken cancellationToken)
+        {
+            _entered.TrySetResult(cancellationToken);
+            _gate.Task.Wait(cancellationToken);
+            return [new MarkdownCodeToken(0, code.Length, MarkdownCodeTokenKind.Keyword)];
+        }
+    }
+
     private static MarkdownSource CreateSource(string path, string content)
         => new(path, Path.GetFileName(path), content);
 
@@ -1465,7 +1624,9 @@ public sealed class ShellViewModelTests
         FakeWorkspaceFileSystem? workspaceFileSystem = null,
         string platformName = "Windows",
         MarkMello.Application.Abstractions.ISettingsStore? settingsStore = null,
-        RecordingThemeService? themeService = null)
+        RecordingThemeService? themeService = null,
+        MarkMello.Application.Abstractions.IMarkdownDocumentRenderer? markdownRenderer = null,
+        HighlightCodeBlocksUseCase? highlightCodeBlocks = null)
     {
         var loader = new StubDocumentLoader();
         var saver = new RecordingDocumentSaver();
@@ -1486,7 +1647,7 @@ public sealed class ShellViewModelTests
             settingsStore ?? settings,
             themeService,
             startupMetrics,
-            new RenderMarkdownDocumentUseCase(new TestMarkdownRenderer(), new FakeDiagramRenderService()),
+            new RenderMarkdownDocumentUseCase(markdownRenderer ?? new TestMarkdownRenderer(), new FakeDiagramRenderService()),
             updateService,
             new OpenFolderUseCase(fileSystem),
             new ExpandFolderNodeUseCase(fileSystem),
@@ -1494,7 +1655,8 @@ public sealed class ShellViewModelTests
             new WorkspaceFileOperationsUseCase(fileSystem, new FakePlatformServices()),
             new FakePlatformServices { PlatformName = platformName },
             static () => new FakeWorkspaceWatcher(),
-            new RecordingWindowLauncher());
+            new RecordingWindowLauncher(),
+            highlightCodeBlocks: highlightCodeBlocks);
 
         return new TestHarness(
             loader,

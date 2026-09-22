@@ -40,7 +40,8 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
         FontFeatureCollection? baseFontFeatures = null,
         IBrush? inlineCodeForeground = null,
         IBrush? keyboardForeground = null,
-        MarkdownBackReferenceIcon? backReferenceIcon = null)
+        MarkdownBackReferenceIcon? backReferenceIcon = null,
+        MarkdownSyntaxBrushes? syntaxBrushes = null)
     {
         _displayModel = MarkdownDisplayLayoutModel.Create(styledText);
         var textProperties = new MarkdownTextRunPropertiesFactory(
@@ -53,7 +54,8 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
             linkDecorations,
             baseFontFeatures,
             inlineCodeForeground,
-            keyboardForeground);
+            keyboardForeground,
+            syntaxBrushes);
         _textProperties = textProperties;
         _baseFontSize = baseFontSize;
         _letterSpacing = letterSpacing;
@@ -811,9 +813,11 @@ internal sealed class MarkdownTextRunPropertiesFactory
     private readonly FontFeatureCollection? _baseFontFeatures;
     private readonly IBrush _inlineCodeForeground;
     private readonly IBrush _keyboardForeground;
+    private readonly MarkdownSyntaxBrushes? _syntaxBrushes;
 
     /// <param name="inlineCodeForeground">Цвет инлайн-кода; без него — цвет текста.</param>
     /// <param name="keyboardForeground">Цвет подписи клавиши; без него — цвет текста.</param>
+    /// <param name="syntaxBrushes">Цвета подсветки синтаксиса; без них — цвет текста.</param>
     public MarkdownTextRunPropertiesFactory(
         FontFamily baseFontFamily,
         FontFamily inlineCodeFontFamily,
@@ -824,7 +828,8 @@ internal sealed class MarkdownTextRunPropertiesFactory
         TextDecorationCollection? linkDecorations,
         FontFeatureCollection? baseFontFeatures = null,
         IBrush? inlineCodeForeground = null,
-        IBrush? keyboardForeground = null)
+        IBrush? keyboardForeground = null,
+        MarkdownSyntaxBrushes? syntaxBrushes = null)
     {
         _baseFontFamily = baseFontFamily;
         _inlineCodeFontFamily = inlineCodeFontFamily;
@@ -836,6 +841,7 @@ internal sealed class MarkdownTextRunPropertiesFactory
         _baseFontFeatures = baseFontFeatures;
         _inlineCodeForeground = inlineCodeForeground ?? foreground;
         _keyboardForeground = keyboardForeground ?? foreground;
+        _syntaxBrushes = syntaxBrushes;
     }
 
     /// <summary>
@@ -886,13 +892,23 @@ internal sealed class MarkdownTextRunPropertiesFactory
                     style.IsBold ? FontWeight.Bold : _fontWeight),
                 style.IsCode ? _fontSize * MarkdownDocumentMetrics.InlineCodeFontScale : _fontSize * scale,
                 isHidden ? null : ResolveDecorations(style),
-                isHidden ? Brushes.Transparent : style.IsCode ? _inlineCodeForeground : _foreground,
+                isHidden ? Brushes.Transparent : ResolveForeground(style),
                 backgroundBrush: null,
                 BaselineAlignment.Baseline,
                 CultureInfo.CurrentUICulture,
                 style.IsCode ? CodeFontFeatures : _baseFontFeatures);
         cache.Add(style, properties);
         return properties;
+    }
+
+    private IBrush ResolveForeground(MarkdownInlineStyleState style)
+    {
+        if (style.IsCode)
+        {
+            return _inlineCodeForeground;
+        }
+
+        return style.Syntax is { } kind ? _syntaxBrushes?.Get(kind) ?? _foreground : _foreground;
     }
 
     /// <summary>

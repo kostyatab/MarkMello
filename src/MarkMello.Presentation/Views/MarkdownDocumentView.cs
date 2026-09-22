@@ -851,9 +851,15 @@ public sealed class MarkdownDocumentView : UserControl
         _alertTitles = alertTitles;
         _diagramStrings = diagramStrings;
 
+        // Текст документа тот же — например, докраска кода (ADR-0010 §4) или
+        // правка, не задевшая текст, — выделение остаётся на месте.
+        var previousText = _textMap.Text;
+        var (selectionAnchor, selectionStart, selectionEnd) = (SelectionAnchor, SelectionStart, SelectionEnd);
         _textMap = document is null
             ? MarkdownDocumentTextMap.Empty
             : MarkdownDocumentTextMap.Create(document, _alertTitles.Get);
+        var keepsSelection = selectionEnd > selectionStart
+            && string.Equals(previousText, _textMap.Text, StringComparison.Ordinal);
         ClearSelection();
 
         var generation = ++_renderGeneration;
@@ -885,6 +891,14 @@ public sealed class MarkdownDocumentView : UserControl
         SyncRootChildren(rebuilt);
         ApplyTopLevelRhythm(rebuilt);
         RebuildHeadingAnchorIndex();
+
+        if (keepsSelection)
+        {
+            SelectionAnchor = selectionAnchor;
+            SelectionStart = selectionStart;
+            SelectionEnd = selectionEnd;
+            ApplySelectionToFragments();
+        }
 
         // Метка, к которой вернёт номер сноски, могла уйти вместе с изменившимся блоком.
         if (_footnoteReturnTarget is { } returnTarget && !_selectionFragments.Contains(returnTarget.Fragment))
@@ -2206,9 +2220,16 @@ public sealed class MarkdownDocumentView : UserControl
             fallbackClassName: "mm-md-codeblock-text",
             baseFontFamily: ResolveMonoFontFamily(),
             textWrapping: TextWrapping.NoWrap,
-            baseFontFeatures: MarkdownTextRunPropertiesFactory.CodeFontFeatures);
+            baseFontFeatures: MarkdownTextRunPropertiesFactory.CodeFontFeatures,
+            // Подсветка меняет только цвет: текст фрагмента — ровно block.Code,
+            // поэтому выделение, копирование и поиск работают как без неё (ADR-0010 §7).
+            styledText: block.Tokens is { Count: > 0 } tokens ? MarkdownStyledText.FromCode(block.Code, tokens) : null);
 
-        return BuildCodeBlockSheet(block.Info, block.Code, codeFragment);
+        var bands = codeFragment is MarkdownSelectionTextFragment fragment
+            && MarkdownCodeLineBands.FromTokens(block.Code, block.Tokens) is { Count: > 0 } lines
+                ? new MarkdownCodeLineBands(fragment, lines)
+                : null;
+        return BuildCodeBlockSheet(block.Info, block.Code, codeFragment, bands);
     }
 
     /// <summary>
@@ -2241,7 +2262,7 @@ public sealed class MarkdownDocumentView : UserControl
     /// Нижнее поле живёт внутри прокрутки: полоса прокрутки широкого кода ложится
     /// в него, а не на последнюю строку.
     /// </remarks>
-    private Border BuildCodeBlockSheet(string? language, string code, Control codeText)
+    private Border BuildCodeBlockSheet(string? language, string code, Control codeText, Control? lineBands = null)
     {
         var hasLanguage = !string.IsNullOrWhiteSpace(language);
         var side = _metrics.CodeBlockSidePadding;
@@ -2250,6 +2271,12 @@ public sealed class MarkdownDocumentView : UserControl
         var head = _metrics.CodeBlockHeadTop;
 
         var content = new Grid();
+        if (lineBands is not null)
+        {
+            // Фон строк diff — под прокруткой, во всю ширину листа.
+            content.Children.Add(lineBands);
+        }
+
         content.Children.Add(new ScrollViewer
         {
             HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
@@ -2552,7 +2579,7 @@ public sealed class MarkdownDocumentView : UserControl
         FontFeatureCollection? baseFontFeatures = null)
     {
         // Готовый текст — у служебных фрагментов, которых нет среди inline документа
-        // (номер сноски со ссылкой обратно к метке).
+        // (номер сноски со ссылкой обратно к метке), и у блока кода с подсветкой.
         var styled = styledText ?? MarkdownStyledText.FromInlines(inlines);
         if (styled.Text.Length == 0)
         {

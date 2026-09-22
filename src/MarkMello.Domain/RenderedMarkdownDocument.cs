@@ -178,7 +178,18 @@ public sealed record MarkdownFootnote(int Number, IReadOnlyList<MarkdownBlock> B
 
 public sealed record MarkdownHorizontalRuleBlock() : MarkdownBlock;
 
-public sealed record MarkdownCodeBlock(string? Info, string Code) : MarkdownBlock;
+/// <param name="Info">Метка после <c>```</c>: язык и, возможно, аргументы.</param>
+/// <param name="Code">Текст блока.</param>
+public sealed record MarkdownCodeBlock(string? Info, string Code) : MarkdownBlock
+{
+    /// <summary>
+    /// Подсветка синтаксиса поверх <see cref="Code"/> (ADR-0010): токены по
+    /// возрастанию <see cref="MarkdownCodeToken.Start"/>, без пересечений.
+    /// <c>null</c> — блок не подсвечен: подсветки ещё нет, язык неизвестен или
+    /// блок не прошёл пороги. Текст блока подсветка не меняет.
+    /// </summary>
+    public IReadOnlyList<MarkdownCodeToken>? Tokens { get; init; }
+}
 
 /// <param name="Header">Ячейки строки заголовка.</param>
 /// <param name="Rows">Строки данных.</param>
