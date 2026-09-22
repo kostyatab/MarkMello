@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Spike MM-9, not part of MarkMello.sln. See ../../quicklook-macos-spike.md.
+       dotnet publish -c Release -r osx-arm64            -> Markdig + Naiad
+       dotnet publish -c Release -r osx-arm64 -p:Highlight=true  -> + TextMateSharp -->
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <NativeLib>Shared</NativeLib>
+    <PublishAot>true</PublishAot>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>libmmpreview</AssemblyName>
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <!-- Spike code: the repo-wide analyzers and warnings-as-errors are not applied. -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+    <AnalysisLevel>none</AnalysisLevel>
+    <DefineConstants Condition="'$(Highlight)' == 'true'">$(DefineConstants);HIGHLIGHT</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../src/MarkMello.Domain/MarkMello.Domain.csproj" />
+    <ProjectReference Include="../../../src/MarkMello.Application/MarkMello.Application.csproj" />
+    <ProjectReference Include="../../../src/MarkMello.Infrastructure/MarkMello.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>
