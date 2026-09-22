@@ -123,6 +123,10 @@ public sealed class MarkdownDocumentView : UserControl
     private long _renderGeneration;
     private bool _hasPendingRenderedNotification;
 
+    // Вне дерева ресурсы темы недоступны: шрифты и кисти блоков взяты из
+    // запасных значений, и при подключении к дереву документ собирается заново.
+    private bool _isBuiltOutsideTree;
+
     static MarkdownDocumentView()
     {
         DocumentProperty.Changed.AddClassHandler<MarkdownDocumentView>((view, _) => view.Rebuild());
@@ -174,6 +178,12 @@ public sealed class MarkdownDocumentView : UserControl
         if (_localization is not null)
         {
             _localization.PropertyChanged += OnLocalizationChanged;
+        }
+
+        if (_isBuiltOutsideTree)
+        {
+            RebuildFromScratch();
+            return;
         }
 
         // Язык мог смениться, пока view не было в дереве.
@@ -825,6 +835,7 @@ public sealed class MarkdownDocumentView : UserControl
         }
 
         _builtBlocks = rebuilt;
+        _isBuiltOutsideTree = rebuilt.Count > 0 && !this.IsAttachedToVisualTree();
         DisposeReplacedBlocks(previous, rebuilt);
         SyncRootChildren(rebuilt);
         ApplyTopLevelRhythm(rebuilt);

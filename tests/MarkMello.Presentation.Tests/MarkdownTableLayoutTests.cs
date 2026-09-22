@@ -29,7 +29,8 @@ public sealed class MarkdownTableLayoutTests
 {
     private const double Tolerance = 0.5;
     private const string LongText =
-        "Terminates TLS and routes traffic to the application nodes; it holds no state, so it stays small.";
+        "Terminates TLS and routes traffic to the application nodes; it holds no state, so it stays small, " +
+        "restarts in seconds and can be replaced at any time without draining the connections it serves.";
 
     private readonly AvaloniaHeadlessFixture _fixture;
 
@@ -417,16 +418,11 @@ public sealed class MarkdownTableLayoutTests
         return _fixture.Session.Dispatch(() =>
         {
             // На середине прокрутки таблица должна уходить за оба края дальше, чем
-            // на ширину затухания. Длинная ячейка удвоена: ширину текста задаёт шрифт,
-            // а он в сессии зависит от порядка тестов — первым тест мерит узким Inter,
-            // после других — широкой заглушкой.
+            // на ширину затухания, — крупный текст делает её для этого достаточно широкой.
             var view = new MarkdownDocumentView
             {
                 ReadingPreferences = ReadingPreferences.Default with { FontSize = 18 },
-                Document = Document(Table(
-                    ["#", "CPU", "Rationale"],
-                    ["1", "2 vCPU", LongText + " " + LongText],
-                    ["3", "8 vCPU", "Mirror of the first node."]))
+                Document = WideTable()
             };
             var (window, _) = ShowOnPage(view);
             var host = Host(view);
@@ -570,7 +566,7 @@ public sealed class MarkdownTableLayoutTests
             var (scrollViewer, panel) = Table(view);
             Assert.Equal(0, scrollViewer.Offset.X);
 
-            view.ApplySearchQuery("stays small");
+            view.ApplySearchQuery("connections it serves");
             window.UpdateLayout();
 
             Assert.Equal(1, view.MatchCount);

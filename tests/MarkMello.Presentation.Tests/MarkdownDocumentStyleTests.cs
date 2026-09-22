@@ -76,6 +76,24 @@ public sealed class MarkdownDocumentStyleTests
     }
 
     [Fact]
+    public Task DocumentSetBeforeTheViewIsInTheWindowTakesTheThemeFont()
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            // Документ задан до того, как view попал в окно: блоки собраны без ресурсов
+            // темы. Показанный документ должен быть набран шрифтом темы сразу, а не
+            // когда-нибудь потом — иначе ширина текста зависит от того, успел ли кто-то
+            // пересобрать документ.
+            var (window, view) = Show([Paragraph("Body.")]);
+
+            Assert.True(window.TryFindResource("MmDocumentSansFontFamily", out var sans));
+            Assert.Same(sans, Text(view, "Body.").BaseFontFamily);
+
+            window.Close();
+        }, CancellationToken.None);
+    }
+
+    [Fact]
     public Task ParagraphsUseTheLineHeightFromSettingsAndOneTextSizeBetween()
     {
         return _fixture.Session.Dispatch(() =>
