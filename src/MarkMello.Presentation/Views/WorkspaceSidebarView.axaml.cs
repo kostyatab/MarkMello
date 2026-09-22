@@ -138,15 +138,11 @@ public partial class WorkspaceSidebarView : UserControl
         e.Handled = true;
     }
 
-    private void AnchorMenuTo(Control trigger)
-    {
-        if (trigger.TranslatePoint(default, (Visual)this) is not { } origin)
-        {
-            return;
-        }
-
-        SetMenuAnchor(new Rect(origin, trigger.Bounds.Size));
-    }
+    /// <summary>
+    /// Меню от кнопки: рамку окно берёт у самой кнопки. Снятая здесь, в момент клика,
+    /// она прошла бы сквозь анимацию нажатия и увела бы карточку в сторону.
+    /// </summary>
+    private void AnchorMenuTo(Control trigger) => MenuHost()?.AnchorMenuCard(trigger);
 
     /// <summary>Меню у курсора: якорь без высоты, поэтому карточка встаёт прямо под точкой.</summary>
     private void AnchorMenuAt(Point point) => SetMenuAnchor(new Rect(point, default(Size)));

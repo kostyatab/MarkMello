@@ -248,6 +248,9 @@ public partial class MainWindow : Window, IMenuCardHost
     /// Якорь в координатах слоя карточек: сам слой лежит внутри рамки окна и на пиксель
     /// её толщины смещён относительно окна. Якорь, ушедший из дерева, оставляет
     /// последнее известное место — карточку без кнопки закроет view-model.
+    /// Якорь берётся из места в раскладке родителя, мимо RenderTransform самого якоря:
+    /// нажатая кнопка Fluent сжимается и отпускается анимацией, и точка, снятая сквозь
+    /// неё, зависела бы от кадра — карточка вставала бы на пиксель в сторону.
     /// </summary>
     private void UpdateMenuAnchor(Visual host)
     {
@@ -257,7 +260,8 @@ public partial class MainWindow : Window, IMenuCardHost
         }
 
         var anchor = _menuAnchorInSource ?? new Rect(source.Bounds.Size);
-        if (source.TranslatePoint(anchor.Position, host) is { } origin)
+        var inParent = new Point(source.Bounds.X + anchor.X, source.Bounds.Y + anchor.Y);
+        if (source.GetVisualParent()?.TranslatePoint(inParent, host) is { } origin)
         {
             _sidebarMenuAnchor = new Rect(origin, anchor.Size);
         }

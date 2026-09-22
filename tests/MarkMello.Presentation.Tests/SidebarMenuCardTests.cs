@@ -5,6 +5,7 @@ using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
+using Avalonia.Media.Transformation;
 using Avalonia.Styling;
 using Avalonia.Themes.Fluent;
 using Avalonia.Threading;
@@ -355,6 +356,33 @@ public sealed class SidebarMenuCardTests
 
             var button = Trigger(window, "FolderMenuButton");
             var origin = button.TranslatePoint(default, window)!.Value;
+            Click(window, button);
+
+            AssertCardStartsAt(
+                window,
+                "FolderMenuPanel",
+                new Point(origin.X, origin.Y + button.Bounds.Height + 6));
+
+            window.Hide();
+        });
+    }
+
+    /// <summary>
+    /// Нажатая кнопка Fluent сжимается и отпускается анимацией, поэтому в момент
+    /// открытия меню её RenderTransform — случайный кадр. Карточка встаёт по месту
+    /// кнопки в раскладке: сжатие задано явно и без анимации, чтобы кадр был один.
+    /// </summary>
+    [Fact]
+    public Task CardIgnoresTheButtonPressAnimation()
+    {
+        return _fixture.RunAsync(async () =>
+        {
+            var (window, _) = await ShowWithFolderAsync();
+            var button = Trigger(window, "FolderMenuButton");
+            var origin = button.TranslatePoint(default, window)!.Value;
+
+            button.Transitions = null;
+            button.RenderTransform = TransformOperations.Parse("scale(0.9)");
             Click(window, button);
 
             AssertCardStartsAt(
