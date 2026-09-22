@@ -9,6 +9,8 @@ internal sealed class MarkdownDisplayLayoutModel
     private const char RightCodePaddingMarker = '\uE001';
     private const char KeyboardGapMarker = '\uE002';
     private const char BackReferenceMarker = '\uE003';
+    private const char LeftHighlightPaddingMarker = '\uE004';
+    private const char RightHighlightPaddingMarker = '\uE005';
 
     private readonly int[] _displayCaretToCanonicalCaret;
     private readonly int[] _canonicalCaretToDisplayStart;
@@ -18,6 +20,7 @@ internal sealed class MarkdownDisplayLayoutModel
         int canonicalLength,
         IReadOnlyList<MarkdownDisplaySegment> segments,
         IReadOnlyList<MarkdownDisplayCodeBox> codeBoxes,
+        IReadOnlyList<MarkdownDisplayHighlightBox> highlightBoxes,
         int[] displayCaretToCanonicalCaret,
         int[] canonicalCaretToDisplayStart,
         int[] canonicalCaretToDisplayEnd)
@@ -25,6 +28,7 @@ internal sealed class MarkdownDisplayLayoutModel
         CanonicalLength = canonicalLength;
         Segments = segments;
         CodeBoxes = codeBoxes;
+        HighlightBoxes = highlightBoxes;
         _displayCaretToCanonicalCaret = displayCaretToCanonicalCaret;
         _canonicalCaretToDisplayStart = canonicalCaretToDisplayStart;
         _canonicalCaretToDisplayEnd = canonicalCaretToDisplayEnd;
@@ -38,6 +42,12 @@ internal sealed class MarkdownDisplayLayoutModel
 
     public IReadOnlyList<MarkdownDisplayCodeBox> CodeBoxes { get; }
 
+    /// <summary>Фон выделения маркером (<c>&lt;mark&gt;</c>) вместе с полями по бокам.</summary>
+    public IReadOnlyList<MarkdownDisplayHighlightBox> HighlightBoxes { get; }
+
+    /// <summary>Есть ли индексы (<c>&lt;sub&gt;</c>, <c>&lt;sup&gt;</c>): их глифы рисуются отдельно.</summary>
+    public bool HasScripts { get; private init; }
+
     public int GetDisplayStartForCanonicalCaret(int canonicalCaret)
         => _canonicalCaretToDisplayStart[Math.Clamp(canonicalCaret, 0, CanonicalLength)];
 
@@ -46,6 +56,24 @@ internal sealed class MarkdownDisplayLayoutModel
 
     public int GetCanonicalCaretForDisplayCaret(int displayCaret)
         => _displayCaretToCanonicalCaret[Math.Clamp(displayCaret, 0, DisplayLength)];
+
+    /// <summary>Пробел или перевод строки на экране в позиции <paramref name="displayIndex"/>.</summary>
+    public bool IsWhitespaceAt(int displayIndex)
+    {
+        var segmentIndex = FindSegmentIndex(displayIndex);
+        if (segmentIndex < 0)
+        {
+            return false;
+        }
+
+        var segment = Segments[segmentIndex];
+        return segment.Kind switch
+        {
+            MarkdownDisplaySegmentKind.Text => char.IsWhiteSpace(segment.Text[displayIndex - segment.DisplayStart]),
+            MarkdownDisplaySegmentKind.LineBreak => true,
+            _ => false
+        };
+    }
 
     public int FindSegmentIndex(int displayIndex)
     {
@@ -91,6 +119,11 @@ internal sealed class MarkdownDisplayLayoutModel
         private readonly MarkdownStyledText _styledText;
         private readonly List<MarkdownDisplaySegment> _segments = new();
         private readonly List<MarkdownDisplayCodeBox> _codeBoxes = new();
+        private readonly List<MarkdownDisplayHighlightBox> _highlightBoxes = new();
+        private int _highlightStart = -1;
+        private int _highlightEnd = -1;
+        private int _nextHighlight;
+        private bool _hasScripts;
         private readonly List<int> _displayCaretToCanonicalCaret = new() { 0 };
         private int _displayOffset;
         private int _canonicalOffset;
@@ -106,6 +139,7 @@ internal sealed class MarkdownDisplayLayoutModel
             var spans = _styledText.Spans;
             var images = _styledText.Images;
             var footnotes = _styledText.FootnoteReferences;
+            var highlights = _styledText.Highlights;
             var spanIndex = 0;
             var imageIndex = 0;
             var footnoteIndex = 0;
@@ -113,6 +147,8 @@ internal sealed class MarkdownDisplayLayoutModel
 
             while (index < text.Length)
             {
+                SyncHighlight(index);
+
                 while (spanIndex < spans.Count && spans[spanIndex].Range.End <= index)
                 {
                     spanIndex++;
@@ -175,11 +211,23 @@ internal sealed class MarkdownDisplayLayoutModel
                     end = Math.Min(end, footnotes[footnoteIndex].Range.Start);
                 }
 
+                // Кусок не переходит границу выделения: у соседних выделений вплотную
+                // свои поля.
+                if (_highlightEnd > index)
+                {
+                    end = Math.Min(end, _highlightEnd);
+                }
+                else if (_nextHighlight < highlights.Count && highlights[_nextHighlight].Start > index)
+                {
+                    end = Math.Min(end, highlights[_nextHighlight].Start);
+                }
+
                 if (end <= index)
                 {
                     end = Math.Min(text.Length, index + 1);
                 }
 
+                _hasScripts |= style.IsScript;
                 if (style.IsBoxed)
                 {
                     AppendCodeSegment(text[index..end], style);
@@ -191,6 +239,8 @@ internal sealed class MarkdownDisplayLayoutModel
 
                 index = end;
             }
+
+            CloseHighlight();
 
             // Каретки, у которых есть место в тексте: иконка возврата в конце сноски
             // стоит после них, и ни выделение, ни подсветка поиска на неё не заходят.
@@ -222,9 +272,55 @@ internal sealed class MarkdownDisplayLayoutModel
                 canonicalLength,
                 _segments,
                 _codeBoxes,
+                _highlightBoxes,
                 _displayCaretToCanonicalCaret.ToArray(),
                 canonicalCaretToDisplayStart,
-                canonicalCaretToDisplayEnd);
+                canonicalCaretToDisplayEnd)
+            {
+                HasScripts = _hasScripts
+            };
+        }
+
+        /// <summary>
+        /// Выделение маркером — поля по бокам на экране, как padding у
+        /// <c>&lt;mark&gt;</c>. Жирный, код или метка сноски внутри не разрывают
+        /// выделение; вложенное выделение рисуется внешним.
+        /// </summary>
+        private void SyncHighlight(int canonicalIndex)
+        {
+            if (_highlightEnd >= 0 && canonicalIndex >= _highlightEnd)
+            {
+                CloseHighlight();
+            }
+
+            var highlights = _styledText.Highlights;
+            while (_nextHighlight < highlights.Count && highlights[_nextHighlight].Start < canonicalIndex)
+            {
+                _nextHighlight++;
+            }
+
+            if (_highlightEnd < 0
+                && _nextHighlight < highlights.Count
+                && highlights[_nextHighlight].Start == canonicalIndex)
+            {
+                _highlightStart = _displayOffset;
+                _highlightEnd = highlights[_nextHighlight].End;
+                _nextHighlight++;
+                AppendPadding(MarkdownDisplaySegmentKind.HighlightPaddingLeft, LeftHighlightPaddingMarker, MarkdownInlineStyleState.Default);
+            }
+        }
+
+        private void CloseHighlight()
+        {
+            if (_highlightEnd < 0)
+            {
+                return;
+            }
+
+            AppendPadding(MarkdownDisplaySegmentKind.HighlightPaddingRight, RightHighlightPaddingMarker, MarkdownInlineStyleState.Default);
+            _highlightBoxes.Add(new MarkdownDisplayHighlightBox(_highlightStart, _displayOffset - _highlightStart));
+            _highlightStart = -1;
+            _highlightEnd = -1;
         }
 
         private void AppendCodeSegment(string text, MarkdownInlineStyleState style)
@@ -411,6 +507,12 @@ internal readonly record struct MarkdownDisplayCodeBox(
     public int DisplayEnd => DisplayStart + DisplayLength;
 }
 
+/// <summary>Фон выделения маркером на экране: от левого поля до правого включительно.</summary>
+internal readonly record struct MarkdownDisplayHighlightBox(int DisplayStart, int DisplayLength)
+{
+    public int DisplayEnd => DisplayStart + DisplayLength;
+}
+
 internal readonly record struct MarkdownDisplaySegment(
     MarkdownDisplaySegmentKind Kind,
     int DisplayStart,
@@ -436,5 +538,9 @@ internal enum MarkdownDisplaySegmentKind
     KeyboardGap,
 
     /// <summary>Иконка возврата к метке в конце сноски — только на экране.</summary>
-    FootnoteBackReference
+    FootnoteBackReference,
+
+    /// <summary>Поля выделения маркером (<c>&lt;mark&gt;</c>) по бокам.</summary>
+    HighlightPaddingLeft,
+    HighlightPaddingRight
 }

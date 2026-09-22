@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using Markdig;
 using MarkdigMarkdown = Markdig.Markdown;
 using Markdig.Extensions.Alerts;
+using Markdig.Extensions.DefinitionLists;
 using Markdig.Extensions.EmphasisExtras;
 using Markdig.Extensions.Footnotes;
 using Markdig.Extensions.Tables;
@@ -160,6 +161,14 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
                 }
                 return;
 
+            // DefinitionList — ContainerBlock, поэтому ветка идёт раньше общей.
+            case DefinitionList definitionList:
+                if (ConvertDefinitionList(definitionList, source) is { } definitions)
+                {
+                    target.Add(WithSourceSpan(definitions, definitionList, source));
+                }
+                return;
+
             case HtmlBlock htmlBlock:
                 // We intentionally do NOT switch on htmlBlock.Type here --
                 // Markdig's HtmlBlockType enum has changed names across
@@ -271,6 +280,60 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
         }
 
         return new MarkdownListBlock(list.IsOrdered, items, GetOrderedStartNumber(list), list.IsLoose, GetNumbering(list));
+    }
+
+    /// <summary>
+    /// Markdig кладёт в <see cref="DefinitionItem"/> термины (<see cref="DefinitionTerm"/>)
+    /// и за ними блоки одного определения. Следующая строка <c>:</c> под тем же
+    /// термином даёт пункт без терминов — это ещё одно определение предыдущего.
+    /// </summary>
+    private static MarkdownDefinitionListBlock? ConvertDefinitionList(DefinitionList definitionList, string source)
+    {
+        var items = new List<MarkdownDefinitionItem>(definitionList.Count);
+        var terms = new List<MarkdownDefinitionTerm>();
+        var definitions = new List<MarkdownDefinition>();
+
+        foreach (var child in definitionList)
+        {
+            if (child is not DefinitionItem item)
+            {
+                continue;
+            }
+
+            var itemTerms = new List<MarkdownDefinitionTerm>();
+            var blocks = new List<MarkdownBlock>();
+            foreach (var block in item)
+            {
+                if (block is DefinitionTerm term)
+                {
+                    itemTerms.Add(new MarkdownDefinitionTerm(ConvertInlines(term.Inline)));
+                }
+                else
+                {
+                    AddConvertedBlock(block, blocks, source);
+                }
+            }
+
+            if (itemTerms.Count > 0)
+            {
+                if (terms.Count > 0 || definitions.Count > 0)
+                {
+                    items.Add(new MarkdownDefinitionItem(terms, definitions));
+                }
+
+                terms = itemTerms;
+                definitions = [];
+            }
+
+            definitions.Add(new MarkdownDefinition(blocks));
+        }
+
+        if (terms.Count > 0 || definitions.Count > 0)
+        {
+            items.Add(new MarkdownDefinitionItem(terms, definitions));
+        }
+
+        return items.Count > 0 ? new MarkdownDefinitionListBlock(items) : null;
     }
 
     /// <summary>
@@ -564,52 +627,177 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
 
         var result = new List<MarkdownInline>();
 
-        for (var inline = container.FirstChild; inline is not null; inline = inline.NextSibling)
+        // Почти всегда тегов нет — пары искать не нужно.
+        if (!HasHtmlInline(container))
         {
-            if (TryAddKeyboard(inline, result) is { } closingTag)
+            for (var inline = container.FirstChild; inline is not null; inline = inline.NextSibling)
             {
-                inline = closingTag;
-                continue;
+                AddConvertedInline(inline, result);
             }
 
-            AddConvertedInline(inline, result);
+            return result;
         }
 
+        var siblings = new List<Inline>();
+        for (var inline = container.FirstChild; inline is not null; inline = inline.NextSibling)
+        {
+            siblings.Add(inline);
+        }
+
+        AddConvertedSiblings(siblings, FindInlineTagPairs(siblings), 0, siblings.Count, result, depth: 0);
         return result;
     }
 
-    /// <summary>
-    /// <c>&lt;kbd&gt;Ctrl&lt;/kbd&gt;</c>: Markdig отдаёт открывающий и закрывающий теги
-    /// отдельными <see cref="HtmlInline"/>, а то, что между ними, — соседними узлами.
-    /// Пара тегов становится клавишей с простым текстом содержимого. Тег без пары,
-    /// как и остальные теги, снимается (<see cref="HandleInlineHtmlTag"/>).
-    /// </summary>
-    /// <returns>Закрывающий тег клавиши или <c>null</c>, если <paramref name="inline"/> — не клавиша.</returns>
-    private static HtmlInline? TryAddKeyboard(Inline inline, List<MarkdownInline> target)
+    private static bool HasHtmlInline(ContainerInline container)
     {
-        if (inline is not HtmlInline opening || !KeyboardOpeningTagPattern.IsMatch(opening.Tag))
+        for (var inline = container.FirstChild; inline is not null; inline = inline.NextSibling)
         {
-            return null;
+            if (inline is HtmlInline)
+            {
+                return true;
+            }
         }
 
-        var content = new List<MarkdownInline>();
-        for (var next = inline.NextSibling; next is not null; next = next.NextSibling)
-        {
-            if (next is HtmlInline closing && KeyboardClosingTagPattern.IsMatch(closing.Tag))
-            {
-                var text = ExtractPlainText(content);
-                if (text.Length > 0)
-                {
-                    target.Add(new MarkdownKeyboardInline(text));
-                }
+        return false;
+    }
 
-                return closing;
+    /// <summary>
+    /// Пары тегов среди соседних узлов — за один проход: Markdig отдаёт открывающий
+    /// и закрывающий теги отдельными <see cref="HtmlInline"/>, а то, что между
+    /// ними, — соседями. Для каждого открывающего тега — индекс его закрывающего.
+    /// </summary>
+    /// <remarks>
+    /// <c>&lt;mark&gt;</c>, <c>&lt;sub&gt;</c>, <c>&lt;sup&gt;</c> закрываются по
+    /// вложенности, как в HTML: закрывающий тег — последнему открытому того же имени.
+    /// Клавиша — до ближайшего <c>&lt;/kbd&gt;</c>: вложенные <c>kbd</c> сочетания
+    /// дают отдельные клавиши, а внешние теги снимаются.
+    /// </remarks>
+    private static int[] FindInlineTagPairs(List<Inline> siblings)
+    {
+        var pairs = new int[siblings.Count];
+        Array.Fill(pairs, -1);
+        var openElements = new Dictionary<string, Stack<int>>(StringComparer.Ordinal);
+        var nextKeyboardClosing = -1;
+
+        for (var index = siblings.Count - 1; index >= 0; index--)
+        {
+            if (siblings[index] is not HtmlInline tag)
+            {
+                continue;
             }
 
-            AddConvertedInline(next, content);
+            if (KeyboardClosingTagPattern.IsMatch(tag.Tag))
+            {
+                nextKeyboardClosing = index;
+            }
+            else if (KeyboardOpeningTagPattern.IsMatch(tag.Tag))
+            {
+                pairs[index] = nextKeyboardClosing;
+            }
         }
 
-        return null;
+        for (var index = 0; index < siblings.Count; index++)
+        {
+            if (siblings[index] is not HtmlInline tag)
+            {
+                continue;
+            }
+
+            if (InlineHtmlElementOpeningTagPattern.Match(tag.Tag) is { Success: true } opening)
+            {
+                var name = opening.Groups[1].Value.ToLowerInvariant();
+                if (!openElements.TryGetValue(name, out var open))
+                {
+                    open = new Stack<int>();
+                    openElements.Add(name, open);
+                }
+
+                open.Push(index);
+            }
+            else if (InlineHtmlElementClosingTagPattern.Match(tag.Tag) is { Success: true } closing
+                && openElements.TryGetValue(closing.Groups[1].Value.ToLowerInvariant(), out var open)
+                && open.Count > 0)
+            {
+                pairs[open.Pop()] = index;
+            }
+        }
+
+        return pairs;
+    }
+
+    /// <summary>
+    /// Переводит соседей с <paramref name="start"/> до <paramref name="end"/>
+    /// (не включая). Пара тегов, которая целиком внутри, становится узлом;
+    /// тег без пары в этих границах снимается, как и остальные
+    /// (<see cref="HandleInlineHtmlTag"/>). Каждый сосед переводится один раз.
+    /// </summary>
+    private static void AddConvertedSiblings(
+        List<Inline> siblings,
+        int[] pairs,
+        int start,
+        int end,
+        List<MarkdownInline> target,
+        int depth)
+    {
+        for (var index = start; index < end; index++)
+        {
+            var closing = pairs[index];
+            if (closing < 0 || closing >= end)
+            {
+                AddConvertedInline(siblings[index], target);
+                continue;
+            }
+
+            var tag = ((HtmlInline)siblings[index]).Tag;
+            if (KeyboardOpeningTagPattern.IsMatch(tag))
+            {
+                AddKeyboard(siblings, index + 1, closing, target);
+                index = closing;
+                continue;
+            }
+
+            // Глубже предела вложенности пары не разбираются: тег снимается, а
+            // содержимое остаётся текстом этого уровня — стек не переполнится.
+            if (depth >= MaxInlineElementDepth)
+            {
+                AddConvertedInline(siblings[index], target);
+                continue;
+            }
+
+            var content = new List<MarkdownInline>();
+            AddConvertedSiblings(siblings, pairs, index + 1, closing, content, depth + 1);
+            if (content.Count > 0)
+            {
+                target.Add(InlineHtmlElementOpeningTagPattern.Match(tag).Groups[1].Value.ToLowerInvariant() switch
+                {
+                    "mark" => new MarkdownHighlightInline(content),
+                    "sub" => new MarkdownSubscriptInline(content),
+                    _ => new MarkdownSuperscriptInline(content)
+                });
+            }
+
+            index = closing;
+        }
+    }
+
+    /// <summary>
+    /// <c>&lt;kbd&gt;Ctrl&lt;/kbd&gt;</c>: пара тегов становится клавишей с простым
+    /// текстом содержимого — соседей с <paramref name="start"/> до
+    /// <paramref name="end"/>.
+    /// </summary>
+    private static void AddKeyboard(List<Inline> siblings, int start, int end, List<MarkdownInline> target)
+    {
+        var content = new List<MarkdownInline>();
+        for (var index = start; index < end; index++)
+        {
+            AddConvertedInline(siblings[index], content);
+        }
+
+        var text = ExtractPlainText(content);
+        if (text.Length > 0)
+        {
+            target.Add(new MarkdownKeyboardInline(text));
+        }
     }
 
     private static void AddConvertedInline(Inline inline, List<MarkdownInline> target)
@@ -848,6 +1036,7 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
         MarkdownQuoteBlock quote => string.Join(Environment.NewLine, quote.Blocks.Select(ExtractPlainText)),
         MarkdownListBlock list => string.Join(Environment.NewLine, list.Items.Select(item => string.Join(" ", item.Blocks.Select(ExtractPlainText)))),
         MarkdownTableBlock table => string.Join(Environment.NewLine, table.Rows.Select(row => string.Join(" | ", row.Select(cell => ExtractPlainText(cell.Inlines))))),
+        MarkdownDefinitionListBlock definitionList => MarkdownDocumentTextMap.ExtractPlainText(definitionList),
         _ => string.Empty
     };
 
@@ -881,6 +1070,15 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
                 break;
             case MarkdownStrikethroughInline strikethrough:
                 AppendPlainText(strikethrough.Inlines, builder);
+                break;
+            case MarkdownHighlightInline highlight:
+                AppendPlainText(highlight.Inlines, builder);
+                break;
+            case MarkdownSubscriptInline subscript:
+                AppendPlainText(subscript.Inlines, builder);
+                break;
+            case MarkdownSuperscriptInline superscript:
+                AppendPlainText(superscript.Inlines, builder);
                 break;
             case MarkdownCodeInline code:
                 builder.Append(code.Code);
@@ -1059,6 +1257,17 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
     private static readonly Regex KeyboardClosingTagPattern = new(
         @"^</kbd\s*>$",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex InlineHtmlElementOpeningTagPattern = new(
+        @"^<(mark|sub|sup)(?:\s[^>]*)?>$",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static readonly Regex InlineHtmlElementClosingTagPattern = new(
+        @"^</(mark|sub|sup)\s*>$",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    // Предел вложенности <mark>, <sub>, <sup> друг в друга.
+    private const int MaxInlineElementDepth = 32;
 
     private static readonly Regex LineBreakTagPattern = new(
         @"^<br\b[^>]*/?>$",

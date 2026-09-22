@@ -500,6 +500,70 @@ public sealed class MarkdownDocumentTextMapTests
     }
 
     [Fact]
+    public void ExtractPlainTextKeepsHighlightSubscriptAndSuperscriptAsPlainText()
+    {
+        var inlines = new MarkdownInline[]
+        {
+            new MarkdownHighlightInline([new MarkdownTextInline("Water")]),
+            new MarkdownTextInline(" H"),
+            new MarkdownSubscriptInline([new MarkdownTextInline("2")]),
+            new MarkdownTextInline("O, E = mc"),
+            new MarkdownSuperscriptInline([new MarkdownStrongInline([new MarkdownTextInline("2")])])
+        };
+
+        var text = MarkdownDocumentTextMap.ExtractPlainText(inlines);
+
+        Assert.Equal("Water H2O, E = mc2", text);
+    }
+
+    [Fact]
+    public void CreatePutsADefinitionTermOnItsLineAndItsDefinitionsOnLinesBelow()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownDefinitionListBlock(
+            [
+                new MarkdownDefinitionItem(
+                    [new MarkdownDefinitionTerm([new MarkdownStrongInline([new MarkdownTextInline("Apple")])])],
+                    [
+                        new MarkdownDefinition([new MarkdownParagraphBlock([new MarkdownTextInline("A fruit.")])]),
+                        new MarkdownDefinition(
+                        [
+                            new MarkdownParagraphBlock([new MarkdownTextInline("A company.")]),
+                            new MarkdownParagraphBlock([new MarkdownTextInline("Since 1976.")])
+                        ])
+                    ]),
+                new MarkdownDefinitionItem(
+                    [
+                        new MarkdownDefinitionTerm([new MarkdownTextInline("Pear")]),
+                        new MarkdownDefinitionTerm([new MarkdownTextInline("Quince")])
+                    ],
+                    [new MarkdownDefinition([new MarkdownParagraphBlock([new MarkdownTextInline("Also fruits.")])])])
+            ]),
+            new MarkdownParagraphBlock([new MarkdownTextInline("After")])
+        ]);
+
+        var textMap = MarkdownDocumentTextMap.Create(document);
+
+        Assert.Equal(
+            "Apple\nA fruit.\nA company.\nSince 1976.\nPear\nQuince\nAlso fruits.\n\nAfter\n\n",
+            textMap.Text);
+        Assert.Collection(
+            textMap.Fragments,
+            fragment => AssertFragment(textMap.Text, fragment, "b0.i0.t0", MarkdownDocumentTextFragmentKind.Paragraph, "Apple"),
+            fragment => AssertFragment(textMap.Text, fragment, "b0.i0.d0.b0", MarkdownDocumentTextFragmentKind.Paragraph, "A fruit."),
+            fragment => AssertFragment(textMap.Text, fragment, "b0.i0.d1.b0", MarkdownDocumentTextFragmentKind.Paragraph, "A company."),
+            fragment => AssertFragment(textMap.Text, fragment, "b0.i0.d1.b1", MarkdownDocumentTextFragmentKind.Paragraph, "Since 1976."),
+            fragment => AssertFragment(textMap.Text, fragment, "b0.i1.t0", MarkdownDocumentTextFragmentKind.Paragraph, "Pear"),
+            fragment => AssertFragment(textMap.Text, fragment, "b0.i1.t1", MarkdownDocumentTextFragmentKind.Paragraph, "Quince"),
+            fragment => AssertFragment(textMap.Text, fragment, "b0.i1.d0.b0", MarkdownDocumentTextFragmentKind.Paragraph, "Also fruits."),
+            fragment => AssertFragment(textMap.Text, fragment, "b1", MarkdownDocumentTextFragmentKind.Paragraph, "After"));
+        Assert.Equal(
+            string.Join(Environment.NewLine, "Apple", "A fruit.", "A company.", "Since 1976.", "Pear", "Quince", "Also fruits."),
+            MarkdownDocumentTextMap.ExtractPlainText(document.Blocks[0]));
+    }
+
+    [Fact]
     public void ExtractPlainTextUsesShortPlaceholderForDataImageWithoutAltText()
     {
         var inlines = new MarkdownInline[]

@@ -51,6 +51,26 @@ internal static class MarkdownSelectionLinkCollector
                 }
                 break;
 
+            case MarkdownDefinitionListBlock definitionList:
+                for (var itemIndex = 0; itemIndex < definitionList.Items.Count; itemIndex++)
+                {
+                    var item = definitionList.Items[itemIndex];
+                    for (var termIndex = 0; termIndex < item.Terms.Count; termIndex++)
+                    {
+                        CollectInlineLinkUrls(item.Terms[termIndex].Inlines, $"{path}.i{itemIndex}.t{termIndex}", context, urls);
+                    }
+
+                    for (var definitionIndex = 0; definitionIndex < item.Definitions.Count; definitionIndex++)
+                    {
+                        var definition = item.Definitions[definitionIndex];
+                        for (var blockIndex = 0; blockIndex < definition.Blocks.Count; blockIndex++)
+                        {
+                            CollectBlockLinkUrls(definition.Blocks[blockIndex], $"{path}.i{itemIndex}.d{definitionIndex}.b{blockIndex}", context, urls);
+                        }
+                    }
+                }
+                break;
+
             case MarkdownFootnotesBlock footnotes:
                 for (var footnoteIndex = 0; footnoteIndex < footnotes.Footnotes.Count; footnoteIndex++)
                 {
@@ -145,6 +165,18 @@ internal static class MarkdownSelectionLinkCollector
 
             case MarkdownStrikethroughInline strikethrough:
                 CollectInlineLinkUrls(strikethrough.Inlines, selectedRange, urls);
+                break;
+
+            case MarkdownHighlightInline highlight:
+                CollectInlineLinkUrls(highlight.Inlines, selectedRange, urls);
+                break;
+
+            case MarkdownSubscriptInline subscript:
+                CollectInlineLinkUrls(subscript.Inlines, selectedRange, urls);
+                break;
+
+            case MarkdownSuperscriptInline superscript:
+                CollectInlineLinkUrls(superscript.Inlines, selectedRange, urls);
                 break;
         }
     }

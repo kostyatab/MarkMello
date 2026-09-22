@@ -144,6 +144,30 @@ public sealed class RenderMarkdownDocumentUseCaseTests
     }
 
     [Fact]
+    public void ExecuteMaterializesNestedDiagramInsideADefinition()
+    {
+        const string markdown = """
+            Flow
+
+            :   ```mermaid
+                flowchart LR
+                    A --> B
+                ```
+            """;
+
+        var useCase = new RenderMarkdownDocumentUseCase(
+            new MarkdigMarkdownDocumentRenderer(),
+            new FakeDiagramRenderService());
+
+        var document = useCase.Execute(markdown);
+
+        var list = Assert.IsType<MarkdownDefinitionListBlock>(Assert.Single(document.Blocks));
+        var definition = Assert.Single(Assert.Single(list.Items).Definitions);
+        var diagram = Assert.IsType<MarkdownDiagramBlock>(Assert.Single(definition.Blocks));
+        Assert.IsType<DiagramRenderResult.Success>(diagram.RenderResult);
+    }
+
+    [Fact]
     public void ExecuteRoutesEachDiagramToServiceWithCorrectSource()
     {
         const string markdown = """

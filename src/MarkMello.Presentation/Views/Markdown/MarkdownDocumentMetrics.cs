@@ -32,6 +32,19 @@ internal sealed class MarkdownDocumentMetrics
     public const double KeyboardCornerRadius = 0.36;
     public const double KeyboardGap = 0.15;
 
+    /// <summary>Выделение маркером (<c>&lt;mark&gt;</c>): поля и скругление в долях текста.</summary>
+    public const double HighlightVerticalPadding = 0.1;
+    public const double HighlightHorizontalPadding = 0.15;
+    public const double HighlightCornerRadius = 0.2;
+
+    /// <summary>
+    /// Индексы (<c>&lt;sub&gt;</c>, <c>&lt;sup&gt;</c>), как на GitHub: кегль в долях
+    /// текста, сдвиг базовой линии — в долях текста (.5em и .25em кегля индекса).
+    /// </summary>
+    public const double ScriptFontScale = 0.75;
+    public const double SuperscriptRaise = 0.375;
+    public const double SubscriptDrop = 0.1875;
+
     /// <summary>Подчёркивание ссылки: толщина и отступ от базовой линии.</summary>
     public const double LinkUnderlineThickness = 0.07;
     public const double LinkUnderlineOffset = 0.2;
@@ -57,6 +70,17 @@ internal sealed class MarkdownDocumentMetrics
     private const double LooseListItemGapRatio = 0.6;
     private const double ListItemParagraphGapRatio = 0.5;
     private const double NestedListGapRatio = 0.25;
+
+    /// <summary>
+    /// Список определений — как списки: термин через .75em от предыдущего
+    /// определения, определение с отступом колонки маркеров 1.6em в .15em от
+    /// термина, определения одного термина — через .25em, абзацы в определении —
+    /// через .5em.
+    /// </summary>
+    private const double DefinitionTermGapRatio = 0.75;
+    private const double DefinitionIndentRatio = ListMarkerColumnRatio;
+    private const double DefinitionGapRatio = 0.15;
+    private const double DefinitionsGapRatio = TightListItemGapRatio;
 
     // Точка маркированного списка дальше от текста, чем пробел после «•»: браузер
     // рисует disc с таким зазором, 5 px при 14.
@@ -242,6 +266,24 @@ internal sealed class MarkdownDocumentMetrics
     {
         MarkdownParagraphBlock => Math.Max(GetTextGap(Em(ListItemParagraphGapRatio), BodyLineHeight), GetSpacing(previous).Bottom),
         MarkdownListBlock => Math.Max(GetTextGap(Em(NestedListGapRatio), BodyLineHeight), GetSpacing(previous).Bottom),
+        _ => GapBetween(previous, next)
+    };
+
+    /// <summary>Над каждым термином, кроме первого (<see cref="GetTextGap"/>).</summary>
+    public double DefinitionTermGap => GetTextGap(Em(DefinitionTermGapRatio), BodyLineHeight);
+
+    public double DefinitionIndent => Em(DefinitionIndentRatio);
+
+    /// <summary>От термина до его первого определения.</summary>
+    public double DefinitionGap => GetTextGap(Em(DefinitionGapRatio), BodyLineHeight);
+
+    /// <summary>Между определениями одного термина.</summary>
+    public double DefinitionsGap => GetTextGap(Em(DefinitionsGapRatio), BodyLineHeight);
+
+    /// <summary>Просвет между блоками одного определения: абзац — через .5em, остальное — в обычном ритме.</summary>
+    public double GapInsideDefinition(MarkdownBlock previous, MarkdownBlock next) => next switch
+    {
+        MarkdownParagraphBlock => Math.Max(GetTextGap(Em(ListItemParagraphGapRatio), BodyLineHeight), GetSpacing(previous).Bottom),
         _ => GapBetween(previous, next)
     };
 

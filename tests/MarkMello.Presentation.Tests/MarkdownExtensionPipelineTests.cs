@@ -151,16 +151,14 @@ public sealed class MarkdownExtensionPipelineTests
 
     /// <summary>
     /// Definition list остался в явном списке: без расширения термин и определение
-    /// слиплись бы в один абзац. Своего оформления у него нет — два абзаца, см. MM-18.
+    /// слиплись бы в один абзац. Разбор списка — <see cref="MarkdownDefinitionListRenderingTests"/>.
     /// </summary>
     [Fact]
-    public void ADefinitionListStillBecomesTwoParagraphs()
+    public void ADefinitionListBecomesItsOwnBlock()
     {
         var document = new MarkdigMarkdownDocumentRenderer().Render("Term\n\n:   Definition");
 
-        Assert.Equal(2, document.Blocks.Count);
-        Assert.Equal("Term", PlainText(Assert.IsType<MarkdownParagraphBlock>(document.Blocks[0]).Inlines));
-        Assert.Equal("Definition", PlainText(Assert.IsType<MarkdownParagraphBlock>(document.Blocks[1]).Inlines));
+        Assert.IsType<MarkdownDefinitionListBlock>(Assert.Single(document.Blocks));
     }
 
     private static string RenderText(string markdown)

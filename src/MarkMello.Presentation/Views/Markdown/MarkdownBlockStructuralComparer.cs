@@ -77,6 +77,8 @@ internal sealed class MarkdownBlockStructuralComparer : IEqualityComparer<Markdo
                 && Equals(diagram.RenderResult, other.RenderResult),
             MarkdownFootnotesBlock footnotes => y is MarkdownFootnotesBlock other
                 && FootnotesEqual(footnotes.Footnotes, other.Footnotes),
+            MarkdownDefinitionListBlock definitionList => y is MarkdownDefinitionListBlock other
+                && DefinitionItemsEqual(definitionList.Items, other.Items),
 
             // Неизвестный тип блока: считаем изменившимся, чтобы новый рендерер
             // не начал молча переиспользовать чужой контрол.
@@ -167,6 +169,24 @@ internal sealed class MarkdownBlockStructuralComparer : IEqualityComparer<Markdo
                 }
 
                 break;
+            case MarkdownDefinitionListBlock definitionList:
+                hash.Add(definitionList.Items.Count);
+                foreach (var item in definitionList.Items)
+                {
+                    hash.Add(item.Terms.Count);
+                    foreach (var term in item.Terms)
+                    {
+                        AddInlines(ref hash, term.Inlines);
+                    }
+
+                    hash.Add(item.Definitions.Count);
+                    foreach (var definition in item.Definitions)
+                    {
+                        AddBlocks(ref hash, definition.Blocks);
+                    }
+                }
+
+                break;
             default:
                 break;
         }
@@ -224,6 +244,45 @@ internal sealed class MarkdownBlockStructuralComparer : IEqualityComparer<Markdo
                 || !BlocksEqual(left[index].Blocks, right[index].Blocks))
             {
                 return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool DefinitionItemsEqual(
+        IReadOnlyList<MarkdownDefinitionItem> left,
+        IReadOnlyList<MarkdownDefinitionItem> right)
+    {
+        if (left.Count != right.Count)
+        {
+            return false;
+        }
+
+        for (var index = 0; index < left.Count; index++)
+        {
+            var leftItem = left[index];
+            var rightItem = right[index];
+            if (leftItem.Terms.Count != rightItem.Terms.Count
+                || leftItem.Definitions.Count != rightItem.Definitions.Count)
+            {
+                return false;
+            }
+
+            for (var termIndex = 0; termIndex < leftItem.Terms.Count; termIndex++)
+            {
+                if (!InlinesEqual(leftItem.Terms[termIndex].Inlines, rightItem.Terms[termIndex].Inlines))
+                {
+                    return false;
+                }
+            }
+
+            for (var definitionIndex = 0; definitionIndex < leftItem.Definitions.Count; definitionIndex++)
+            {
+                if (!BlocksEqual(leftItem.Definitions[definitionIndex].Blocks, rightItem.Definitions[definitionIndex].Blocks))
+                {
+                    return false;
+                }
             }
         }
 
@@ -301,6 +360,9 @@ internal sealed class MarkdownBlockStructuralComparer : IEqualityComparer<Markdo
             (MarkdownStrongInline a, MarkdownStrongInline b) => InlinesEqual(a.Inlines, b.Inlines),
             (MarkdownEmphasisInline a, MarkdownEmphasisInline b) => InlinesEqual(a.Inlines, b.Inlines),
             (MarkdownStrikethroughInline a, MarkdownStrikethroughInline b) => InlinesEqual(a.Inlines, b.Inlines),
+            (MarkdownHighlightInline a, MarkdownHighlightInline b) => InlinesEqual(a.Inlines, b.Inlines),
+            (MarkdownSubscriptInline a, MarkdownSubscriptInline b) => InlinesEqual(a.Inlines, b.Inlines),
+            (MarkdownSuperscriptInline a, MarkdownSuperscriptInline b) => InlinesEqual(a.Inlines, b.Inlines),
             (MarkdownLineBreakInline, MarkdownLineBreakInline) => true,
             (MarkdownImageInline a, MarkdownImageInline b) =>
                 string.Equals(a.Url, b.Url, StringComparison.Ordinal)
@@ -358,6 +420,15 @@ internal sealed class MarkdownBlockStructuralComparer : IEqualityComparer<Markdo
                     break;
                 case MarkdownStrikethroughInline strikethrough:
                     AddInlines(ref hash, strikethrough.Inlines);
+                    break;
+                case MarkdownHighlightInline highlight:
+                    AddInlines(ref hash, highlight.Inlines);
+                    break;
+                case MarkdownSubscriptInline subscript:
+                    AddInlines(ref hash, subscript.Inlines);
+                    break;
+                case MarkdownSuperscriptInline superscript:
+                    AddInlines(ref hash, superscript.Inlines);
                     break;
                 case MarkdownImageInline image:
                     hash.Add(image.Url, StringComparer.Ordinal);

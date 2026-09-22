@@ -11,7 +11,14 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
     private readonly MarkdownDisplayLayoutModel _displayModel;
     private readonly MarkdownInlineCodePadMetrics _codePadMetrics;
     private readonly MarkdownFootnoteReferenceMetrics? _footnoteMetrics;
+    private readonly MarkdownTextRunPropertiesFactory _textProperties;
+    private readonly MarkdownHighlightMetrics? _highlightMetrics;
+    private readonly double _baseFontSize;
+    private readonly double _letterSpacing;
     private readonly List<FormattedLine> _lines = new();
+
+    // Видимые глифы индексов: строятся при первой отрисовке, один раз на раскладку.
+    private List<ScriptGlyphs>? _scriptGlyphs;
 
     public MarkdownFormattedTextLayout(
         MarkdownStyledText styledText,
@@ -47,6 +54,13 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
             baseFontFeatures,
             inlineCodeForeground,
             keyboardForeground);
+        _textProperties = textProperties;
+        _baseFontSize = baseFontSize;
+        _letterSpacing = letterSpacing;
+        // Выделение маркером — только в тех абзацах, где оно есть.
+        _highlightMetrics = _displayModel.HighlightBoxes.Count == 0
+            ? null
+            : MarkdownHighlightMetrics.Create(baseFontFamily, baseFontSize, baseFontWeight, baseFontStyle, foreground);
         var padMetrics = MarkdownInlineCodePadMetrics.Create(
             inlineCodeFontFamily,
             baseFontSize * MarkdownDocumentMetrics.InlineCodeFontScale,
@@ -87,7 +101,8 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
             maxWidth,
             _footnoteMetrics,
             keyboardMetrics,
-            backReferenceMetrics);
+            backReferenceMetrics,
+            _highlightMetrics?.SidePadding ?? 0);
         var paragraphProperties = new GenericTextParagraphProperties(
             new GenericTextRunProperties(
                 new Typeface(baseFontFamily, baseFontStyle, baseFontWeight),
@@ -117,6 +132,8 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
 
     public IReadOnlyList<MarkdownDisplayCodeBox> CodeBoxes => _displayModel.CodeBoxes;
 
+    public IReadOnlyList<MarkdownDisplayHighlightBox> HighlightBoxes => _displayModel.HighlightBoxes;
+
     public IReadOnlyList<MarkdownFormattedTextLineMetrics> GetLineMetrics()
     {
         if (_lines.Count == 0)
@@ -144,6 +161,93 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
         {
             line.TextLine.Draw(context, new Point(0, line.Y));
         }
+
+        if (!_displayModel.HasScripts)
+        {
+            return;
+        }
+
+        _scriptGlyphs ??= BuildScriptGlyphs();
+        foreach (var glyphs in _scriptGlyphs)
+        {
+            glyphs.Line.Draw(context, glyphs.Origin);
+        }
+    }
+
+    /// <summary>Куски индексов, как их рисует <see cref="Draw"/>: текст и сдвиг базовой линии.</summary>
+    internal IReadOnlyList<(string Text, double BaselineShift)> GetScriptPlacements()
+    {
+        if (!_displayModel.HasScripts)
+        {
+            return Array.Empty<(string, double)>();
+        }
+
+        _scriptGlyphs ??= BuildScriptGlyphs();
+        return [.. _scriptGlyphs.Select(static glyphs => (glyphs.Text, glyphs.BaselineShift))];
+    }
+
+    /// <summary>
+    /// Фон выделения маркером — по куску на строку, как <c>box-decoration-break:
+    /// clone</c>: у каждого куска свои поля и скругление. Высота — строка текста
+    /// выделения с полями сверху и снизу, от базовой линии строки, поэтому жирный
+    /// или код внутри её не меняют.
+    /// </summary>
+    public IReadOnlyList<Rect> GetHighlightRects(MarkdownDisplayHighlightBox box)
+    {
+        if (_highlightMetrics is not { } metrics || box.DisplayLength <= 0 || _lines.Count == 0)
+        {
+            return Array.Empty<Rect>();
+        }
+
+        var rects = new List<Rect>();
+        foreach (var line in _lines)
+        {
+            var lineStart = line.TextLine.FirstTextSourceIndex;
+            var lineEnd = lineStart + line.TextLine.Length;
+            var overlapStart = Math.Max(box.DisplayStart, lineStart);
+            var overlapEnd = Math.Min(box.DisplayEnd, lineEnd);
+            var continuesOnNextLine = overlapEnd < box.DisplayEnd;
+
+            // Пробел, на котором строка перенесена, в выделение не входит.
+            while (continuesOnNextLine && overlapEnd > overlapStart && _displayModel.IsWhitespaceAt(overlapEnd - 1))
+            {
+                overlapEnd--;
+            }
+
+            if (overlapEnd <= overlapStart)
+            {
+                continue;
+            }
+
+            var left = double.PositiveInfinity;
+            var right = double.NegativeInfinity;
+            foreach (var bounds in line.TextLine.GetTextBounds(overlapStart, overlapEnd - overlapStart))
+            {
+                left = Math.Min(left, bounds.Rectangle.Left);
+                right = Math.Max(right, bounds.Rectangle.Right);
+            }
+
+            if (right <= left)
+            {
+                continue;
+            }
+
+            // Поля на краях переноса — только у фона: текст не сдвигается.
+            if (overlapStart > box.DisplayStart)
+            {
+                left -= metrics.SidePadding;
+            }
+
+            if (continuesOnNextLine)
+            {
+                right += metrics.SidePadding;
+            }
+
+            var top = line.Y + line.TextLine.Baseline - metrics.Ascent - metrics.VerticalPadding;
+            rects.Add(new Rect(left, top, right - left, metrics.Height + 2 * metrics.VerticalPadding));
+        }
+
+        return rects;
     }
 
     public IReadOnlyList<Rect> GetCodeBoxRects(MarkdownDisplayCodeBox box)
@@ -296,6 +400,81 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
 
         _lines.Clear();
         _footnoteMetrics?.Dispose();
+
+        if (_scriptGlyphs is not null)
+        {
+            foreach (var glyphs in _scriptGlyphs)
+            {
+                glyphs.Line.Dispose();
+            }
+
+            _scriptGlyphs = null;
+        }
+    }
+
+    /// <summary>
+    /// Индексы. Avalonia не сдвигает базовую линию у <see cref="BaselineAlignment.Superscript"/>
+    /// и <see cref="BaselineAlignment.Subscript"/>, поэтому в строке индекс стоит
+    /// невидимым текстом своего кегля — он даёт ширину, выделение и попадание
+    /// мышью, — а видимые глифы рисуются поверх, сдвинутые вверх или вниз. Строку
+    /// индекс не раздвигает, как <c>line-height: 0</c> на GitHub.
+    /// </summary>
+    private List<ScriptGlyphs> BuildScriptGlyphs()
+    {
+        var result = new List<ScriptGlyphs>();
+        var formatter = TextFormatter.Current;
+        foreach (var segment in _displayModel.Segments)
+        {
+            if (segment.Kind != MarkdownDisplaySegmentKind.Text || !segment.Style.IsScript)
+            {
+                continue;
+            }
+
+            var properties = _textProperties.GetVisibleScript(segment.Style);
+            var shift = segment.Style.Script == MarkdownScriptPosition.Superscript
+                ? -_baseFontSize * MarkdownDocumentMetrics.SuperscriptRaise
+                : _baseFontSize * MarkdownDocumentMetrics.SubscriptDrop;
+            var paragraphProperties = new GenericTextParagraphProperties(
+                properties,
+                TextAlignment.Left,
+                TextWrapping.NoWrap,
+                double.NaN,
+                _letterSpacing);
+
+            foreach (var line in _lines)
+            {
+                var lineStart = line.TextLine.FirstTextSourceIndex;
+                var overlapStart = Math.Max(segment.DisplayStart, lineStart);
+                var overlapEnd = Math.Min(segment.DisplayEnd, lineStart + line.TextLine.Length);
+                if (overlapEnd <= overlapStart)
+                {
+                    continue;
+                }
+
+                var bounds = line.TextLine.GetTextBounds(overlapStart, overlapEnd - overlapStart);
+                if (bounds.Count == 0)
+                {
+                    continue;
+                }
+
+                var text = segment.Text.Substring(overlapStart - segment.DisplayStart, overlapEnd - overlapStart);
+                var glyphLine = formatter.FormatLine(
+                    new MarkdownSingleRunTextSource(text, properties),
+                    0,
+                    double.PositiveInfinity,
+                    paragraphProperties);
+                if (glyphLine is null)
+                {
+                    continue;
+                }
+
+                var x = bounds.Min(static item => item.Rectangle.Left);
+                var y = line.Y + line.TextLine.Baseline + shift - glyphLine.Baseline;
+                result.Add(new ScriptGlyphs(glyphLine, new Point(x, y), text, shift));
+            }
+        }
+
+        return result;
     }
 
     private void BuildLines(
@@ -454,6 +633,10 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
 
     private readonly record struct FormattedLine(TextLine TextLine, double Y);
 
+    /// <param name="Text">Текст куска индекса в строке.</param>
+    /// <param name="BaselineShift">Сдвиг базовой линии индекса от базовой линии строки: вверх — меньше нуля.</param>
+    private readonly record struct ScriptGlyphs(TextLine Line, Point Origin, string Text, double BaselineShift);
+
     private static IReadOnlyDictionary<int, MarkdownInlineImageState> EmptyInlineImages { get; } =
         new Dictionary<int, MarkdownInlineImageState>();
 }
@@ -471,6 +654,7 @@ internal sealed class MarkdownTextSource : ITextSource
     private readonly MarkdownFootnoteReferenceMetrics? _footnoteMetrics;
     private readonly MarkdownKeyboardKeyMetrics? _keyboardMetrics;
     private readonly MarkdownBackReferenceMetrics? _backReferenceMetrics;
+    private readonly double _highlightSidePadding;
 
     // Поле клавиши по индексу сегмента её левого и правого поля; считается один
     // раз на абзац, а не на каждую раскладку строки.
@@ -486,7 +670,8 @@ internal sealed class MarkdownTextSource : ITextSource
         double maxWidth = 100_000,
         MarkdownFootnoteReferenceMetrics? footnoteMetrics = null,
         MarkdownKeyboardKeyMetrics? keyboardMetrics = null,
-        MarkdownBackReferenceMetrics? backReferenceMetrics = null)
+        MarkdownBackReferenceMetrics? backReferenceMetrics = null,
+        double highlightSidePadding = 0)
     {
         _displayModel = displayModel;
         _images = images;
@@ -497,6 +682,7 @@ internal sealed class MarkdownTextSource : ITextSource
         _footnoteMetrics = footnoteMetrics;
         _keyboardMetrics = keyboardMetrics;
         _backReferenceMetrics = backReferenceMetrics;
+        _highlightSidePadding = highlightSidePadding;
         MaxWidth = maxWidth;
     }
 
@@ -537,6 +723,8 @@ internal sealed class MarkdownTextSource : ITextSource
             MarkdownDisplaySegmentKind.FootnoteBackReference when _backReferenceMetrics is not null
                 => new MarkdownBackReferenceTextRun(_backReferenceMetrics),
             MarkdownDisplaySegmentKind.FootnoteBackReference => MarkdownSpacerTextRun.Create(0, _padMetrics),
+            MarkdownDisplaySegmentKind.HighlightPaddingLeft or MarkdownDisplaySegmentKind.HighlightPaddingRight
+                => MarkdownSpacerTextRun.Create(_highlightSidePadding, _padMetrics),
             _ => new TextEndOfParagraph(1)
         };
     }
@@ -612,6 +800,7 @@ internal sealed class MarkdownTextRunPropertiesFactory
     ];
 
     private readonly Dictionary<MarkdownInlineStyleState, TextRunProperties> _cache = new();
+    private readonly Dictionary<MarkdownInlineStyleState, TextRunProperties> _visibleScriptCache = new();
     private readonly FontFamily _baseFontFamily;
     private readonly FontFamily _inlineCodeFontFamily;
     private readonly double _fontSize;
@@ -657,13 +846,29 @@ internal sealed class MarkdownTextRunPropertiesFactory
 
     public double KeyboardFontSize => _fontSize * MarkdownDocumentMetrics.KeyboardFontScale;
 
+    /// <summary>
+    /// Свойства run в строке. Текст индекса здесь невидим: его глифы рисует
+    /// раскладка отдельно (<see cref="GetVisibleScript"/>).
+    /// </summary>
     public TextRunProperties Get(MarkdownInlineStyleState style)
+        => Get(style, _cache, isScriptVisible: false);
+
+    /// <summary>Свойства видимых глифов индекса: тот же кегль и цвет окружения.</summary>
+    public TextRunProperties GetVisibleScript(MarkdownInlineStyleState style)
+        => Get(style, _visibleScriptCache, isScriptVisible: true);
+
+    private TextRunProperties Get(
+        MarkdownInlineStyleState style,
+        Dictionary<MarkdownInlineStyleState, TextRunProperties> cache,
+        bool isScriptVisible)
     {
-        if (_cache.TryGetValue(style, out var properties))
+        if (cache.TryGetValue(style, out var properties))
         {
             return properties;
         }
 
+        var scale = style.IsScript ? MarkdownDocumentMetrics.ScriptFontScale : 1;
+        var isHidden = style.IsScript && !isScriptVisible;
         properties = style.IsKeyboard
             ? new GenericTextRunProperties(
                 KeyboardTypeface,
@@ -679,14 +884,14 @@ internal sealed class MarkdownTextRunPropertiesFactory
                     style.IsCode ? _inlineCodeFontFamily : _baseFontFamily,
                     style.IsItalic ? FontStyle.Italic : _fontStyle,
                     style.IsBold ? FontWeight.Bold : _fontWeight),
-                style.IsCode ? _fontSize * MarkdownDocumentMetrics.InlineCodeFontScale : _fontSize,
-                ResolveDecorations(style),
-                style.IsCode ? _inlineCodeForeground : _foreground,
+                style.IsCode ? _fontSize * MarkdownDocumentMetrics.InlineCodeFontScale : _fontSize * scale,
+                isHidden ? null : ResolveDecorations(style),
+                isHidden ? Brushes.Transparent : style.IsCode ? _inlineCodeForeground : _foreground,
                 backgroundBrush: null,
                 BaselineAlignment.Baseline,
                 CultureInfo.CurrentUICulture,
                 style.IsCode ? CodeFontFeatures : _baseFontFeatures);
-        _cache.Add(style, properties);
+        cache.Add(style, properties);
         return properties;
     }
 
@@ -876,6 +1081,42 @@ internal sealed class MarkdownFootnoteReferenceTextRun : DrawableTextRun
 
     public override void Draw(DrawingContext drawingContext, Point origin)
         => _numberLayout.Draw(drawingContext, new Point(origin.X + HorizontalPadding, origin.Y + _textOffsetY));
+}
+
+/// <summary>
+/// Выделение маркером (<c>&lt;mark&gt;</c>): строка текста выделения — высота и
+/// подъём над базовой линией — и поля в долях размера текста.
+/// </summary>
+internal readonly record struct MarkdownHighlightMetrics(
+    double Height,
+    double Ascent,
+    double VerticalPadding,
+    double SidePadding)
+{
+    public static MarkdownHighlightMetrics Create(
+        FontFamily fontFamily,
+        double fontSize,
+        FontWeight fontWeight,
+        FontStyle fontStyle,
+        IBrush foreground)
+    {
+        using var probe = new TextLayout("M", new Typeface(fontFamily, fontStyle, fontWeight), fontSize, foreground);
+        var height = Math.Max(1, probe.Height);
+        return new MarkdownHighlightMetrics(
+            height,
+            Math.Clamp(probe.Baseline, 0, height),
+            fontSize * MarkdownDocumentMetrics.HighlightVerticalPadding,
+            fontSize * MarkdownDocumentMetrics.HighlightHorizontalPadding);
+    }
+}
+
+/// <summary>Источник текста из одного run — видимые глифы индекса.</summary>
+internal sealed class MarkdownSingleRunTextSource(string text, TextRunProperties properties) : ITextSource
+{
+    public TextRun GetTextRun(int textSourceIndex)
+        => textSourceIndex < text.Length
+            ? new TextCharacters(text.AsMemory(textSourceIndex), properties)
+            : new TextEndOfParagraph(1);
 }
 
 /// <summary>

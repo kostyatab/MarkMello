@@ -230,6 +230,7 @@ public sealed class MarkdownDocumentTextMap
             MarkdownParagraphBlock paragraph => ExtractPlainText(paragraph.Inlines),
             MarkdownQuoteBlock quote => string.Join(Environment.NewLine, quote.Blocks.Select(ExtractPlainText)),
             MarkdownListBlock list => string.Join(Environment.NewLine, list.Items.Select(static item => string.Join(Environment.NewLine, item.Blocks.Select(ExtractPlainText)))),
+            MarkdownDefinitionListBlock definitionList => string.Join(Environment.NewLine, EnumerateDefinitionListLines(definitionList)),
             MarkdownHorizontalRuleBlock => string.Empty,
             MarkdownImageBlock => string.Empty,
             MarkdownDiagramBlock => string.Empty,
@@ -240,6 +241,26 @@ public sealed class MarkdownDocumentTextMap
                 GetFootnoteMarkerText(footnote.Number) + string.Join(Environment.NewLine, footnote.Blocks.Select(ExtractPlainText)))),
             _ => block.ToString() ?? string.Empty
         };
+    }
+
+    /// <summary>Термин строкой, его определения — строками под ним.</summary>
+    private static IEnumerable<string> EnumerateDefinitionListLines(MarkdownDefinitionListBlock definitionList)
+    {
+        foreach (var item in definitionList.Items)
+        {
+            foreach (var term in item.Terms)
+            {
+                yield return ExtractPlainText(term.Inlines);
+            }
+
+            foreach (var definition in item.Definitions)
+            {
+                foreach (var block in definition.Blocks)
+                {
+                    yield return ExtractPlainText(block);
+                }
+            }
+        }
     }
 
     private static string ExtractPlainText(MarkdownTableBlock table)
@@ -294,6 +315,18 @@ public sealed class MarkdownDocumentTextMap
 
             case MarkdownStrikethroughInline strikethrough:
                 AppendPlainText(strikethrough.Inlines, builder);
+                break;
+
+            case MarkdownHighlightInline highlight:
+                AppendPlainText(highlight.Inlines, builder);
+                break;
+
+            case MarkdownSubscriptInline subscript:
+                AppendPlainText(subscript.Inlines, builder);
+                break;
+
+            case MarkdownSuperscriptInline superscript:
+                AppendPlainText(superscript.Inlines, builder);
                 break;
 
             case MarkdownCodeInline code:
@@ -427,6 +460,36 @@ public sealed class MarkdownDocumentTextMap
                     }
 
                     _listNesting = outerNesting;
+                    AppendBlockSeparator(doubleBreak: true);
+                    return;
+
+                case MarkdownDefinitionListBlock definitionList:
+                    // Термин строкой, определения строками под ним.
+                    for (var itemIndex = 0; itemIndex < definitionList.Items.Count; itemIndex++)
+                    {
+                        var item = definitionList.Items[itemIndex];
+                        for (var termIndex = 0; termIndex < item.Terms.Count; termIndex++)
+                        {
+                            AppendInlineFragment(
+                                $"{path}.i{itemIndex}.t{termIndex}",
+                                MarkdownDocumentTextFragmentKind.Paragraph,
+                                item.Terms[termIndex].Inlines);
+                            EnsureSingleLineBreakAtEnd();
+                        }
+
+                        for (var definitionIndex = 0; definitionIndex < item.Definitions.Count; definitionIndex++)
+                        {
+                            var definition = item.Definitions[definitionIndex];
+                            for (var blockIndex = 0; blockIndex < definition.Blocks.Count; blockIndex++)
+                            {
+                                AppendBlock(
+                                    definition.Blocks[blockIndex],
+                                    $"{path}.i{itemIndex}.d{definitionIndex}.b{blockIndex}",
+                                    isTopLevel: false);
+                            }
+                        }
+                    }
+
                     AppendBlockSeparator(doubleBreak: true);
                     return;
 

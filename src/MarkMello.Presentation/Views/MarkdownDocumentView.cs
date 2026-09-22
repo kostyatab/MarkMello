@@ -1481,6 +1481,7 @@ public sealed class MarkdownDocumentView : UserControl
             MarkdownImageBlock image => BuildImageBlock(image),
             MarkdownDiagramBlock diagram => BuildDiagramBlock(diagram),
             MarkdownFootnotesBlock footnotes => BuildFootnotes(footnotes, path),
+            MarkdownDefinitionListBlock definitionList => BuildDefinitionList(definitionList, path),
             _ => BuildFallback(block)
         };
 
@@ -1529,6 +1530,8 @@ public sealed class MarkdownDocumentView : UserControl
             MarkdownQuoteBlock quote => ContainsDiagram(quote.Blocks),
             MarkdownListBlock list => list.Items.Any(static item => ContainsDiagram(item.Blocks)),
             MarkdownFootnotesBlock footnotes => footnotes.Footnotes.Any(static footnote => ContainsDiagram(footnote.Blocks)),
+            MarkdownDefinitionListBlock definitionList => definitionList.Items.Any(static item =>
+                item.Definitions.Any(static definition => ContainsDiagram(definition.Blocks))),
             _ => false
         });
 
@@ -1997,6 +2000,70 @@ public sealed class MarkdownDocumentView : UserControl
         }
 
         return checkbox;
+    }
+
+    /// <summary>
+    /// Список определений — как списки: термин полужирным (600) прямым цветом
+    /// текста, определение с отступом колонки маркеров. Термин — через .75em от
+    /// предыдущего определения, первое определение — в .15em от термина,
+    /// следующие определения того же термина — через .25em.
+    /// </summary>
+    private StackPanel BuildDefinitionList(MarkdownDefinitionListBlock block, string path)
+    {
+        var panel = new StackPanel
+        {
+            Orientation = Orientation.Vertical,
+            Spacing = 0
+        };
+
+        for (var itemIndex = 0; itemIndex < block.Items.Count; itemIndex++)
+        {
+            var item = block.Items[itemIndex];
+            var itemPath = $"{path}.i{itemIndex}";
+            for (var termIndex = 0; termIndex < item.Terms.Count; termIndex++)
+            {
+                var term = BuildSelectionFragment(
+                    $"{itemPath}.t{termIndex}",
+                    item.Terms[termIndex].Inlines,
+                    new Thickness(0, panel.Children.Count == 0 ? 0 : _metrics.DefinitionTermGap, 0, 0),
+                    GetFlowFontSize(),
+                    GetFlowLineHeight(),
+                    FontWeight.SemiBold,
+                    FontStyle.Normal,
+                    fallbackClassName: "mm-md-paragraph",
+                    baseForegroundResourceKey: _flowForegroundKey);
+                panel.Children.Add(term);
+            }
+
+            for (var definitionIndex = 0; definitionIndex < item.Definitions.Count; definitionIndex++)
+            {
+                var top = panel.Children.Count == 0
+                    ? 0
+                    : definitionIndex == 0 ? _metrics.DefinitionGap : _metrics.DefinitionsGap;
+                var definition = BuildDefinitionContent(item.Definitions[definitionIndex], $"{itemPath}.d{definitionIndex}");
+                definition.Margin = new Thickness(_metrics.DefinitionIndent, top, 0, 0);
+                panel.Children.Add(definition);
+            }
+        }
+
+        return panel;
+    }
+
+    private StackPanel BuildDefinitionContent(MarkdownDefinition definition, string path)
+    {
+        var content = new StackPanel
+        {
+            Orientation = Orientation.Vertical,
+            Spacing = 0
+        };
+
+        for (var blockIndex = 0; blockIndex < definition.Blocks.Count; blockIndex++)
+        {
+            content.Children.Add(BuildBlock(definition.Blocks[blockIndex], $"{path}.b{blockIndex}"));
+        }
+
+        ApplyBlockRhythm(definition.Blocks, content.Children, _metrics.GapInsideDefinition);
+        return content;
     }
 
     /// <summary>

@@ -96,6 +96,7 @@ internal static class TelegramMarkdownV2Writer
             MarkdownImageBlock image => AppendImageBlock(builder, image, context),
             MarkdownDiagramBlock diagram => AppendDiagramBlock(builder, diagram, context),
             MarkdownFootnotesBlock footnotes => AppendFootnotes(builder, footnotes, path, context),
+            MarkdownDefinitionListBlock definitionList => AppendDefinitionList(builder, definitionList, path, context),
             MarkdownHorizontalRuleBlock => false,
             _ => AppendFallbackBlock(builder, block, path, context)
         };
@@ -243,6 +244,56 @@ internal static class TelegramMarkdownV2Writer
         }
 
         return appended;
+    }
+
+    /// <summary>
+    /// Список определений: термин жирной строкой, его определения — строками под
+    /// ним. Оформление внутри термина и определения сохраняется.
+    /// </summary>
+    private static bool AppendDefinitionList(
+        StringBuilder builder,
+        MarkdownDefinitionListBlock definitionList,
+        string path,
+        MarkdownSelectionFormatContext context)
+    {
+        var appended = false;
+        for (var itemIndex = 0; itemIndex < definitionList.Items.Count; itemIndex++)
+        {
+            var item = definitionList.Items[itemIndex];
+            for (var termIndex = 0; termIndex < item.Terms.Count; termIndex++)
+            {
+                var term = new StringBuilder();
+                if (AppendInlineFragment(term, item.Terms[termIndex].Inlines, $"{path}.i{itemIndex}.t{termIndex}", context))
+                {
+                    term.Insert(0, '*').Append('*');
+                    AppendLine(builder, term, ref appended);
+                }
+            }
+
+            for (var definitionIndex = 0; definitionIndex < item.Definitions.Count; definitionIndex++)
+            {
+                var definition = new StringBuilder();
+                AppendNestedBlocks(definition, item.Definitions[definitionIndex].Blocks, $"{path}.i{itemIndex}.d{definitionIndex}", context);
+                MarkdownClipboardTextHelpers.TrimTrailingLineBreaks(definition, maxAllowed: 0);
+                if (definition.Length > 0)
+                {
+                    AppendLine(builder, definition, ref appended);
+                }
+            }
+        }
+
+        return appended;
+    }
+
+    private static void AppendLine(StringBuilder builder, StringBuilder line, ref bool appended)
+    {
+        if (appended)
+        {
+            builder.Append('\n');
+        }
+
+        builder.Append(line);
+        appended = true;
     }
 
     /// <summary>Сноски — как нумерованный список: «1 текст сноски».</summary>
@@ -491,6 +542,20 @@ internal static class TelegramMarkdownV2Writer
 
             case MarkdownStrikethroughInline strikethrough:
                 AppendWrappedInlines(builder, strikethrough.Inlines, selectedRange, '~', '~');
+                return;
+
+            // У Telegram нет выделения маркером и индексов: остаётся содержимое
+            // со своим оформлением.
+            case MarkdownHighlightInline highlight:
+                AppendInlines(builder, highlight.Inlines, selectedRange);
+                return;
+
+            case MarkdownSubscriptInline subscript:
+                AppendInlines(builder, subscript.Inlines, selectedRange);
+                return;
+
+            case MarkdownSuperscriptInline superscript:
+                AppendInlines(builder, superscript.Inlines, selectedRange);
                 return;
 
             case MarkdownCodeInline code:

@@ -77,8 +77,24 @@ public sealed class RenderMarkdownDocumentUseCase
         MarkdownQuoteBlock quote => quote with { Blocks = MaterializeBlocks(quote.Blocks) },
         MarkdownListBlock list => list with { Items = MaterializeListItems(list.Items) },
         MarkdownFootnotesBlock footnotes => footnotes with { Footnotes = MaterializeFootnotes(footnotes.Footnotes) },
+        MarkdownDefinitionListBlock definitionList => definitionList with { Items = MaterializeDefinitionItems(definitionList.Items) },
         _ => block,
     };
+
+    private List<MarkdownDefinitionItem> MaterializeDefinitionItems(IReadOnlyList<MarkdownDefinitionItem> items)
+    {
+        var result = new List<MarkdownDefinitionItem>(items.Count);
+        foreach (var item in items)
+        {
+            var definitions = new List<MarkdownDefinition>(item.Definitions.Count);
+            foreach (var definition in item.Definitions)
+            {
+                definitions.Add(definition with { Blocks = MaterializeBlocks(definition.Blocks) });
+            }
+            result.Add(item with { Definitions = definitions });
+        }
+        return result;
+    }
 
     private List<MarkdownFootnote> MaterializeFootnotes(IReadOnlyList<MarkdownFootnote> footnotes)
     {
@@ -125,6 +141,18 @@ public sealed class RenderMarkdownDocumentUseCase
                         if (ContainsAnyDiagramBlock(footnote.Blocks))
                         {
                             return true;
+                        }
+                    }
+                    break;
+                case MarkdownDefinitionListBlock definitionList:
+                    foreach (var item in definitionList.Items)
+                    {
+                        foreach (var definition in item.Definitions)
+                        {
+                            if (ContainsAnyDiagramBlock(definition.Blocks))
+                            {
+                                return true;
+                            }
                         }
                     }
                     break;

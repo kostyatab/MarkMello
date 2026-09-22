@@ -292,11 +292,13 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
         var layout = GetOrCreateTextLayout(Bounds.Width);
 
         // Paint order (bottom -> top):
+        //   0. Highlight (<mark>) backgrounds: code inside keeps its own pill.
         //   1. Inline code "pill" backgrounds (rounded rect per span).
         //   2. Search highlights (non-active matches, behind selection).
         //   3. Selection highlight (on top of code backgrounds, behind glyphs).
         //   4. Active search match (above selection so it stays visible).
         //   5. Text glyphs themselves.
+        DrawHighlightBackgrounds(context, layout);
         DrawInlineCodeBackgrounds(context, layout);
         DrawSearchHighlights(context, layout, activeOnly: false);
         DrawSelection(context, layout);
@@ -307,6 +309,7 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
     internal void RenderMiniature(DrawingContext context)
     {
         var layout = GetOrCreateTextLayout(Bounds.Width);
+        DrawHighlightBackgrounds(context, layout);
         DrawInlineCodeBackgrounds(context, layout);
         layout.Draw(context);
     }
@@ -452,9 +455,17 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
             return;
         }
 
+        // Выделение маркером того же цвета, что и совпадение: внутри него
+        // совпадение плотнее, иначе оно сливается с фоном. Активное совпадение
+        // отличается обводкой.
+        var highlightRects = layout.HighlightBoxes.Count == 0
+            ? []
+            : layout.HighlightBoxes.SelectMany(layout.GetHighlightRects).ToArray();
+        var denseBrush = highlightRects.Length == 0 ? null : ResolveOptionalBrush("MmFindActiveBrush");
+
         foreach (var range in SearchHighlightRanges)
         {
-            DrawSearchRange(context, layout, brush, range, pen: null);
+            DrawSearchRange(context, layout, brush, range, pen: null, highlightRects, denseBrush);
         }
     }
 
@@ -463,7 +474,9 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
         MarkdownFormattedTextLayout layout,
         IBrush brush,
         DocumentTextRange range,
-        Pen? pen)
+        Pen? pen,
+        Rect[]? highlightRects = null,
+        IBrush? denseBrush = null)
     {
         var localStart = Math.Clamp(range.Start - DocumentRange.Start, 0, StyledText.Text.Length);
         var localEnd = Math.Clamp(range.End - DocumentRange.Start, 0, StyledText.Text.Length);
@@ -475,6 +488,18 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
         foreach (var rect in layout.GetSelectionRects(new DocumentTextRange(localStart, localEnd)))
         {
             context.FillRectangle(brush, rect);
+            if (denseBrush is not null && highlightRects is not null)
+            {
+                foreach (var highlight in highlightRects)
+                {
+                    var overlap = rect.Intersect(highlight);
+                    if (overlap.Width > 0 && overlap.Height > 0)
+                    {
+                        context.FillRectangle(denseBrush, overlap);
+                    }
+                }
+            }
+
             if (pen is not null)
             {
                 context.DrawRectangle(pen, rect);
@@ -640,6 +665,24 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
             this.TryFindResource("LucideImageOffGeometry", ActualThemeVariant, out var value) && value is Geometry geometry
                 ? geometry
                 : null);
+    }
+
+    /// <summary>Выделение маркером — цветом подсветки поиска, скругление в долях текста.</summary>
+    private void DrawHighlightBackgrounds(DrawingContext context, MarkdownFormattedTextLayout layout)
+    {
+        if (layout.HighlightBoxes.Count == 0 || ResolveOptionalBrush("MmFindHighlightBrush") is not { } fill)
+        {
+            return;
+        }
+
+        var radius = BaseFontSize * MarkdownDocumentMetrics.HighlightCornerRadius;
+        foreach (var box in layout.HighlightBoxes)
+        {
+            foreach (var rect in layout.GetHighlightRects(box))
+            {
+                context.DrawRectangle(fill, null, rect, radius, radius);
+            }
+        }
     }
 
     private void DrawInlineCodeBackgrounds(DrawingContext context, MarkdownFormattedTextLayout layout)

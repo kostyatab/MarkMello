@@ -107,6 +107,15 @@ internal static class MarkdownHeadingAnchorSlugger
             case MarkdownStrikethroughInline strikethrough:
                 AppendPlainText(strikethrough.Inlines, builder);
                 break;
+            case MarkdownHighlightInline highlight:
+                AppendPlainText(highlight.Inlines, builder);
+                break;
+            case MarkdownSubscriptInline subscript:
+                AppendPlainText(subscript.Inlines, builder);
+                break;
+            case MarkdownSuperscriptInline superscript:
+                AppendPlainText(superscript.Inlines, builder);
+                break;
             case MarkdownCodeInline code:
                 builder.Append(code.Code);
                 break;

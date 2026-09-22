@@ -52,6 +52,9 @@ internal static class MarkdownClipboardTextHelpers
             MarkdownStrongInline strong => GetPlainTextLength(strong.Inlines),
             MarkdownEmphasisInline emphasis => GetPlainTextLength(emphasis.Inlines),
             MarkdownStrikethroughInline strikethrough => GetPlainTextLength(strikethrough.Inlines),
+            MarkdownHighlightInline highlight => GetPlainTextLength(highlight.Inlines),
+            MarkdownSubscriptInline subscript => GetPlainTextLength(subscript.Inlines),
+            MarkdownSuperscriptInline superscript => GetPlainTextLength(superscript.Inlines),
             MarkdownCodeInline code => code.Code.Length,
             MarkdownKeyboardInline keyboard => keyboard.Text.Length,
             MarkdownImageInline image => GetImageInlinePlainText(image).Length,
@@ -143,6 +146,18 @@ internal static class MarkdownClipboardTextHelpers
 
             case MarkdownStrikethroughInline strikethrough:
                 builder.Append(ExtractPlainText(strikethrough.Inlines));
+                break;
+
+            case MarkdownHighlightInline highlight:
+                builder.Append(ExtractPlainText(highlight.Inlines));
+                break;
+
+            case MarkdownSubscriptInline subscript:
+                builder.Append(ExtractPlainText(subscript.Inlines));
+                break;
+
+            case MarkdownSuperscriptInline superscript:
+                builder.Append(ExtractPlainText(superscript.Inlines));
                 break;
 
             case MarkdownCodeInline code:

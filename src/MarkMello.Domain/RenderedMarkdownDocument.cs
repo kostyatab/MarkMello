@@ -87,6 +87,28 @@ public enum MarkdownAlertKind
     Caution
 }
 
+/// <summary>
+/// Список определений (<c>Термин</c> и строка <c>:   Определение</c> под ним).
+/// </summary>
+/// <param name="Items">Термины со своими определениями, в порядке документа.</param>
+public sealed record MarkdownDefinitionListBlock(IReadOnlyList<MarkdownDefinitionItem> Items) : MarkdownBlock;
+
+/// <param name="Terms">
+/// Термины пункта: несколько строк подряд перед <c>:</c> — несколько терминов с
+/// общими определениями.
+/// </param>
+/// <param name="Definitions">
+/// Определения пункта: каждая строка <c>:</c> начинает новое.
+/// </param>
+public sealed record MarkdownDefinitionItem(
+    IReadOnlyList<MarkdownDefinitionTerm> Terms,
+    IReadOnlyList<MarkdownDefinition> Definitions);
+
+public sealed record MarkdownDefinitionTerm(IReadOnlyList<MarkdownInline> Inlines);
+
+/// <param name="Blocks">Содержимое определения — абзацы и другие блоки.</param>
+public sealed record MarkdownDefinition(IReadOnlyList<MarkdownBlock> Blocks);
+
 /// <param name="IsOrdered">Нумерованный список (<c>1.</c>) или маркированный (<c>-</c>).</param>
 /// <param name="Items">Пункты списка.</param>
 /// <param name="StartNumber">
@@ -295,6 +317,18 @@ public sealed record MarkdownCodeInline(string Code) : MarkdownInline;
 /// документа — выделении, поиске, копировании — это обычный текст <paramref name="Text"/>.
 /// </summary>
 public sealed record MarkdownKeyboardInline(string Text) : MarkdownInline;
+
+/// <summary>
+/// Выделение маркером (<c>&lt;mark&gt;</c>). Только HTML-тег, как на GitHub:
+/// <c>==x==</c> остаётся текстом.
+/// </summary>
+public sealed record MarkdownHighlightInline(IReadOnlyList<MarkdownInline> Inlines) : MarkdownInline;
+
+/// <summary>Нижний индекс (<c>&lt;sub&gt;</c>). <c>~x~</c> — зачёркивание, как на GitHub.</summary>
+public sealed record MarkdownSubscriptInline(IReadOnlyList<MarkdownInline> Inlines) : MarkdownInline;
+
+/// <summary>Верхний индекс (<c>&lt;sup&gt;</c>). <c>^x^</c> остаётся текстом, как на GitHub.</summary>
+public sealed record MarkdownSuperscriptInline(IReadOnlyList<MarkdownInline> Inlines) : MarkdownInline;
 
 public sealed record MarkdownImageInline(string Url, string? AltText, string? Title) : MarkdownInline;
 

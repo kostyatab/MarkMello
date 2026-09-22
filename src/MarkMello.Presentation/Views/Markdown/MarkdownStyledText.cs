@@ -23,6 +23,12 @@ internal sealed record MarkdownStyledText(
     /// </summary>
     public int? BackReferenceNumber { get; init; }
 
+    /// <summary>
+    /// Выделения маркером (<c>&lt;mark&gt;</c>) по порядку начала: у каждого свой
+    /// фон, даже у двух вплотную.
+    /// </summary>
+    public IReadOnlyList<DocumentTextRange> Highlights { get; init; } = Array.Empty<DocumentTextRange>();
+
     public static MarkdownStyledText Empty { get; } = new(
         string.Empty,
         Array.Empty<MarkdownTextStyleSpan>(),
@@ -62,10 +68,15 @@ internal sealed record MarkdownStyledText(
         var links = new List<MarkdownLinkSpan>();
         var images = new List<MarkdownInlineImageSpan>();
         var footnotes = new List<MarkdownFootnoteReferenceSpan>();
-        AppendInlines(inlines, builder, spans, links, images, footnotes, MarkdownInlineStyleState.Default);
+        var highlights = new List<DocumentTextRange>();
+        AppendInlines(inlines, builder, spans, links, images, footnotes, highlights, MarkdownInlineStyleState.Default);
         return builder.Length == 0
             ? Empty
-            : new MarkdownStyledText(builder.ToString(), spans, links, images, footnotes);
+            : new MarkdownStyledText(builder.ToString(), spans, links, images, footnotes)
+            {
+                // Вложенное выделение добавлено раньше внешнего: по началу, внешнее первым.
+                Highlights = [.. highlights.OrderBy(static range => range.Start).ThenByDescending(static range => range.End)]
+            };
     }
 
     private static void AppendInlines(
@@ -75,11 +86,12 @@ internal sealed record MarkdownStyledText(
         List<MarkdownLinkSpan> links,
         List<MarkdownInlineImageSpan> images,
         List<MarkdownFootnoteReferenceSpan> footnotes,
+        List<DocumentTextRange> highlights,
         MarkdownInlineStyleState style)
     {
         foreach (var inline in inlines)
         {
-            AppendInline(inline, builder, spans, links, images, footnotes, style);
+            AppendInline(inline, builder, spans, links, images, footnotes, highlights, style);
         }
     }
 
@@ -90,6 +102,7 @@ internal sealed record MarkdownStyledText(
         List<MarkdownLinkSpan> links,
         List<MarkdownInlineImageSpan> images,
         List<MarkdownFootnoteReferenceSpan> footnotes,
+        List<DocumentTextRange> highlights,
         MarkdownInlineStyleState style)
     {
         switch (inline)
@@ -99,15 +112,32 @@ internal sealed record MarkdownStyledText(
                 return;
 
             case MarkdownStrongInline strong:
-                AppendInlines(strong.Inlines, builder, spans, links, images, footnotes, style with { IsBold = true });
+                AppendInlines(strong.Inlines, builder, spans, links, images, footnotes, highlights, style with { IsBold = true });
                 return;
 
             case MarkdownEmphasisInline emphasis:
-                AppendInlines(emphasis.Inlines, builder, spans, links, images, footnotes, style with { IsItalic = true });
+                AppendInlines(emphasis.Inlines, builder, spans, links, images, footnotes, highlights, style with { IsItalic = true });
                 return;
 
             case MarkdownStrikethroughInline strikethrough:
-                AppendInlines(strikethrough.Inlines, builder, spans, links, images, footnotes, style with { IsStrikethrough = true });
+                AppendInlines(strikethrough.Inlines, builder, spans, links, images, footnotes, highlights, style with { IsStrikethrough = true });
+                return;
+
+            case MarkdownHighlightInline highlight:
+                var highlightStart = builder.Length;
+                AppendInlines(highlight.Inlines, builder, spans, links, images, footnotes, highlights, style);
+                if (builder.Length > highlightStart)
+                {
+                    highlights.Add(new DocumentTextRange(highlightStart, builder.Length));
+                }
+                return;
+
+            case MarkdownSubscriptInline subscript:
+                AppendInlines(subscript.Inlines, builder, spans, links, images, footnotes, highlights, style with { Script = MarkdownScriptPosition.Subscript });
+                return;
+
+            case MarkdownSuperscriptInline superscript:
+                AppendInlines(superscript.Inlines, builder, spans, links, images, footnotes, highlights, style with { Script = MarkdownScriptPosition.Superscript });
                 return;
 
             case MarkdownCodeInline code:
@@ -123,7 +153,7 @@ internal sealed record MarkdownStyledText(
                 return;
 
             case MarkdownLinkInline link:
-                AppendLink(link, builder, spans, links, images, footnotes, style with { IsLink = true });
+                AppendLink(link, builder, spans, links, images, footnotes, highlights, style with { IsLink = true });
                 return;
 
             case MarkdownLineBreakInline:
@@ -212,13 +242,14 @@ internal sealed record MarkdownStyledText(
         List<MarkdownLinkSpan> links,
         List<MarkdownInlineImageSpan> images,
         List<MarkdownFootnoteReferenceSpan> footnotes,
+        List<DocumentTextRange> highlights,
         MarkdownInlineStyleState style)
     {
         var start = builder.Length;
 
         if (link.Inlines.Count > 0)
         {
-            AppendInlines(link.Inlines, builder, spans, links, images, footnotes, style);
+            AppendInlines(link.Inlines, builder, spans, links, images, footnotes, highlights, style);
         }
         else if (!string.IsNullOrWhiteSpace(link.Url))
         {
@@ -314,13 +345,15 @@ internal readonly record struct MarkdownInlineImageSpan(
     MarkdownInlineStyleState Style);
 
 /// <param name="IsKeyboard">Клавиша (<c>&lt;kbd&gt;</c>).</param>
+/// <param name="Script">Индекс (<c>&lt;sub&gt;</c>, <c>&lt;sup&gt;</c>) или обычная строка.</param>
 internal readonly record struct MarkdownInlineStyleState(
     bool IsBold,
     bool IsItalic,
     bool IsCode,
     bool IsLink,
     bool IsStrikethrough,
-    bool IsKeyboard = false)
+    bool IsKeyboard = false,
+    MarkdownScriptPosition Script = MarkdownScriptPosition.None)
 {
     public static MarkdownInlineStyleState Default { get; } = new(false, false, false, false, false);
 
@@ -328,4 +361,18 @@ internal readonly record struct MarkdownInlineStyleState(
     /// Код и клавиша: моноширинный шрифт и рамка вокруг текста с отступами по бокам.
     /// </summary>
     public bool IsBoxed => IsCode || IsKeyboard;
+
+    /// <summary>
+    /// Текст индекса: мельче и со сдвинутой базовой линией. Код и клавиша внутри
+    /// индекса остаются в строке как есть — их рамка стоит по центру строки.
+    /// </summary>
+    public bool IsScript => Script != MarkdownScriptPosition.None && !IsBoxed;
+}
+
+/// <summary>Положение текста относительно строки: индексы меньше и сдвинуты.</summary>
+internal enum MarkdownScriptPosition
+{
+    None,
+    Subscript,
+    Superscript
 }
