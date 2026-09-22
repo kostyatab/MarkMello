@@ -54,9 +54,9 @@ public sealed class MarkdownStyledTextTests
     {
         var styled = MarkdownStyledText.ForFootnoteMarker(3);
 
-        Assert.Equal("3. ", styled.Text);
+        Assert.Equal("3 ", styled.Text);
         var link = Assert.Single(styled.Links);
-        Assert.Equal(new DocumentTextRange(0, 2), link.Range);
+        Assert.Equal(new DocumentTextRange(0, 1), link.Range);
         Assert.Equal(new MarkdownFootnoteLinkTarget(3, IsBackReference: true), link.Footnote);
         Assert.Equal(string.Empty, link.Url);
     }

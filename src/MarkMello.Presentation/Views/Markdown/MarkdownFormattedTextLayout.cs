@@ -32,7 +32,8 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
         IBrush? footnoteReferenceForeground = null,
         FontFeatureCollection? baseFontFeatures = null,
         IBrush? inlineCodeForeground = null,
-        IBrush? keyboardForeground = null)
+        IBrush? keyboardForeground = null,
+        MarkdownBackReferenceIcon? backReferenceIcon = null)
     {
         _displayModel = MarkdownDisplayLayoutModel.Create(styledText);
         var textProperties = new MarkdownTextRunPropertiesFactory(
@@ -73,6 +74,9 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
                 baseFontWeight,
                 baseFontStyle,
                 footnoteReferenceForeground ?? foreground);
+        var backReferenceMetrics = styledText.BackReferenceNumber is not null && backReferenceIcon is { } icon
+            ? MarkdownBackReferenceMetrics.Create(baseFontFamily, baseFontSize, baseFontWeight, baseFontStyle, icon)
+            : null;
         var source = new MarkdownTextSource(
             _displayModel,
             styledText.Images,
@@ -82,7 +86,8 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
             imageMetrics,
             maxWidth,
             _footnoteMetrics,
-            keyboardMetrics);
+            keyboardMetrics,
+            backReferenceMetrics);
         var paragraphProperties = new GenericTextParagraphProperties(
             new GenericTextRunProperties(
                 new Typeface(baseFontFamily, baseFontStyle, baseFontWeight),
@@ -102,6 +107,9 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
     }
 
     public double WidthIncludingTrailingWhitespace { get; private set; }
+
+    /// <summary>Ширина самой длинной строки без пробелов в её конце.</summary>
+    public double Width { get; private set; }
 
     public double Height { get; private set; }
 
@@ -230,6 +238,40 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
         return line.TextLine.GetCharacterHitFromDistance(localX);
     }
 
+    /// <summary>
+    /// Попала ли точка в иконку возврата к метке в конце сноски — вместе с зазором
+    /// перед ней и на всю высоту строки, чтобы в неё было легко попасть мышью.
+    /// </summary>
+    public bool IsPointOnBackReference(Point point)
+    {
+        var segments = _displayModel.Segments;
+        if (segments.Count == 0 || segments[^1].Kind != MarkdownDisplaySegmentKind.FootnoteBackReference)
+        {
+            return false;
+        }
+
+        var displayIndex = segments[^1].DisplayStart;
+        foreach (var line in _lines)
+        {
+            var lineStart = line.TextLine.FirstTextSourceIndex;
+            if (displayIndex < lineStart || displayIndex >= lineStart + line.TextLine.Length)
+            {
+                continue;
+            }
+
+            foreach (var bounds in line.TextLine.GetTextBounds(displayIndex, 1))
+            {
+                var rect = new Rect(bounds.Rectangle.X, line.Y, bounds.Rectangle.Width, line.TextLine.Height);
+                if (rect.Contains(point))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     public bool IsPointInsideText(Point point)
     {
         if (_lines.Count == 0)
@@ -281,6 +323,7 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
 
             _lines.Add(new FormattedLine(line, y));
             WidthIncludingTrailingWhitespace = Math.Max(WidthIncludingTrailingWhitespace, line.WidthIncludingTrailingWhitespace);
+            Width = Math.Max(Width, line.Width);
             y += line.Height;
 
             // Length already includes trailing newline TextSource positions; adding NewLineLength
@@ -427,6 +470,7 @@ internal sealed class MarkdownTextSource : ITextSource
     private readonly MarkdownInlineImageMetrics _imageMetrics;
     private readonly MarkdownFootnoteReferenceMetrics? _footnoteMetrics;
     private readonly MarkdownKeyboardKeyMetrics? _keyboardMetrics;
+    private readonly MarkdownBackReferenceMetrics? _backReferenceMetrics;
 
     // Поле клавиши по индексу сегмента её левого и правого поля; считается один
     // раз на абзац, а не на каждую раскладку строки.
@@ -441,7 +485,8 @@ internal sealed class MarkdownTextSource : ITextSource
         MarkdownInlineImageMetrics imageMetrics,
         double maxWidth = 100_000,
         MarkdownFootnoteReferenceMetrics? footnoteMetrics = null,
-        MarkdownKeyboardKeyMetrics? keyboardMetrics = null)
+        MarkdownKeyboardKeyMetrics? keyboardMetrics = null,
+        MarkdownBackReferenceMetrics? backReferenceMetrics = null)
     {
         _displayModel = displayModel;
         _images = images;
@@ -451,6 +496,7 @@ internal sealed class MarkdownTextSource : ITextSource
         _imageMetrics = imageMetrics;
         _footnoteMetrics = footnoteMetrics;
         _keyboardMetrics = keyboardMetrics;
+        _backReferenceMetrics = backReferenceMetrics;
         MaxWidth = maxWidth;
     }
 
@@ -488,6 +534,9 @@ internal sealed class MarkdownTextSource : ITextSource
                 => MarkdownSpacerTextRun.Create(_keyboardMetrics.Gap, _padMetrics),
             MarkdownDisplaySegmentKind.FootnoteReference when _footnoteMetrics is not null
                 => new MarkdownFootnoteReferenceTextRun(segment.Text, _footnoteMetrics),
+            MarkdownDisplaySegmentKind.FootnoteBackReference when _backReferenceMetrics is not null
+                => new MarkdownBackReferenceTextRun(_backReferenceMetrics),
+            MarkdownDisplaySegmentKind.FootnoteBackReference => MarkdownSpacerTextRun.Create(0, _padMetrics),
             _ => new TextEndOfParagraph(1)
         };
     }
@@ -554,6 +603,12 @@ internal sealed class MarkdownTextRunPropertiesFactory
     [
         FontFeature.Parse("-liga"),
         FontFeature.Parse("-calt")
+    ];
+
+    /// <summary>Цифры одной ширины — номера в колонке стоят ровно.</summary>
+    internal static FontFeatureCollection TabularNumberFontFeatures { get; } =
+    [
+        FontFeature.Parse("tnum")
     ];
 
     private readonly Dictionary<MarkdownInlineStyleState, TextRunProperties> _cache = new();
@@ -668,7 +723,9 @@ internal sealed class MarkdownTextRunPropertiesFactory
 internal sealed class MarkdownFootnoteReferenceMetrics : IDisposable
 {
     private const double FontSizeRatio = 0.75;
-    private const double RaiseRatio = 0.33;
+
+    // Подъём — .5em кегля номера, как vertical-align: .5em у sup.
+    private const double RaiseRatio = 0.5 * FontSizeRatio;
 
     private readonly Dictionary<string, TextLayout> _numberLayouts = new(StringComparer.Ordinal);
 
@@ -693,6 +750,10 @@ internal sealed class MarkdownFootnoteReferenceMetrics : IDisposable
     /// <summary>Свойства основного текста: метка занимает в строке столько же места по высоте.</summary>
     public TextRunProperties BaseProperties { get; }
 
+    /// <summary>Начертание номера: средний (500) в любом тексте.</summary>
+    public const FontWeight NumberWeight = FontWeight.Medium;
+
+    /// <summary>Гарнитура номера.</summary>
     public Typeface Typeface { get; }
 
     /// <summary>Кегль номера.</summary>
@@ -718,6 +779,8 @@ internal sealed class MarkdownFootnoteReferenceMetrics : IDisposable
         var typeface = new Typeface(fontFamily, fontStyle, fontWeight);
         using var probe = CreateTextLayout("M", typeface, fontSize, foreground);
 
+        // Номер средним начертанием в любом тексте — и в жирном, и в обычном.
+        var numberTypeface = new Typeface(fontFamily, fontStyle, NumberWeight);
         var baseProperties = new GenericTextRunProperties(
             typeface,
             fontSize,
@@ -729,7 +792,7 @@ internal sealed class MarkdownFootnoteReferenceMetrics : IDisposable
 
         return new MarkdownFootnoteReferenceMetrics(
             baseProperties,
-            typeface,
+            numberTypeface,
             fontSize * FontSizeRatio,
             fontSize * RaiseRatio,
             Math.Max(1, probe.Height),
@@ -1161,5 +1224,112 @@ internal sealed class MarkdownSpacerTextRun : DrawableTextRun
         public override BaselineAlignment BaselineAlignment => BaselineAlignment.Baseline;
 
         public override CultureInfo CultureInfo => CultureInfo.InvariantCulture;
+    }
+}
+
+/// <summary>Иконка возврата к метке сноски: геометрия Lucide и её цвет.</summary>
+internal readonly record struct MarkdownBackReferenceIcon(Geometry Geometry, IBrush Foreground);
+
+/// <summary>
+/// Иконка возврата к метке в конце сноски: 1em текста сноски, в .35em от
+/// последнего слова, низ на .12em ниже базовой линии. По высоте и базовой линии
+/// run совпадает с текстом, поэтому строку не раздвигает.
+/// </summary>
+internal sealed class MarkdownBackReferenceMetrics
+{
+    public const double GapRatio = 0.35;
+    public const double IconSizeRatio = 1;
+    public const double DropRatio = 0.12;
+
+    private MarkdownBackReferenceMetrics(
+        TextRunProperties baseProperties,
+        double gap,
+        double iconSize,
+        double drop,
+        double height,
+        double baseline,
+        Pen pen,
+        Geometry geometry)
+    {
+        BaseProperties = baseProperties;
+        Gap = gap;
+        IconSize = iconSize;
+        Drop = drop;
+        Height = height;
+        Baseline = baseline;
+        Pen = pen;
+        Geometry = geometry;
+    }
+
+    public TextRunProperties BaseProperties { get; }
+
+    public double Gap { get; }
+
+    public double IconSize { get; }
+
+    /// <summary>На сколько низ иконки ниже базовой линии.</summary>
+    public double Drop { get; }
+
+    public double Height { get; }
+
+    public double Baseline { get; }
+
+    public Pen Pen { get; }
+
+    public Geometry Geometry { get; }
+
+    public static MarkdownBackReferenceMetrics Create(
+        FontFamily fontFamily,
+        double fontSize,
+        FontWeight fontWeight,
+        FontStyle fontStyle,
+        MarkdownBackReferenceIcon icon)
+    {
+        var typeface = new Typeface(fontFamily, fontStyle, fontWeight);
+        using var probe = new TextLayout("M", typeface, fontSize, icon.Foreground);
+        var baseProperties = new GenericTextRunProperties(
+            typeface,
+            fontSize,
+            textDecorations: null,
+            icon.Foreground,
+            backgroundBrush: null,
+            BaselineAlignment.Baseline,
+            CultureInfo.CurrentUICulture);
+
+        return new MarkdownBackReferenceMetrics(
+            baseProperties,
+            fontSize * GapRatio,
+            fontSize * IconSizeRatio,
+            fontSize * DropRatio,
+            Math.Max(1, probe.Height),
+            Math.Clamp(probe.Baseline, 0, Math.Max(1, probe.Height)),
+            LucideIcon.CreatePen(icon.Foreground),
+            icon.Geometry);
+    }
+}
+
+internal sealed class MarkdownBackReferenceTextRun : DrawableTextRun
+{
+    private readonly MarkdownBackReferenceMetrics _metrics;
+
+    public MarkdownBackReferenceTextRun(MarkdownBackReferenceMetrics metrics) => _metrics = metrics;
+
+    public override int Length => 1;
+
+    public override ReadOnlyMemory<char> Text => " ".AsMemory();
+
+    public override TextRunProperties Properties => _metrics.BaseProperties;
+
+    public override Size Size => new(_metrics.Gap + _metrics.IconSize, _metrics.Height);
+
+    public override double Baseline => _metrics.Baseline;
+
+    public override void Draw(DrawingContext drawingContext, Point origin)
+    {
+        var top = origin.Y + _metrics.Baseline + _metrics.Drop - _metrics.IconSize;
+        using (drawingContext.PushTransform(Matrix.CreateTranslation(origin.X + _metrics.Gap, top)))
+        {
+            LucideIcon.Draw(drawingContext, _metrics.Geometry, _metrics.Pen, new Size(_metrics.IconSize, _metrics.IconSize));
+        }
     }
 }

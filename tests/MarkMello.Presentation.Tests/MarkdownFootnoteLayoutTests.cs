@@ -31,6 +31,12 @@ public sealed class MarkdownFootnoteLayoutTests
 
     public MarkdownFootnoteLayoutTests(AvaloniaHeadlessFixture fixture) => _fixture = fixture;
 
+    /// <summary>
+    /// Книжный блок сносок: просвет как перед H2, короткая линия 4em кегля сноски
+    /// у левого края, от неё до первой сноски 1em; номер справа в колонке 1.6em,
+    /// до текста .5em; текст .875em мягким цветом, межстрочный 1.5; между
+    /// сносками и абзацами внутри — .45em.
+    /// </summary>
     [Fact]
     public Task FootnotesFollowAShortRuleAndAreNumbered()
     {
@@ -47,27 +53,188 @@ public sealed class MarkdownFootnoteLayoutTests
             ]));
             var window = Show(view);
 
+            const double fontSize = 14;
+            const double footnoteSize = fontSize * 0.875;
             var footnotes = FootnotesBlock(view);
             Assert.Contains("mm-md-footnotes", footnotes.Classes);
+            Assert.Equal(fontSize * 2.29, footnotes.Bounds.Top - TextFragment(view, 0).Bounds.Bottom, Tolerance);
+            Assert.Equal(0, footnotes.TranslatePoint(default, view)!.Value.X - TextFragment(view, 0).TranslatePoint(default, view)!.Value.X, Tolerance);
 
-            var ruleRow = Assert.IsType<Grid>(footnotes.Children[0]);
-            var rule = Assert.IsType<Border>(Assert.Single(ruleRow.Children));
+            var rule = Assert.IsType<Border>(footnotes.Children[0]);
             Assert.Contains("mm-md-hr", rule.Classes);
             Assert.Equal(1, rule.Bounds.Height, Tolerance);
-
-            // Черта короткая и слева, как в книге: треть колонки.
             Assert.Equal(0, rule.Bounds.X, Tolerance);
-            Assert.Equal(footnotes.Bounds.Width / 3, rule.Bounds.Width, Tolerance);
+            Assert.Equal(footnoteSize * 4, rule.Bounds.Width, Tolerance);
 
             var list = Assert.IsType<Grid>(footnotes.Children[1]);
-            Assert.Equal("1. ", Marker(list, 0).StyledText.Text);
-            Assert.Equal("2. ", Marker(list, 1).StyledText.Text);
+            Assert.Equal(footnoteSize, list.Bounds.Top - rule.Bounds.Top, Tolerance);
+
+            // Номер без точки, акцентом, полужирный, цифрами одной ширины, прижат
+            // цифрой к краю колонки: сноска в .15em от края, колонка 1.6em вместе
+            // с отступом .5em до текста. Пробел после номера только для копии.
+            var marker = Marker(list, 0);
+            Assert.Equal("1 ", marker.StyledText.Text);
+            Assert.Equal("2 ", Marker(list, 1).StyledText.Text);
+            Assert.Equal(footnoteSize, marker.BaseFontSize, Tolerance);
+            Assert.Equal(FontWeight.SemiBold, marker.BaseFontWeight);
+            Assert.Same(MarkdownTextRunPropertiesFactory.TabularNumberFontFeatures, marker.BaseFontFeatures);
+            Assert.Equal(footnoteSize * (0.15 + 1.6 - 0.5), marker.TranslatePoint(new Point(marker.Bounds.Width, 0), footnotes)!.Value.X, Tolerance);
+            Assert.True(marker.TryGetHorizontalExtentForLocalRange(0, 1, out _, out var digitRight));
+            Assert.Equal(marker.Bounds.Width, digitRight, Tolerance);
+
+            // Текст всех сносок начинается с одной вертикали, в .5em от номеров.
             Assert.Single(Content(list, 0).Children);
             Assert.Equal(2, Content(list, 1).Children.Count);
-
-            // Текст всех сносок начинается с одной вертикали, справа от номеров.
+            Assert.Equal(footnoteSize * (0.15 + 1.6), Content(list, 0).TranslatePoint(default, footnotes)!.Value.X, Tolerance);
             Assert.Equal(Content(list, 0).Bounds.X, Content(list, 1).Bounds.X, Tolerance);
-            Assert.True(Content(list, 0).Bounds.X >= Marker(list, 0).Bounds.Right);
+
+            var text = Assert.IsType<MarkdownSelectionTextFragment>(Content(list, 0).Children[0]);
+            Assert.Equal(footnoteSize, text.BaseFontSize, Tolerance);
+            Assert.Equal(footnoteSize * 1.5, text.BaseLineHeight, Tolerance);
+            Assert.Equal("MmTextSoftBrush", text.BaseForegroundResourceKey);
+
+            // Между сносками и между абзацами одной сноски — .45em кегля сноски.
+            Assert.Equal(footnoteSize * 0.45, Content(list, 1).Bounds.Top - Content(list, 0).Bounds.Bottom, Tolerance);
+            var second = Content(list, 1);
+            Assert.Equal(footnoteSize * 0.45, second.Children[1].Bounds.Top - second.Children[0].Bounds.Bottom, Tolerance);
+
+            window.Close();
+        }, CancellationToken.None);
+    }
+
+    /// <summary>Код и список в сноске — обычного размера, как в тексте; список — мягким цветом сноски.</summary>
+    [Fact]
+    public Task CodeAndListsInsideAFootnoteKeepTheirUsualSize()
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var view = CreateView(new RenderedMarkdownDocument(
+            [
+                Paragraph("Text", new MarkdownFootnoteReferenceInline(1)),
+                new MarkdownFootnotesBlock(
+                [
+                    new MarkdownFootnote(1,
+                    [
+                        Paragraph("Starts with a paragraph:"),
+                        new MarkdownListBlock(false, [new MarkdownListItem([Paragraph("List item")])]),
+                        new MarkdownCodeBlock("bash", "dotnet test")
+                    ])
+                ])
+            ]));
+            var window = Show(view);
+
+            var item = FragmentContaining(view, "List item");
+            Assert.Equal(14, item.BaseFontSize, Tolerance);
+            Assert.Equal(14 * 1.6, item.BaseLineHeight, Tolerance);
+            Assert.Equal("MmTextSoftBrush", item.BaseForegroundResourceKey);
+            Assert.Equal("MmTextSoftBrush", FragmentContaining(view, "• ").BaseForegroundResourceKey);
+
+            var code = FragmentContaining(view, "dotnet test");
+            Assert.Equal(14 * 0.85, code.BaseFontSize, Tolerance);
+
+            // Список — через .45em кегля сноски, код — через .6em текста.
+            var content = Content(FootnotesList(view), 0);
+            Assert.Equal(14 * 0.875 * 0.45, content.Children[1].Bounds.Top - content.Children[0].Bounds.Bottom, Tolerance);
+            Assert.Equal(14 * 0.6, content.Children[2].Bounds.Top - content.Children[1].Bounds.Bottom, Tolerance);
+
+            window.Close();
+        }, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// В конце последнего абзаца сноски — иконка возврата к метке; после списка
+    /// или кода в конце сноски её нет. В текст документа иконка не попадает.
+    /// </summary>
+    [Fact]
+    public Task OnlyAFootnoteEndingWithAParagraphGetsTheBackIcon()
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var view = CreateView(new RenderedMarkdownDocument(
+            [
+                Paragraph("Text", new MarkdownFootnoteReferenceInline(1), new MarkdownFootnoteReferenceInline(2), new MarkdownFootnoteReferenceInline(3)),
+                new MarkdownFootnotesBlock(
+                [
+                    new MarkdownFootnote(1, [Paragraph("First paragraph."), Paragraph("Last paragraph.")]),
+                    new MarkdownFootnote(2, [Paragraph("Then a list:"), new MarkdownListBlock(false, [new MarkdownListItem([Paragraph("Item")])])]),
+                    new MarkdownFootnote(3, [Paragraph("Then code:"), new MarkdownCodeBlock(null, "code")])
+                ])
+            ]));
+            var window = Show(view);
+
+            Assert.Null(FragmentContaining(view, "First paragraph.").StyledText.BackReferenceNumber);
+            var last = FragmentContaining(view, "Last paragraph.");
+            Assert.Equal(1, last.StyledText.BackReferenceNumber);
+            Assert.Equal("Last paragraph.", last.StyledText.Text);
+            Assert.Null(FragmentContaining(view, "Then a list:").StyledText.BackReferenceNumber);
+            Assert.Null(FragmentContaining(view, "Item").StyledText.BackReferenceNumber);
+            Assert.Null(FragmentContaining(view, "Then code:").StyledText.BackReferenceNumber);
+
+            view.SelectAll();
+            Assert.Contains("1 First paragraph.\nLast paragraph.\n2 Then a list:", view.SelectedText, StringComparison.Ordinal);
+
+            window.Close();
+        }, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Сноска, которая кончается абзацем из одной картинки, тоже получает иконку
+    /// возврата: такой абзац строится текстовым фрагментом, а не потоком картинок.
+    /// </summary>
+    [Fact]
+    public Task FootnoteEndingWithAnImageOnlyParagraphKeepsTheBackIcon()
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var view = CreateView(new RenderedMarkdownDocument(
+            [
+                Paragraph("Text", new MarkdownFootnoteReferenceInline(1)),
+                new MarkdownFootnotesBlock(
+                [
+                    new MarkdownFootnote(1, [new MarkdownParagraphBlock([new MarkdownImageInline("missing.png", "Chart", null)])])
+                ])
+            ]));
+            var window = Show(view);
+
+            var content = Content(FootnotesList(view), 0);
+            var image = Assert.IsType<MarkdownSelectionTextFragment>(Assert.Single(content.Children));
+            Assert.Equal(1, image.StyledText.BackReferenceNumber);
+
+            window.Close();
+        }, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Иконка — 1em текста сноски в .35em от последнего слова, приглушённым цветом;
+    /// клик по ней ведёт к метке, как клик по номеру.
+    /// </summary>
+    [Fact]
+    public Task BackIconFollowsTheLastWordAndLeadsToTheReference()
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var view = CreateView(new RenderedMarkdownDocument(
+            [
+                .. Fillers("Before", 10),
+                Paragraph("The mention", new MarkdownFootnoteReferenceInline(1), new MarkdownTextInline(".")),
+                .. Fillers("After", 40),
+                new MarkdownFootnotesBlock([new MarkdownFootnote(1, [Paragraph("The footnote.")])])
+            ]));
+            var (window, page) = ShowOnPage(view);
+            var note = FragmentContaining(view, "The footnote.");
+            ScrollTo(window, page, note);
+
+            var footnoteSize = 14 * 0.875;
+            Assert.True(note.TryGetHorizontalExtentForLocalRange(0, note.StyledText.Text.Length, out _, out var textRight));
+            var iconCenter = textRight + footnoteSize * (0.35 + 0.5);
+            Assert.True(note.TryGetLinkAt(new Point(iconCenter, footnoteSize * 0.75), out var link));
+            Assert.Equal(new MarkdownFootnoteLinkTarget(1, IsBackReference: true), link.Footnote);
+            Assert.False(note.TryGetLinkAt(new Point(textRight + footnoteSize * 1.5, footnoteSize * 0.75), out _));
+
+            Click(window, note, iconCenter, 0);
+
+            var mention = FragmentContaining(view, "The mention[1]");
+            Assert.Equal(ScrollTopInset, LineTop(mention, "The mention".Length, page), Tolerance);
 
             window.Close();
         }, CancellationToken.None);
@@ -236,7 +403,7 @@ public sealed class MarkdownFootnoteLayoutTests
             view.SelectAll();
 
             Assert.Equal(
-                "Markdig[1] is fast.\n\n1. First paragraph.\nSecond paragraph.",
+                "Markdig[1] is fast.\n\n1 First paragraph.\nSecond paragraph.",
                 view.SelectedText.TrimEnd('\n'));
         }, CancellationToken.None);
     }

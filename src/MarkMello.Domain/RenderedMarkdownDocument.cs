@@ -92,18 +92,45 @@ public enum MarkdownAlertKind
 /// <param name="StartNumber">
 /// Номер первого пункта нумерованного списка: <c>7.</c> в начале списка даёт
 /// 7, 8, 9… По CommonMark это число из маркера первого пункта, номера
-/// остальных пунктов в исходнике не важны. У маркированного списка не используется.
+/// остальных пунктов в исходнике не важны. Буквенный и римский маркер тоже
+/// переводится в число: <c>c.</c> — 3, <c>iv.</c> — 4. У маркированного списка
+/// не используется.
 /// </param>
 /// <param name="IsLoose">
 /// Loose-список по CommonMark: пункты или блоки внутри пункта разделены пустыми
 /// строками. Такой список рисуется с абзацным отступом между пунктами, а tight —
 /// плотнее.
 /// </param>
+/// <param name="Numbering">
+/// Вид нумерации, которым автор написал маркер первого пункта: <c>1.</c>,
+/// <c>a.</c>, <c>A.</c>, <c>i.</c> или <c>I.</c>. У маркированного списка не
+/// используется.
+/// </param>
 public sealed record MarkdownListBlock(
     bool IsOrdered,
     IReadOnlyList<MarkdownListItem> Items,
     int StartNumber = 1,
-    bool IsLoose = false) : MarkdownBlock;
+    bool IsLoose = false,
+    MarkdownListNumbering Numbering = MarkdownListNumbering.Digits) : MarkdownBlock;
+
+/// <summary>Вид нумерации нумерованного списка — как у <c>type</c> тега <c>&lt;ol&gt;</c>.</summary>
+public enum MarkdownListNumbering
+{
+    /// <summary>1, 2, 3</summary>
+    Digits,
+
+    /// <summary>a, b, c</summary>
+    LowerAlpha,
+
+    /// <summary>A, B, C</summary>
+    UpperAlpha,
+
+    /// <summary>i, ii, iii</summary>
+    LowerRoman,
+
+    /// <summary>I, II, III</summary>
+    UpperRoman
+}
 
 /// <param name="Blocks">Содержимое пункта.</param>
 /// <param name="IsChecked">

@@ -4,6 +4,7 @@ using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Styling;
+using Avalonia.VisualTree;
 using MarkMello.Domain;
 using MarkMello.Presentation.Views;
 using MarkMello.Presentation.Views.Markdown;
@@ -82,6 +83,11 @@ public sealed class MarkdownTaskListLayoutTests
         }, CancellationToken.None);
     }
 
+    /// <summary>
+    /// Чекбокс висит в колонке маркера, а текст задачи начинается там же, где
+    /// текст обычного пункта, — в 1.6em + .15em от края списка; от чекбокса до
+    /// текста 6 px при 14 (.43em).
+    /// </summary>
     [Fact]
     public Task TextOfEveryItemStartsAtTheSameEdgeWhateverTheMarker()
     {
@@ -92,19 +98,24 @@ public sealed class MarkdownTaskListLayoutTests
             var list = TopLevelList(view);
 
             var textLeft = Left(Content(list, 0), list);
+            Assert.Equal(14 * (1.6 + 0.15), textLeft, Tolerance);
             Assert.Equal(textLeft, Left(Content(list, 1), list), Tolerance);
             Assert.Equal(textLeft, Left(Content(list, 2), list), Tolerance);
 
-            // «•» и чекбоксы прижаты к правому краю одной колонки: пробел после
-            // «•» ставит точку под центр чекбокса (сама ширина зависит от шрифта).
-            Assert.Equal(Right(Marker(list, 0), list), Right(Marker(list, 2), list), Tolerance);
+            Assert.Equal(textLeft - 6, Right(Marker(list, 0), list), Tolerance);
+            Assert.Equal(textLeft - 6, Right(Marker(list, 1), list), Tolerance);
+            Assert.Equal(14 * 1.6 - 5, Right(Marker(list, 2), list), Tolerance);
 
             window.Close();
         }, CancellationToken.None);
     }
 
+    /// <summary>
+    /// В нумерованном списке чекбокс стоит после номера: 3 px до него и 6 px после
+    /// при 14. Текст обычного пункта — там же, где в списке без задач.
+    /// </summary>
     [Fact]
-    public Task OrderedListAlignsNumbersRightAndStartsRegularTextAtTheCheckboxes()
+    public Task OrderedListPutsTheCheckboxAfterTheNumber()
     {
         return _fixture.Session.Dispatch(() =>
         {
@@ -112,45 +123,83 @@ public sealed class MarkdownTaskListLayoutTests
             var window = Show(view);
             var list = TopLevelList(view);
 
-            Assert.Equal(Right(Cells(list, 0)[0], list), Right(Cells(list, 2)[0], list), Tolerance);
+            var numberRight = Right(Cells(list, 0)[0], list);
+            Assert.Equal(14 * 1.6, numberRight, Tolerance);
+            Assert.Equal(numberRight, Right(Cells(list, 2)[0], list), Tolerance);
+
+            var checkbox = Cells(list, 0)[1];
+            Assert.Equal(numberRight + 14 * 0.15 + 3, Left(checkbox, list), Tolerance);
+            Assert.Equal(Right(checkbox, list) + 6, Left(Content(list, 0), list), Tolerance);
             Assert.Equal(Left(Content(list, 0), list), Left(Content(list, 1), list), Tolerance);
-            Assert.Equal(Left(Cells(list, 0)[1], list), Left(Content(list, 2), list), Tolerance);
+            Assert.Equal(numberRight + 14 * 0.15, Left(Content(list, 2), list), Tolerance);
 
             window.Close();
         }, CancellationToken.None);
     }
 
+    /// <summary>
+    /// Выполненная задача — приглушённым цветом целиком, с вложенными пунктами и
+    /// их маркерами, без зачёркивания; невыполненная задача внутри выполненной —
+    /// снова обычным цветом.
+    /// </summary>
     [Fact]
-    public Task OrderedListWithoutTasksHasNoCheckboxColumn()
+    public Task DoneTaskIsFaintWithoutStrikethroughAndAnOpenTaskInsideItIsNot()
     {
         return _fixture.Session.Dispatch(() =>
         {
-            var list = TopLevelList(CreateView(new RenderedMarkdownDocument(
+            var view = CreateView(new RenderedMarkdownDocument(
             [
-                new MarkdownListBlock(true, [new MarkdownListItem([Paragraph("One")]), new MarkdownListItem([Paragraph("Two")])])
-            ])));
+                new MarkdownListBlock(false,
+                [
+                    new MarkdownListItem(
+                    [
+                        Paragraph("Done parent"),
+                        new MarkdownListBlock(false,
+                        [
+                            new MarkdownListItem([Paragraph("Open child")], IsChecked: false),
+                            new MarkdownListItem([Paragraph("Plain child")])
+                        ])
+                    ],
+                    IsChecked: true),
+                    new MarkdownListItem([Paragraph("Open")], IsChecked: false),
+                    new MarkdownListItem([Paragraph("Plain")])
+                ])
+            ]));
+            var window = Show(view);
 
-            Assert.Equal(2, list.ColumnDefinitions.Count);
+            var done = Text(view, "Done parent");
+            Assert.Equal("MmTextFaintBrush", done.BaseForegroundResourceKey);
+            Assert.DoesNotContain(done.StyledText.Spans, static span => span.Style.IsStrikethrough);
+            Assert.Null(Text(view, "Open child").BaseForegroundResourceKey);
+            Assert.Equal("MmTextFaintBrush", Text(view, "Plain child").BaseForegroundResourceKey);
+            Assert.Equal("MmTextFaintBrush", Text(view, "◦ ").BaseForegroundResourceKey);
+            Assert.Null(Text(view, "Open").BaseForegroundResourceKey);
+            Assert.Null(Text(view, "Plain").BaseForegroundResourceKey);
+            Assert.Null(Text(view, "• ").BaseForegroundResourceKey);
+
+            window.Close();
         }, CancellationToken.None);
     }
 
-    [Fact]
-    public Task TaskListIsTighterThanAListWithoutCheckboxes()
+    [Theory]
+    [InlineData("Light")]
+    [InlineData("Dark")]
+    public Task DoneTaskTakesTheFaintColourOfTheTheme(string themeName)
     {
         return _fixture.Session.Dispatch(() =>
         {
-            var plain = TopLevelList(CreateView(new RenderedMarkdownDocument(
-            [
-                new MarkdownListBlock(false, [new MarkdownListItem([Paragraph("Plain")])])
-            ])));
-            var tasks = TopLevelList(CreateView(TaskListDocument(isOrdered: false)));
+            var theme = themeName == "Light" ? ThemeVariant.Light : ThemeVariant.Dark;
+            var view = CreateView(TaskListDocument(isOrdered: false));
+            var window = ThemedTestWindow.Create(theme, view);
+            window.Show();
+            window.UpdateLayout();
 
-            // Обычные списки не меняются, а чекбокс, который шире «•», стоит к
-            // тексту ближе, чтобы пункт не распадался на иконку и текст.
-            Assert.Equal(12, Content(plain, 0).Margin.Left);
-            Assert.All(
-                Enumerable.Range(0, 3),
-                item => Assert.True(Content(tasks, item).Margin.Left < Content(plain, 0).Margin.Left));
+            Assert.True(window.TryFindResource("MmTextFaintBrush", theme, out var faint));
+            Assert.Same(faint, Text(view, "Done").ResolveBaseTextBrush());
+            Assert.True(window.TryFindResource("MmTextBrush", theme, out var text));
+            Assert.Same(text, Text(view, "Open").ResolveBaseTextBrush());
+
+            window.Close();
         }, CancellationToken.None);
     }
 
@@ -349,9 +398,12 @@ public sealed class MarkdownTaskListLayoutTests
             Document = document
         };
 
+    /// <summary>Окно с темой — с настоящим Inter: размеры сверяются с макетом.</summary>
     private static Window Show(MarkdownDocumentView view)
     {
-        var window = new Window { Width = 600, Height = 400, Content = view };
+        var window = ThemedTestWindow.Create(ThemeVariant.Light, view);
+        window.Width = 600;
+        window.Height = 400;
         window.Show();
         window.UpdateLayout();
         return window;
@@ -371,6 +423,11 @@ public sealed class MarkdownTaskListLayoutTests
     private static Control Marker(Grid list, int item) => Cells(list, item)[0];
 
     private static StackPanel Content(Grid list, int item) => Assert.IsType<StackPanel>(Cells(list, item)[^1]);
+
+    private static MarkdownSelectionTextFragment Text(MarkdownDocumentView view, string text)
+        => Assert.Single(
+            view.GetVisualDescendants().OfType<MarkdownSelectionTextFragment>(),
+            fragment => fragment.StyledText.Text == text);
 
     private static double Left(Control control, Visual relativeTo)
         => control.TranslatePoint(default, relativeTo)!.Value.X;

@@ -113,6 +113,43 @@ public sealed class TelegramMarkdownV2WriterTests
         Assert.Equal("1\\. one\n2\\. two", result);
     }
 
+    /// <summary>Маркеры в копии — те же, что на экране: по уровню и в виде автора.</summary>
+    [Fact]
+    public void FormatMarksNestedListsByLevelLikeTheScreen()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownListBlock(false,
+            [
+                new MarkdownListItem(
+                [
+                    new MarkdownParagraphBlock([new MarkdownTextInline("one")]),
+                    new MarkdownListBlock(false,
+                    [
+                        new MarkdownListItem(
+                        [
+                            new MarkdownParagraphBlock([new MarkdownTextInline("two")]),
+                            new MarkdownListBlock(false, [new MarkdownListItem([new MarkdownParagraphBlock([new MarkdownTextInline("three")])])])
+                        ])
+                    ])
+                ])
+            ]),
+            new MarkdownListBlock(true,
+            [
+                new MarkdownListItem(
+                [
+                    new MarkdownParagraphBlock([new MarkdownTextInline("first")]),
+                    new MarkdownListBlock(true, [new MarkdownListItem([new MarkdownParagraphBlock([new MarkdownTextInline("sub")])])]),
+                    new MarkdownListBlock(true, [new MarkdownListItem([new MarkdownParagraphBlock([new MarkdownTextInline("roman")])])], StartNumber: 3, Numbering: MarkdownListNumbering.UpperRoman)
+                ])
+            ])
+        ]);
+
+        var result = TelegramMarkdownFormatter.Format(document);
+
+        Assert.Equal("• one\n\n◦ two\n\n▪ three\n\n1\\. first\n\na\\. sub\n\nIII\\. roman", result);
+    }
+
     [Fact]
     public void FormatOrderedListKeepsItsStartNumber()
     {
@@ -328,7 +365,7 @@ public sealed class TelegramMarkdownV2WriterTests
     {
         var result = TelegramMarkdownFormatter.Format(FootnoteDocument());
 
-        Assert.Equal("Markdig\\[1\\] and Naiad\\[2\\]\\.\n\n1\\. Fast\\.\n2\\. In process\\.\n\nNo browser\\.", result);
+        Assert.Equal("Markdig\\[1\\] and Naiad\\[2\\]\\.\n\n1 Fast\\.\n2 In process\\.\n\nNo browser\\.", result);
     }
 
     [Fact]
@@ -346,11 +383,11 @@ public sealed class TelegramMarkdownV2WriterTests
     {
         var document = FootnoteDocument();
         var textMap = MarkdownDocumentTextMap.Create(document);
-        var start = textMap.Text.IndexOf("1. Fast.", StringComparison.Ordinal);
+        var start = textMap.Text.IndexOf("1 Fast.", StringComparison.Ordinal);
 
-        var result = TelegramMarkdownFormatter.FormatSelection(document, new DocumentTextRange(start, start + "1. Fast.".Length));
+        var result = TelegramMarkdownFormatter.FormatSelection(document, new DocumentTextRange(start, start + "1 Fast.".Length));
 
-        Assert.Equal("1\\. Fast\\.", result);
+        Assert.Equal("1 Fast\\.", result);
     }
 
     private static RenderedMarkdownDocument FootnoteDocument()

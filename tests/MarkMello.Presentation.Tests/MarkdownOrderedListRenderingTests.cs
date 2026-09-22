@@ -25,21 +25,37 @@ public sealed class MarkdownOrderedListRenderingTests
     }
 
     /// <summary>
-    /// Markdig (ListExtras) переводит буквенный и римский маркер в число: «c.» → 3,
-    /// «iv.» → 4. Буквенная и римская нумерация не поддерживается, такие списки
-    /// нумеруются с 1, как и раньше, — иначе «c. / d.» внезапно стал бы «3. / 4.».
+    /// Вид нумерации автора (MM-47): Markdig (ListExtras) сохраняет вид маркера в
+    /// <c>BulletType</c>, а стартовый номер переводит в число: «c.» → 3, «iv.» → 4.
+    /// Регрессия: буквенные и римские списки нумеровались цифрами с 1.
     /// </summary>
     [Theory]
-    [InlineData("c. Third\nd. Fourth")]
-    [InlineData("C. Third\nD. Fourth")]
-    [InlineData("iv. Fourth\nv. Fifth")]
-    [InlineData("IV. Fourth\nV. Fifth")]
-    public void RenderStartsAlphaAndRomanListsFromOne(string markdown)
+    [InlineData("1. One\n2. Two", MarkdownListNumbering.Digits, 1)]
+    [InlineData("a. One\nb. Two", MarkdownListNumbering.LowerAlpha, 1)]
+    [InlineData("c. Third\nd. Fourth", MarkdownListNumbering.LowerAlpha, 3)]
+    [InlineData("C. Third\nD. Fourth", MarkdownListNumbering.UpperAlpha, 3)]
+    [InlineData("i. One\nii. Two", MarkdownListNumbering.LowerRoman, 1)]
+    [InlineData("iv. Fourth\nv. Fifth", MarkdownListNumbering.LowerRoman, 4)]
+    [InlineData("IV. Fourth\nV. Fifth", MarkdownListNumbering.UpperRoman, 4)]
+    public void RenderReadsNumberingAndStartOfTheAuthorsMarker(string markdown, MarkdownListNumbering expectedNumbering, int expectedStart)
     {
         var list = RenderList(markdown);
 
         Assert.True(list.IsOrdered);
-        Assert.Equal(1, list.StartNumber);
+        Assert.Equal(expectedNumbering, list.Numbering);
+        Assert.Equal(expectedStart, list.StartNumber);
+    }
+
+    [Theory]
+    [InlineData("c. Third\nd. Fourth", "c. Third\nd. Fourth")]
+    [InlineData("C. Third\nD. Fourth", "C. Third\nD. Fourth")]
+    [InlineData("iv. Fourth\nv. Fifth", "iv. Fourth\nv. Fifth")]
+    [InlineData("IV. Fourth\nV. Fifth", "IV. Fourth\nV. Fifth")]
+    public void RenderedAlphaAndRomanListsCopyWithTheAuthorsMarkers(string markdown, string expectedText)
+    {
+        var textMap = MarkdownDocumentTextMap.Create(new MarkdigMarkdownDocumentRenderer().Render(markdown));
+
+        Assert.Equal(expectedText, textMap.Text.TrimEnd('\n'));
     }
 
     [Fact]

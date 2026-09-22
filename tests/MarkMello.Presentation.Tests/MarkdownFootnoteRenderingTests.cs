@@ -230,7 +230,7 @@ public sealed class MarkdownFootnoteRenderingTests
         var textMap = MarkdownDocumentTextMap.Create(document);
 
         Assert.Equal(
-            "Markdig[1] and diagrams[2], again Markdig[1].\n\n1. Markdig note.\n2. Diagrams note.\nSecond paragraph.",
+            "Markdig[1] and diagrams[2], again Markdig[1].\n\n1 Markdig note.\n2 Diagrams note.\nSecond paragraph.",
             textMap.Text.TrimEnd('\n'));
     }
 

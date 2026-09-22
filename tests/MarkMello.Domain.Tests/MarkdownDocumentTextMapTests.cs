@@ -184,6 +184,113 @@ public sealed class MarkdownDocumentTextMapTests
             fragment => AssertFragment(textMap.Text, fragment, "b0.i1.b0", MarkdownDocumentTextFragmentKind.Paragraph, "Plain"));
     }
 
+    /// <summary>
+    /// Маркер по уровню списка среди предков того же вида, как <c>ul ul</c> и
+    /// <c>ol ol</c> в CSS: маркированный • ◦ ▪, нумерованный из цифр 1. a. i.;
+    /// глубже третий уровень повторяется.
+    /// </summary>
+    [Fact]
+    public void CreateMarksListsByTheirLevelAmongListsOfTheSameKind()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            Nested(isOrdered: false, depth: 4),
+            Nested(isOrdered: true, depth: 4)
+        ]);
+
+        var textMap = MarkdownDocumentTextMap.Create(document);
+
+        Assert.Equal(
+            "• L1\n◦ L2\n▪ L3\n▪ L4\n\n1. L1\na. L2\ni. L3\ni. L4\n\n",
+            textMap.Text);
+    }
+
+    [Fact]
+    public void CreateCountsTheLevelOnlyAmongListsOfTheSameKind()
+    {
+        // 1. → • → a.: нумерованный внутри маркированного — второй нумерованный.
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownListBlock(true,
+            [
+                new MarkdownListItem(
+                [
+                    Paragraph("Ordered"),
+                    new MarkdownListBlock(false,
+                    [
+                        new MarkdownListItem(
+                        [
+                            Paragraph("Bullet"),
+                            new MarkdownListBlock(true, [new MarkdownListItem([Paragraph("Inner")])])
+                        ])
+                    ])
+                ])
+            ])
+        ]);
+
+        var textMap = MarkdownDocumentTextMap.Create(document);
+
+        Assert.Equal("1. Ordered\n• Bullet\na. Inner\n\n", textMap.Text);
+    }
+
+    /// <summary>Вид автора (MM-47) важнее уровня: «c.» остаётся буквой и в корне, и во вложенном.</summary>
+    [Theory]
+    [InlineData(MarkdownListNumbering.LowerAlpha, 3, "c. One\nd. Two\n\n")]
+    [InlineData(MarkdownListNumbering.UpperAlpha, 26, "Z. One\nAA. Two\n\n")]
+    [InlineData(MarkdownListNumbering.LowerRoman, 4, "iv. One\nv. Two\n\n")]
+    [InlineData(MarkdownListNumbering.UpperRoman, 9, "IX. One\nX. Two\n\n")]
+    [InlineData(MarkdownListNumbering.LowerAlpha, 0, "0. One\na. Two\n\n")]
+    public void CreateNumbersListsInTheAuthorsNumbering(MarkdownListNumbering numbering, int startNumber, string expectedText)
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownListBlock(true, [new MarkdownListItem([Paragraph("One")]), new MarkdownListItem([Paragraph("Two")])], startNumber, Numbering: numbering)
+        ]);
+
+        Assert.Equal(expectedText, MarkdownDocumentTextMap.Create(document).Text);
+    }
+
+    [Fact]
+    public void CreateKeepsTheAuthorsNumberingInANestedList()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownListBlock(true,
+            [
+                new MarkdownListItem(
+                [
+                    Paragraph("Parent"),
+                    new MarkdownListBlock(true, [new MarkdownListItem([Paragraph("Child")])], Numbering: MarkdownListNumbering.UpperRoman)
+                ])
+            ])
+        ]);
+
+        Assert.Equal("1. Parent\nI. Child\n\n", MarkdownDocumentTextMap.Create(document).Text);
+    }
+
+    [Theory]
+    [InlineData(1, MarkdownListNumbering.LowerAlpha, "a")]
+    [InlineData(27, MarkdownListNumbering.LowerAlpha, "aa")]
+    [InlineData(52, MarkdownListNumbering.UpperAlpha, "AZ")]
+    [InlineData(1994, MarkdownListNumbering.UpperRoman, "MCMXCIV")]
+    [InlineData(3999, MarkdownListNumbering.LowerRoman, "mmmcmxcix")]
+    [InlineData(4000, MarkdownListNumbering.LowerRoman, "4000")]
+    [InlineData(0, MarkdownListNumbering.UpperRoman, "0")]
+    [InlineData(-2, MarkdownListNumbering.Digits, "-2")]
+    public void FormatListNumberFollowsCssListStyles(int number, MarkdownListNumbering numbering, string expected)
+        => Assert.Equal(expected, MarkdownDocumentTextMap.FormatListNumber(number, numbering));
+
+    /// <summary>Список глубиной <paramref name="depth"/>: в каждом пункте «L1», «L2»… и следующий уровень.</summary>
+    private static MarkdownListBlock Nested(bool isOrdered, int depth, int level = 1)
+    {
+        MarkdownBlock[] blocks = level == depth
+            ? [Paragraph($"L{level}")]
+            : [Paragraph($"L{level}"), Nested(isOrdered, depth, level + 1)];
+        return new MarkdownListBlock(isOrdered, [new MarkdownListItem(blocks)]);
+    }
+
+    private static MarkdownParagraphBlock Paragraph(string text) => new([new MarkdownTextInline(text)]);
+
     [Fact]
     public void CreateGivesNestedTaskItemsTheirOwnCheckboxes()
     {
@@ -249,13 +356,13 @@ public sealed class MarkdownDocumentTextMapTests
 
         var textMap = MarkdownDocumentTextMap.Create(document);
 
-        Assert.Equal("Text[1]\n\n1. One\n2. Two\nMore\n\n", textMap.Text);
+        Assert.Equal("Text[1]\n\n1 One\n2 Two\nMore\n\n", textMap.Text);
         Assert.Collection(
             textMap.Fragments,
             fragment => AssertFragment(textMap.Text, fragment, "b0", MarkdownDocumentTextFragmentKind.Paragraph, "Text[1]"),
-            fragment => AssertFragment(textMap.Text, fragment, "b1.f0.m", MarkdownDocumentTextFragmentKind.FootnoteMarker, "1. "),
+            fragment => AssertFragment(textMap.Text, fragment, "b1.f0.m", MarkdownDocumentTextFragmentKind.FootnoteMarker, "1 "),
             fragment => AssertFragment(textMap.Text, fragment, "b1.f0.b0", MarkdownDocumentTextFragmentKind.Paragraph, "One"),
-            fragment => AssertFragment(textMap.Text, fragment, "b1.f1.m", MarkdownDocumentTextFragmentKind.FootnoteMarker, "2. "),
+            fragment => AssertFragment(textMap.Text, fragment, "b1.f1.m", MarkdownDocumentTextFragmentKind.FootnoteMarker, "2 "),
             fragment => AssertFragment(textMap.Text, fragment, "b1.f1.b0", MarkdownDocumentTextFragmentKind.Paragraph, "Two"),
             fragment => AssertFragment(textMap.Text, fragment, "b1.f1.b1", MarkdownDocumentTextFragmentKind.Paragraph, "More"));
     }
@@ -271,7 +378,7 @@ public sealed class MarkdownDocumentTextMapTests
 
         var textMap = MarkdownDocumentTextMap.Create(document);
 
-        Assert.Equal("• Item\n\n1. Note\n\n", textMap.Text);
+        Assert.Equal("• Item\n\n1 Note\n\n", textMap.Text);
     }
 
     [Fact]

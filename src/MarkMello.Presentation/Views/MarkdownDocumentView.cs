@@ -95,6 +95,14 @@ public sealed class MarkdownDocumentView : UserControl
     // Глубина цитат во время сборки: цитата внутри цитаты рисуется без плашки.
     private int _quoteDepth;
 
+    // Списки вокруг места сборки: маркер пункта зависит от уровня списка.
+    private MarkdownListNesting _listNesting;
+
+    // Абзацы в текущем месте сборки: в сноске — мельче и мягким цветом, в
+    // выполненной задаче — приглушённым. Без ключа — обычный цвет текста.
+    private bool _isInFootnote;
+    private string? _flowForegroundKey;
+
     // Заголовки GitHub alerts, с которыми построены текстовая карта и блоки.
     private MarkdownAlertTitles _alertTitles = MarkdownAlertTitles.Create(GetLocalizedString);
 
@@ -124,6 +132,9 @@ public sealed class MarkdownDocumentView : UserControl
     // Вне дерева ресурсы темы недоступны: шрифты и кисти блоков взяты из
     // запасных значений, и при подключении к дереву документ собирается заново.
     private bool _isBuiltOutsideTree;
+
+    // Окно, на смену масштаба которого подписан документ.
+    private TopLevel? _topLevel;
 
     static MarkdownDocumentView()
     {
@@ -178,7 +189,15 @@ public sealed class MarkdownDocumentView : UserControl
             _localization.PropertyChanged += OnLocalizationChanged;
         }
 
-        if (_isBuiltOutsideTree)
+        _topLevel = TopLevel.GetTopLevel(this);
+        if (_topLevel is not null)
+        {
+            _topLevel.ScalingChanged += OnTopLevelScalingChanged;
+        }
+
+        // Собранное вне дерева или в окне с другим масштабом — заново: зазоры
+        // округлены до пикселей того масштаба (MarkdownDocumentMetrics.LayoutScale).
+        if (_isBuiltOutsideTree || HasStaleLayoutScale())
         {
             RebuildFromScratch();
             return;
@@ -188,8 +207,31 @@ public sealed class MarkdownDocumentView : UserControl
         RefreshLocalizedBlocks();
     }
 
+    /// <summary>
+    /// Окно перешло на экран с другим масштабом: переиспользованные блоки
+    /// сохранили бы зазоры, округлённые под прежний, поэтому документ строится
+    /// заново.
+    /// </summary>
+    private void OnTopLevelScalingChanged(object? sender, EventArgs e)
+    {
+        if (HasStaleLayoutScale())
+        {
+            RebuildFromScratch();
+        }
+    }
+
+    private bool HasStaleLayoutScale()
+        => _builtBlocks.Count > 0
+            && Math.Abs(LayoutHelper.GetLayoutScale(this) - _metrics.LayoutScale) > 0.001;
+
     private void OnDetachedFromVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
     {
+        if (_topLevel is not null)
+        {
+            _topLevel.ScalingChanged -= OnTopLevelScalingChanged;
+            _topLevel = null;
+        }
+
         if (_localization is not null)
         {
             _localization.PropertyChanged -= OnLocalizationChanged;
@@ -796,7 +838,7 @@ public sealed class MarkdownDocumentView : UserControl
         ResetPointerState();
 
         var document = Document;
-        _metrics = new MarkdownDocumentMetrics(ReadingPreferences);
+        _metrics = new MarkdownDocumentMetrics(ReadingPreferences, LayoutHelper.GetLayoutScale(this));
 
         // Заголовки alert — часть текстового потока: если язык сменился, а в
         // документе были alert, блоки строятся заново, иначе у переиспользованного
@@ -1058,15 +1100,17 @@ public sealed class MarkdownDocumentView : UserControl
     /// <summary>
     /// Расставляет просветы между блоками одного контейнера: первый — без
     /// просвета, дальше — больший из соседних (<see cref="MarkdownDocumentMetrics.GapBetween"/>)
-    /// или <paramref name="uniformGap"/>, если он задан.
+    /// или по своему правилу контейнера <paramref name="gapBetween"/>.
     /// </summary>
-    private void ApplyBlockRhythm(IReadOnlyList<MarkdownBlock> blocks, IReadOnlyList<Control> controls, double? uniformGap = null)
+    private void ApplyBlockRhythm(
+        IReadOnlyList<MarkdownBlock> blocks,
+        IReadOnlyList<Control> controls,
+        Func<MarkdownBlock, MarkdownBlock, double>? gapBetween = null)
     {
+        gapBetween ??= _metrics.GapBetween;
         for (var index = 0; index < controls.Count; index++)
         {
-            SetBlockGap(
-                controls[index],
-                index == 0 ? 0 : uniformGap ?? _metrics.GapBetween(blocks[index - 1], blocks[index]));
+            SetBlockGap(controls[index], index == 0 ? 0 : gapBetween(blocks[index - 1], blocks[index]));
         }
     }
 
@@ -1509,16 +1553,31 @@ public sealed class MarkdownDocumentView : UserControl
         return headingControl;
     }
 
-    private Control BuildParagraph(MarkdownParagraphBlock block, string path)
+    /// <param name="block">Абзац.</param>
+    /// <param name="path">Путь абзаца в текстовой карте.</param>
+    /// <param name="backReferenceNumber">
+    /// У последнего абзаца сноски — её номер: в конце текста встаёт иконка
+    /// возврата к метке.
+    /// </param>
+    private Control BuildParagraph(MarkdownParagraphBlock block, string path, int? backReferenceNumber = null)
         => BuildSelectionFragment(
             path,
             block.Inlines,
             margin: default,
-            ReadingPreferences.FontSize,
-            GetBodyLineHeight(),
+            GetFlowFontSize(),
+            GetFlowLineHeight(),
             FontWeight.Normal,
             FontStyle.Normal,
-            fallbackClassName: "mm-md-paragraph");
+            fallbackClassName: "mm-md-paragraph",
+            baseForegroundResourceKey: _flowForegroundKey,
+            styledText: backReferenceNumber is null
+                ? null
+                : MarkdownStyledText.FromInlines(block.Inlines) with { BackReferenceNumber = backReferenceNumber });
+
+    /// <summary>Кегль абзацев в текущем месте сборки: в сноске — мельче текста.</summary>
+    private double GetFlowFontSize() => _isInFootnote ? _metrics.FootnoteFontSize : ReadingPreferences.FontSize;
+
+    private double GetFlowLineHeight() => _isInFootnote ? _metrics.FootnoteLineHeight : GetBodyLineHeight();
 
     /// <summary>
     /// Цитата — тёплая плашка с полосой слева и значком кавычек в правом верхнем
@@ -1747,30 +1806,39 @@ public sealed class MarkdownDocumentView : UserControl
     /// («9.» и «10.»).
     /// </summary>
     /// <remarks>
-    /// В маркированном списке колонка маркеров одна: «•» или чекбокс на его месте.
-    /// В нумерованном номер остаётся и у пункта с чекбоксом, чтобы нумерация не
-    /// прерывалась: номера выровнены вправо, а чекбокс стоит в начале строки
-    /// пункта, в своей колонке — она появляется, только если в списке есть пункты
-    /// task list. Текст обычного пункта начинается там же, где чекбоксы.
+    /// Колонка маркеров — 1.6em, как отступ списка в Notion, и шире, если номер в
+    /// неё не влезает; маркер прижат к её правому краю, текст — ещё в .15em.
+    /// Маркер зависит от уровня списка среди списков того же вида вокруг
+    /// (<see cref="MarkdownListNesting"/>). В маркированном списке чекбокс встаёт
+    /// на место маркера, а текст задачи начинается там же, где текст обычного
+    /// пункта. В нумерованном номер остаётся и у задачи, а чекбокс стоит после
+    /// него в своей колонке — она появляется, только если в списке есть задачи.
+    /// Список в сноске — обычного размера, как в тексте, но мягким цветом сноски.
     /// </remarks>
     private Grid BuildList(MarkdownListBlock block, string path)
     {
-        // Loose-список (пункты через пустую строку) разделён как абзацы, tight —
-        // чуть больше межстрочного интервала, и вложенный список читается
-        // продолжением пункта.
-        var grid = new Grid
-        {
-            RowSpacing = block.IsLoose ? _metrics.LooseListItemGap : _metrics.TightListItemSpacing
-        };
+        var outerNesting = _listNesting;
+        var outerIsInFootnote = _isInFootnote;
+        var level = outerNesting.LevelOf(block);
+        _listNesting = outerNesting.Enter(block);
+        _isInFootnote = false;
 
-        // В списке с чекбоксами зазоры меньше: чекбокс шире «•», и с обычным
-        // отступом пункт распадается на номер, иконку и текст. От чекбокса до
-        // текста — вдвое меньше обычного, от номера до чекбокса — ещё меньше:
-        // номер «1. » уже заканчивается пробелом.
-        var hasTasks = block.Items.Any(static item => item.IsChecked is not null);
-        var hasCheckboxColumn = block.IsOrdered && hasTasks;
-        var textIndent = hasTasks ? _metrics.ListItemTextIndent / 2 : _metrics.ListItemTextIndent;
-        grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+        try
+        {
+            return BuildListGrid(block, level, path);
+        }
+        finally
+        {
+            _listNesting = outerNesting;
+            _isInFootnote = outerIsInFootnote;
+        }
+    }
+
+    private Grid BuildListGrid(MarkdownListBlock block, int level, string path)
+    {
+        var grid = new Grid { RowSpacing = _metrics.GetListItemGap(block.IsLoose) };
+        var hasCheckboxColumn = block.IsOrdered && block.Items.Any(static item => item.IsChecked is not null);
+        grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto) { MinWidth = _metrics.ListMarkerColumnWidth });
         if (hasCheckboxColumn)
         {
             grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
@@ -1785,18 +1853,29 @@ public sealed class MarkdownDocumentView : UserControl
 
             var item = block.Items[index];
             var itemPath = $"{path}.i{index}";
-            AddListItemMarkers(grid, block, item, index, itemPath);
 
-            if (hasCheckboxColumn && item.IsChecked is null)
+            // Выполненная задача — приглушённым цветом целиком, с вложенными
+            // пунктами; невыполненная задача внутри неё — снова обычным.
+            var foregroundKey = item.IsChecked switch
             {
-                // Текст обычного пункта встаёт туда же, где у соседей чекбокс.
-                var content = BuildListItemContent(block, item, itemPath, _metrics.TaskCheckboxIndentAfterNumber);
-                AddToGrid(grid, content, index, column: 1);
-                Grid.SetColumnSpan(content, 2);
+                true => "MmTextFaintBrush",
+                false => null,
+                null => _flowForegroundKey
+            };
+
+            AddListItemMarkers(grid, block, item, index, level, itemPath, foregroundKey);
+
+            var content = BuildListItemContent(item, itemPath, foregroundKey);
+            if (hasCheckboxColumn && item.IsChecked is not null)
+            {
+                // Отступ до текста задачи — у чекбокса.
+                AddToGrid(grid, content, index, contentColumn);
             }
             else
             {
-                AddToGrid(grid, BuildListItemContent(block, item, itemPath, textIndent), index, contentColumn);
+                content.Margin = new Thickness(_metrics.ListItemPadding, 0, 0, 0);
+                AddToGrid(grid, content, index, column: 1);
+                Grid.SetColumnSpan(content, grid.ColumnDefinitions.Count - 1);
             }
         }
 
@@ -1810,28 +1889,45 @@ public sealed class MarkdownDocumentView : UserControl
         grid.Children.Add(control);
     }
 
-    private void AddListItemMarkers(Grid grid, MarkdownListBlock list, MarkdownListItem item, int index, string path)
+    private void AddListItemMarkers(
+        Grid grid,
+        MarkdownListBlock list,
+        MarkdownListItem item,
+        int index,
+        int level,
+        string path,
+        string? foregroundKey)
     {
-        if (!list.IsOrdered)
+        if (!list.IsOrdered && item.IsChecked is { } isChecked)
         {
-            // «•» прижат вправо: пробел после него в тексте маркера как раз
-            // ставит точку по центру колонки, то есть под центр чекбоксов.
-            var marker = item.IsChecked is { } isChecked
-                ? BuildTaskCheckbox(isChecked, $"{path}.t")
-                : BuildListMarkerText(list, index, path);
-            marker.HorizontalAlignment = HorizontalAlignment.Right;
-            AddToGrid(grid, marker, index, column: 0);
+            // Чекбокс на месте маркера: от него до текста столько же, сколько
+            // от маркера до текста вместе с отступом пункта.
+            var checkbox = BuildTaskCheckbox(isChecked, $"{path}.t");
+            checkbox.HorizontalAlignment = HorizontalAlignment.Right;
+            checkbox.Margin = new Thickness(0, 0, _metrics.TaskCheckboxTextGap - _metrics.ListItemPadding, 0);
+            AddToGrid(grid, checkbox, index, column: 0);
             return;
         }
 
-        var number = BuildListMarkerText(list, index, path);
-        number.HorizontalAlignment = HorizontalAlignment.Right;
-        AddToGrid(grid, number, index, column: 0);
+        // Маркер прижат вправо, пробел в его тексте отделяет его от текста; точке
+        // маркированного списка нужен зазор побольше.
+        var marker = BuildListMarkerText(list, index, level, path, foregroundKey);
+        marker.HorizontalAlignment = HorizontalAlignment.Right;
+        if (!list.IsOrdered)
+        {
+            marker.Margin = new Thickness(0, 0, _metrics.BulletMarkerGap, 0);
+        }
 
-        if (item.IsChecked is { } isOrderedChecked)
+        AddToGrid(grid, marker, index, column: 0);
+
+        if (list.IsOrdered && item.IsChecked is { } isOrderedChecked)
         {
             var checkbox = BuildTaskCheckbox(isOrderedChecked, $"{path}.t");
-            checkbox.Margin = new Thickness(_metrics.TaskCheckboxIndentAfterNumber, 0, 0, 0);
+            checkbox.Margin = new Thickness(
+                _metrics.ListItemPadding + _metrics.TaskCheckboxAfterNumber,
+                0,
+                _metrics.TaskCheckboxTextGap,
+                0);
             AddToGrid(grid, checkbox, index, column: 1);
         }
     }
@@ -1839,43 +1935,48 @@ public sealed class MarkdownDocumentView : UserControl
     /// <summary>
     /// Содержимое пункта. Расстояние до следующего пункта задаёт сетка списка.
     /// </summary>
-    /// <remarks>
-    /// В tight-списке блоки пункта — обычно абзац и вложенный список — отделены
-    /// друг от друга тем же интервалом, что и пункты.
-    /// </remarks>
-    private StackPanel BuildListItemContent(MarkdownListBlock list, MarkdownListItem item, string path, double indent)
+    private StackPanel BuildListItemContent(MarkdownListItem item, string path, string? foregroundKey)
     {
         var content = new StackPanel
         {
             Orientation = Orientation.Vertical,
-            Spacing = 0,
-            Margin = new Thickness(indent, 0, 0, 0)
+            Spacing = 0
         };
 
-        for (var blockIndex = 0; blockIndex < item.Blocks.Count; blockIndex++)
+        var outerForeground = _flowForegroundKey;
+        _flowForegroundKey = foregroundKey;
+        try
         {
-            content.Children.Add(BuildBlock(item.Blocks[blockIndex], $"{path}.b{blockIndex}"));
+            for (var blockIndex = 0; blockIndex < item.Blocks.Count; blockIndex++)
+            {
+                content.Children.Add(BuildBlock(item.Blocks[blockIndex], $"{path}.b{blockIndex}"));
+            }
+        }
+        finally
+        {
+            _flowForegroundKey = outerForeground;
         }
 
-        ApplyBlockRhythm(item.Blocks, content.Children, list.IsLoose ? null : _metrics.TightListItemSpacing);
+        ApplyBlockRhythm(item.Blocks, content.Children, _metrics.GapInsideListItem);
         return content;
     }
 
-    private Control BuildListMarkerText(MarkdownListBlock list, int index, string path)
+    private Control BuildListMarkerText(MarkdownListBlock list, int index, int level, string path, string? foregroundKey)
     {
-        var bullet = BuildSelectionFragment(
+        var marker = BuildSelectionFragment(
             $"{path}.m",
-            [new MarkdownTextInline(MarkdownDocumentTextMap.GetListMarkerText(list, index))],
+            [new MarkdownTextInline(MarkdownDocumentTextMap.GetListMarkerText(list, index, level))],
             margin: default,
-            ReadingPreferences.FontSize,
-            GetBodyLineHeight(),
+            GetFlowFontSize(),
+            GetFlowLineHeight(),
             FontWeight.Normal,
             FontStyle.Normal,
             fallbackClassName: "mm-md-list-bullet",
-            textWrapping: TextWrapping.NoWrap);
+            textWrapping: TextWrapping.NoWrap,
+            baseForegroundResourceKey: foregroundKey);
 
-        bullet.VerticalAlignment = VerticalAlignment.Top;
-        return bullet;
+        marker.VerticalAlignment = VerticalAlignment.Top;
+        return marker;
     }
 
     private MarkdownTaskCheckboxFragment BuildTaskCheckbox(bool isChecked, string path)
@@ -1883,7 +1984,7 @@ public sealed class MarkdownDocumentView : UserControl
         var checkbox = new MarkdownTaskCheckboxFragment(isChecked)
         {
             IconSize = _metrics.TaskCheckboxSize,
-            LineHeight = GetBodyLineHeight(),
+            LineHeight = GetFlowLineHeight(),
             VerticalAlignment = VerticalAlignment.Top
         };
 
@@ -1905,47 +2006,50 @@ public sealed class MarkdownDocumentView : UserControl
         => new() { Classes = { "mm-md-hr" } };
 
     /// <summary>
-    /// Блок сносок в конце документа: короткая черта слева, как в книге, и под ней
-    /// сноски с номерами — как пункты нумерованного списка. Номер сноски — ссылка
-    /// обратно к метке в тексте.
+    /// Блок сносок в конце документа — книжный: короткая линия у левого края, под
+    /// ней сноски мельче и мягче текста. Номер сноски — в колонке справа, ссылка
+    /// обратно к метке в тексте; туда же ведёт иконка в конце последнего абзаца
+    /// сноски. После списка или кода в конце сноски иконки нет — назад ведёт номер.
     /// </summary>
     private StackPanel BuildFootnotes(MarkdownFootnotesBlock block, string path)
     {
-        var rule = new Border { Classes = { "mm-md-hr" } };
-        var ruleRow = new Grid
+        var rule = new Border
         {
-            ColumnDefinitions = new ColumnDefinitions("*,2*"),
-            Margin = new Thickness(0, _metrics.FootnoteRuleTop, 0, _metrics.FootnoteRuleBottom),
-            Children = { rule }
+            Classes = { "mm-md-hr" },
+            Width = _metrics.FootnoteRuleWidth,
+            Height = FootnoteRuleThickness,
+            HorizontalAlignment = HorizontalAlignment.Left
         };
 
-        var grid = new Grid { RowSpacing = _metrics.FootnoteRowGap };
-        grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
+        // Линия — в просвете 1em над первой сноской, как фон в верхнем поле блока.
+        var grid = new Grid
+        {
+            RowSpacing = _metrics.FootnoteRowGap,
+            Margin = new Thickness(_metrics.FootnoteIndent, Math.Max(0, _metrics.FootnoteRuleGap - FootnoteRuleThickness), 0, 0)
+        };
+        grid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto) { MinWidth = _metrics.FootnoteNumberColumnWidth });
         grid.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(1, GridUnitType.Star)));
 
-        for (var index = 0; index < block.Footnotes.Count; index++)
+        var outerIsInFootnote = _isInFootnote;
+        var outerForeground = _flowForegroundKey;
+        _isInFootnote = true;
+        _flowForegroundKey = "MmTextSoftBrush";
+        try
         {
-            grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
-
-            var footnote = block.Footnotes[index];
-            var footnotePath = $"{path}.f{index}";
-            AddToGrid(grid, BuildFootnoteMarker(footnote.Number, $"{footnotePath}.m"), index, column: 0);
-
-            var content = new StackPanel
+            for (var index = 0; index < block.Footnotes.Count; index++)
             {
-                Orientation = Orientation.Vertical,
-                Spacing = 0,
-                Margin = new Thickness(_metrics.ListItemTextIndent, 0, 0, 0)
-            };
+                grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
 
-            for (var blockIndex = 0; blockIndex < footnote.Blocks.Count; blockIndex++)
-            {
-                content.Children.Add(BuildBlock(footnote.Blocks[blockIndex], $"{footnotePath}.b{blockIndex}"));
+                var footnote = block.Footnotes[index];
+                var footnotePath = $"{path}.f{index}";
+                AddToGrid(grid, BuildFootnoteMarker(footnote.Number, $"{footnotePath}.m"), index, column: 0);
+                AddToGrid(grid, BuildFootnoteContent(footnote, footnotePath), index, column: 1);
             }
-
-            ApplyBlockRhythm(footnote.Blocks, content.Children);
-
-            AddToGrid(grid, content, index, column: 1);
+        }
+        finally
+        {
+            _isInFootnote = outerIsInFootnote;
+            _flowForegroundKey = outerForeground;
         }
 
         return new StackPanel
@@ -1953,24 +2057,68 @@ public sealed class MarkdownDocumentView : UserControl
             Orientation = Orientation.Vertical,
             Spacing = 0,
             Classes = { "mm-md-footnotes" },
-            Children = { ruleRow, grid }
+            Children = { rule, grid }
         };
     }
 
+    // Толщина линии над сносками: задана здесь, а не стилем разделителя, — от неё
+    // считается просвет 1em до первой сноски.
+    private const double FootnoteRuleThickness = 1;
+
+    private StackPanel BuildFootnoteContent(MarkdownFootnote footnote, string path)
+    {
+        var content = new StackPanel
+        {
+            Orientation = Orientation.Vertical,
+            Spacing = 0,
+            Margin = new Thickness(_metrics.FootnoteNumberGap, 0, 0, 0)
+        };
+
+        var lastIndex = footnote.Blocks.Count - 1;
+        for (var blockIndex = 0; blockIndex <= lastIndex; blockIndex++)
+        {
+            var block = footnote.Blocks[blockIndex];
+            var blockPath = $"{path}.b{blockIndex}";
+            if (blockIndex == lastIndex && block is MarkdownParagraphBlock paragraph)
+            {
+                var control = BuildParagraph(paragraph, blockPath, backReferenceNumber: footnote.Number);
+                RegisterSourceLineAnchor(block, control);
+                content.Children.Add(control);
+            }
+            else
+            {
+                content.Children.Add(BuildBlock(block, blockPath));
+            }
+        }
+
+        ApplyBlockRhythm(footnote.Blocks, content.Children, _metrics.GapInsideFootnote);
+        return content;
+    }
+
+    /// <summary>
+    /// Номер сноски — акцентом, полужирный, цифрами одной ширины, прижат к правому
+    /// краю колонки. Пробел после номера — только для копии, место он не занимает.
+    /// </summary>
     private Control BuildFootnoteMarker(int number, string path)
     {
         var marker = BuildSelectionFragment(
             path,
             Array.Empty<MarkdownInline>(),
             margin: default,
-            ReadingPreferences.FontSize,
-            GetBodyLineHeight(),
-            FontWeight.Normal,
+            _metrics.FootnoteFontSize,
+            _metrics.FootnoteLineHeight,
+            FontWeight.SemiBold,
             FontStyle.Normal,
             fallbackClassName: "mm-md-footnote-marker",
             textWrapping: TextWrapping.NoWrap,
             baseForegroundResourceKey: "MmAccentBrush",
-            styledText: MarkdownStyledText.ForFootnoteMarker(number));
+            styledText: MarkdownStyledText.ForFootnoteMarker(number),
+            baseFontFeatures: MarkdownTextRunPropertiesFactory.TabularNumberFontFeatures);
+
+        if (marker is MarkdownSelectionTextFragment fragment)
+        {
+            fragment.ExcludesTrailingWhitespaceFromWidth = true;
+        }
 
         marker.HorizontalAlignment = HorizontalAlignment.Right;
         marker.VerticalAlignment = VerticalAlignment.Top;
@@ -2384,7 +2532,9 @@ public sealed class MarkdownDocumentView : UserControl
             return fallback;
         }
 
-        if (MarkdownImageFlowFragment.TryCreate(inlines, out var imageItems))
+        // Абзац из одних картинок — своим потоком картинок; но в конце сноски ему
+        // нужна иконка возврата, а её умеет только текстовый фрагмент.
+        if (styled.BackReferenceNumber is null && MarkdownImageFlowFragment.TryCreate(inlines, out var imageItems))
         {
             var imageFlow = new MarkdownImageFlowFragment(imageItems)
             {

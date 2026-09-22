@@ -47,14 +47,44 @@ internal sealed class MarkdownDocumentMetrics
     private const double ParagraphGap = 1;
     private const double HorizontalRuleGap = 1;
 
-    // Блоки, чей вид ещё не пересмотрен (MM-62…MM-64): прежние пиксели при
-    // тексте 14 переведены в em от 14.
-    private const double TightListItemGap = 6.0 / 14;
-    private const double ListItemTextIndentRatio = 12.0 / 14;
-    private const double TaskCheckboxIndentAfterNumberRatio = 3.0 / 14;
-    private const double FootnoteRowGapRatio = 8.0 / 14;
-    private const double FootnoteRuleTopRatio = 1;
-    private const double FootnoteRuleBottomRatio = 16.0 / 14;
+    /// <summary>
+    /// Список, как в Notion: колонка маркеров 1.6em, у пункта ещё .15em до текста.
+    /// Маркер прижат к правому краю колонки; колонка шире, если номер не влезает.
+    /// </summary>
+    private const double ListMarkerColumnRatio = 1.6;
+    private const double ListItemPaddingRatio = 0.15;
+    private const double TightListItemGapRatio = 0.25;
+    private const double LooseListItemGapRatio = 0.6;
+    private const double ListItemParagraphGapRatio = 0.5;
+    private const double NestedListGapRatio = 0.25;
+
+    // Точка маркированного списка дальше от текста, чем пробел после «•»: браузер
+    // рисует disc с таким зазором, 5 px при 14.
+    private const double BulletMarkerGapRatio = 5.0 / 14;
+
+    // Чекбокс в колонке маркера: текст задачи в 6 px от него при 14 — там же, где
+    // текст обычного пункта. В нумерованном списке чекбокс после номера, в 3 px.
+    private const double TaskCheckboxTextGapRatio = 6.0 / 14;
+    private const double TaskCheckboxAfterNumberRatio = 3.0 / 14;
+
+    /// <summary>
+    /// Сноски — книжные: блок отделён просветом как перед H2 и короткой линией,
+    /// текст мельче и мягче. Размеры внутри блока — в долях кегля сноски, как em в
+    /// CSS блока; просвет над блоком и над кодом в сноске — в долях размера текста.
+    /// </summary>
+    private const double FootnotesGapRatio = 2.29;
+    public const double FootnoteFontScale = 0.875;
+    public const double FootnoteLineHeightRatio = 1.5;
+    private const double FootnoteRuleWidthRatio = 4;
+    private const double FootnoteRuleGapRatio = 1;
+    // Как пункт списка: сноска в .15em от края, колонка номера 1.6em вместе с
+    // отступом .5em до текста — текст сноски начинается в 1.75em.
+    private const double FootnoteIndentRatio = 0.15;
+    private const double FootnoteNumberColumnRatio = 1.6;
+    private const double FootnoteNumberGapRatio = 0.5;
+    private const double FootnoteGapRatio = 0.45;
+    // Код в сноске ближе к тексту, чем в документе: .6em, как на кадре холста.
+    private const double FootnoteCodeGapRatio = 0.6;
 
     /// <summary>Таблица: сетка, кегль текста, ячейка 7 × 9 px при 14, как в Notion.</summary>
     private const double TableGap = 1.4;
@@ -143,11 +173,19 @@ internal sealed class MarkdownDocumentMetrics
     private const double DiagramErrorMessageGapRatio = 0.15;
     private const double DiagramErrorSourceGapRatio = 1.15;
 
-    public MarkdownDocumentMetrics(ReadingPreferences preferences)
+    /// <param name="preferences">Настройки чтения.</param>
+    /// <param name="layoutScale">
+    /// Масштаб отрисовки: зазоры между строками текста считаются в целых
+    /// пикселях экрана (<see cref="GetTextGap"/>).
+    /// </param>
+    public MarkdownDocumentMetrics(ReadingPreferences preferences, double layoutScale = 1)
     {
         FontSize = preferences.FontSize;
         LineHeightRatio = preferences.LineHeight;
+        LayoutScale = layoutScale > 0 ? layoutScale : 1;
     }
+
+    public double LayoutScale { get; }
 
     /// <summary>Размер текста — 1em документа.</summary>
     public double FontSize { get; }
@@ -173,13 +211,43 @@ internal sealed class MarkdownDocumentMetrics
     /// <summary>Центр линии подчёркивания под базовой линией: верх линии в .2em, линия рисуется по центру толщины.</summary>
     public static double GetLinkUnderlineCenterOffset(double fontSize) => fontSize * (LinkUnderlineOffset + LinkUnderlineThickness / 2);
 
-    public double LooseListItemGap => Em(ParagraphGap);
+    public double ListMarkerColumnWidth => Em(ListMarkerColumnRatio);
 
-    public double TightListItemSpacing => Em(TightListItemGap);
+    public double ListItemPadding => Em(ListItemPaddingRatio);
 
-    public double ListItemTextIndent => Em(ListItemTextIndentRatio);
+    public double BulletMarkerGap => Em(BulletMarkerGapRatio);
 
-    public double TaskCheckboxIndentAfterNumber => Em(TaskCheckboxIndentAfterNumberRatio);
+    /// <summary>Шаг между пунктами: .25em, в loose-списке — .6em (<see cref="GetTextGap"/>).</summary>
+    public double GetListItemGap(bool isLoose)
+        => GetTextGap(Em(isLoose ? LooseListItemGapRatio : TightListItemGapRatio), BodyLineHeight);
+
+    /// <summary>
+    /// Зазор под строкой текста — в целых пикселях экрана и меньше на то, на что
+    /// раскладка округляет высоту строки вверх (22.4 → 23 при 14 / 1.6). Иначе
+    /// излишек копился бы на каждом пункте длинного списка, а дробный шаг сетки
+    /// при округлении ещё и раздувал бы её строки. Так пункт с зазором той же
+    /// высоты, что в макете.
+    /// </summary>
+    public double GetTextGap(double gap, double lineHeight)
+    {
+        var roundedLine = Math.Ceiling(lineHeight * LayoutScale) / LayoutScale;
+        return Math.Max(0, RoundToDevicePixels(gap - (roundedLine - lineHeight), LayoutScale));
+    }
+
+    /// <summary>
+    /// Просвет между блоками одного пункта: абзац — через .5em, вложенный список —
+    /// через .25em, остальное — в обычном ритме.
+    /// </summary>
+    public double GapInsideListItem(MarkdownBlock previous, MarkdownBlock next) => next switch
+    {
+        MarkdownParagraphBlock => Math.Max(GetTextGap(Em(ListItemParagraphGapRatio), BodyLineHeight), GetSpacing(previous).Bottom),
+        MarkdownListBlock => Math.Max(GetTextGap(Em(NestedListGapRatio), BodyLineHeight), GetSpacing(previous).Bottom),
+        _ => GapBetween(previous, next)
+    };
+
+    public double TaskCheckboxTextGap => Em(TaskCheckboxTextGapRatio);
+
+    public double TaskCheckboxAfterNumber => Em(TaskCheckboxAfterNumberRatio);
 
     public double CodeBlockFontSize => Em(CodeBlockFontScale);
 
@@ -304,11 +372,38 @@ internal sealed class MarkdownDocumentMetrics
 
     public double FrontMatterKeyGap => FrontMatterFontSize * FrontMatterKeyGapRatio;
 
-    public double FootnoteRowGap => Em(FootnoteRowGapRatio);
+    public double FootnoteFontSize => Em(FootnoteFontScale);
 
-    public double FootnoteRuleTop => Em(FootnoteRuleTopRatio);
+    public double FootnoteLineHeight => FootnoteFontSize * FootnoteLineHeightRatio;
 
-    public double FootnoteRuleBottom => Em(FootnoteRuleBottomRatio);
+    public double FootnoteRuleWidth => FootnoteFontSize * FootnoteRuleWidthRatio;
+
+    /// <summary>От верха линии до первой сноски: линия лежит в этом просвете.</summary>
+    public double FootnoteRuleGap => FootnoteFontSize * FootnoteRuleGapRatio;
+
+    public double FootnoteIndent => FootnoteFontSize * FootnoteIndentRatio;
+
+    /// <summary>Колонка номера без отступа до текста.</summary>
+    public double FootnoteNumberColumnWidth => FootnoteFontSize * (FootnoteNumberColumnRatio - FootnoteNumberGapRatio);
+
+    public double FootnoteNumberGap => FootnoteFontSize * FootnoteNumberGapRatio;
+
+    /// <summary>Между сносками и между абзацами и списком внутри сноски.</summary>
+    public double FootnoteGap => FootnoteFontSize * FootnoteGapRatio;
+
+    /// <summary>Шаг между сносками (<see cref="GetTextGap"/>).</summary>
+    public double FootnoteRowGap => GetTextGap(FootnoteGap, FootnoteLineHeight);
+
+    /// <summary>
+    /// Просвет между блоками одной сноски: абзацы и список — через .45em кегля
+    /// сноски, код — через .6em текста, остальное — в обычном ритме.
+    /// </summary>
+    public double GapInsideFootnote(MarkdownBlock previous, MarkdownBlock next) => next switch
+    {
+        MarkdownParagraphBlock or MarkdownListBlock => Math.Max(GetTextGap(FootnoteGap, FootnoteLineHeight), GetSpacing(previous).Bottom),
+        MarkdownCodeBlock => Math.Max(Em(FootnoteCodeGapRatio), GetSpacing(previous).Bottom),
+        _ => GapBetween(previous, next)
+    };
 
     public static double GetHeadingFontScale(int level) => level switch
     {
@@ -340,6 +435,7 @@ internal sealed class MarkdownDocumentMetrics
         MarkdownHorizontalRuleBlock => new(Em(HorizontalRuleGap), Em(HorizontalRuleGap)),
         MarkdownTableBlock => new(Em(TableGap), Em(TableGap)),
         MarkdownFrontMatterBlock => new(0, Em(FrontMatterGapRatio)),
+        MarkdownFootnotesBlock => new(Em(FootnotesGapRatio), 0),
         _ => new(Em(ParagraphGap), 0)
     };
 

@@ -19,6 +19,14 @@ public sealed class MarkdownDocumentTextMap
         _fragmentsByKey = fragments.ToDictionary(static fragment => fragment.Key, StringComparer.Ordinal);
     }
 
+    // Римские цифры от больших к меньшим, с вычитающими парами.
+    private static readonly (int Value, string Symbol)[] RomanDigits =
+    [
+        (1000, "M"), (900, "CM"), (500, "D"), (400, "CD"),
+        (100, "C"), (90, "XC"), (50, "L"), (40, "XL"),
+        (10, "X"), (9, "IX"), (5, "V"), (4, "IV"), (1, "I")
+    ];
+
     public static MarkdownDocumentTextMap Empty { get; } = new(string.Empty, Array.Empty<MarkdownDocumentTextFragment>());
 
     public string Text { get; }
@@ -68,21 +76,98 @@ public sealed class MarkdownDocumentTextMap
     }
 
     /// <summary>
-    /// Маркер пункта списка в text flow: «• » или «N. », где нумерация идёт от
-    /// <see cref="MarkdownListBlock.StartNumber"/>. В маркированном списке
-    /// чекбокс task list встаёт на место «•», поэтому у такого пункта маркера нет;
-    /// в нумерованном номер остаётся и идёт перед чекбоксом.
+    /// Маркер пункта списка в text flow — тот же, что на экране. Маркированный
+    /// список по уровню: «• », «◦ », с третьего уровня «▪ ». Нумерованный — номер
+    /// от <see cref="MarkdownListBlock.StartNumber"/> в виде, который написал автор
+    /// (<c>a.</c>, <c>A.</c>, <c>i.</c>, <c>I.</c>), а у списка, написанного
+    /// цифрами, — по уровню: «1. », «a. », с третьего уровня «i. ». В
+    /// маркированном списке чекбокс task list встаёт на место маркера, поэтому у
+    /// такого пункта маркера нет; в нумерованном номер остаётся и идёт перед
+    /// чекбоксом.
     /// </summary>
-    public static string GetListMarkerText(MarkdownListBlock list, int itemIndex)
+    /// <param name="list">Список.</param>
+    /// <param name="itemIndex">Номер пункта в списке с нуля.</param>
+    /// <param name="level">
+    /// Уровень списка с нуля среди списков того же вида вокруг него
+    /// (<see cref="MarkdownListNesting.LevelOf"/>).
+    /// </param>
+    public static string GetListMarkerText(MarkdownListBlock list, int itemIndex, int level)
     {
         ArgumentNullException.ThrowIfNull(list);
 
         if (list.IsOrdered)
         {
-            return string.Create(CultureInfo.InvariantCulture, $"{list.StartNumber + itemIndex}. ");
+            return FormatListNumber(list.StartNumber + itemIndex, GetShownNumbering(list, level)) + ". ";
         }
 
-        return list.Items[itemIndex].IsChecked is null ? "• " : string.Empty;
+        if (list.Items[itemIndex].IsChecked is not null)
+        {
+            return string.Empty;
+        }
+
+        return level switch
+        {
+            0 => "• ",
+            1 => "◦ ",
+            _ => "▪ "
+        };
+    }
+
+    /// <summary>
+    /// Вид номеров на экране: вид автора, если он написал буквы или римские
+    /// цифры, а у списка из цифр — по уровню: 1 → a → i.
+    /// </summary>
+    private static MarkdownListNumbering GetShownNumbering(MarkdownListBlock list, int level)
+        => list.Numbering != MarkdownListNumbering.Digits
+            ? list.Numbering
+            : level switch
+            {
+                0 => MarkdownListNumbering.Digits,
+                1 => MarkdownListNumbering.LowerAlpha,
+                _ => MarkdownListNumbering.LowerRoman
+            };
+
+    /// <summary>
+    /// Номер в виде нумерации, как <c>list-style-type</c> в CSS: буквы после
+    /// «z» идут «aa», «ab»…, римские — от 1 до 3999. Номер, которого в этом виде
+    /// нет (0 буквой, 4000 римскими), пишется цифрами.
+    /// </summary>
+    public static string FormatListNumber(int number, MarkdownListNumbering numbering) => numbering switch
+    {
+        MarkdownListNumbering.LowerAlpha when number > 0 => FormatAlpha(number, 'a'),
+        MarkdownListNumbering.UpperAlpha when number > 0 => FormatAlpha(number, 'A'),
+        MarkdownListNumbering.LowerRoman when number is > 0 and < 4000 => FormatRoman(number, upperCase: false),
+        MarkdownListNumbering.UpperRoman when number is > 0 and < 4000 => FormatRoman(number, upperCase: true),
+        _ => number.ToString(CultureInfo.InvariantCulture)
+    };
+
+    private static string FormatAlpha(int number, char first)
+    {
+        var letters = new StringBuilder();
+        for (var rest = number; rest > 0; rest = (rest - 1) / 26)
+        {
+            letters.Insert(0, (char)(first + (rest - 1) % 26));
+        }
+
+        return letters.ToString();
+    }
+
+    private static string FormatRoman(int number, bool upperCase)
+    {
+        var roman = new StringBuilder();
+        var rest = number;
+        foreach (var (value, symbol) in RomanDigits)
+        {
+            for (; rest >= value; rest -= value)
+            {
+                foreach (var letter in symbol)
+                {
+                    roman.Append(upperCase ? letter : char.ToLowerInvariant(letter));
+                }
+            }
+        }
+
+        return roman.ToString();
     }
 
     /// <summary>
@@ -100,9 +185,12 @@ public sealed class MarkdownDocumentTextMap
     public static string GetFootnoteReferenceText(int number)
         => string.Create(CultureInfo.InvariantCulture, $"[{number}]");
 
-    /// <summary>Номер сноски в блоке сносок: «1. ».</summary>
+    /// <summary>
+    /// Номер сноски в блоке сносок: «1 » — без точки, как на экране; пробел
+    /// отделяет номер от текста сноски в скопированном тексте.
+    /// </summary>
     public static string GetFootnoteMarkerText(int number)
-        => string.Create(CultureInfo.InvariantCulture, $"{number}. ");
+        => string.Create(CultureInfo.InvariantCulture, $"{number} ");
 
     /// <summary>
     /// Заголовок GitHub alert, когда локализованного нет: имя вида, как его пишет
@@ -262,6 +350,7 @@ public sealed class MarkdownDocumentTextMap
     {
         private readonly StringBuilder _text = new();
         private readonly List<MarkdownDocumentTextFragment> _fragments = new();
+        private MarkdownListNesting _listNesting;
 
         public MarkdownDocumentTextMap Build()
             => _text.Length == 0 && _fragments.Count == 0
@@ -307,13 +396,16 @@ public sealed class MarkdownDocumentTextMap
                     return;
 
                 case MarkdownListBlock list:
+                    var outerNesting = _listNesting;
+                    var level = outerNesting.LevelOf(list);
+                    _listNesting = outerNesting.Enter(list);
                     for (var itemIndex = 0; itemIndex < list.Items.Count; itemIndex++)
                     {
                         var item = list.Items[itemIndex];
                         AppendTextFragment(
                             $"{path}.i{itemIndex}.m",
                             MarkdownDocumentTextFragmentKind.ListMarker,
-                            GetListMarkerText(list, itemIndex));
+                            GetListMarkerText(list, itemIndex, level));
 
                         if (item.IsChecked is { } isChecked)
                         {
@@ -334,6 +426,7 @@ public sealed class MarkdownDocumentTextMap
                         }
                     }
 
+                    _listNesting = outerNesting;
                     AppendBlockSeparator(doubleBreak: true);
                     return;
 

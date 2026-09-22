@@ -48,6 +48,7 @@ internal sealed class MarkdownBlockStructuralComparer : IEqualityComparer<Markdo
             MarkdownListBlock list => y is MarkdownListBlock other
                 && list.IsOrdered == other.IsOrdered
                 && list.StartNumber == other.StartNumber
+                && list.Numbering == other.Numbering
                 && list.IsLoose == other.IsLoose
                 && ItemsEqual(list.Items, other.Items),
             MarkdownHorizontalRuleBlock => y is MarkdownHorizontalRuleBlock,
@@ -106,6 +107,7 @@ internal sealed class MarkdownBlockStructuralComparer : IEqualityComparer<Markdo
             case MarkdownListBlock list:
                 hash.Add(list.IsOrdered);
                 hash.Add(list.StartNumber);
+                hash.Add(list.Numbering);
                 hash.Add(list.IsLoose);
                 hash.Add(list.Items.Count);
                 foreach (var item in list.Items)

@@ -263,13 +263,20 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
         }
     }
 
+    /// <summary>
+    /// Не считать в ширину фрагмента пробелы в конце строки: номер сноски «1 »
+    /// прижат к краю колонки цифрой, а пробел нужен только в копии.
+    /// </summary>
+    public bool ExcludesTrailingWhitespaceFromWidth { get; set; }
+
     protected override Size MeasureOverride(Size availableSize)
     {
         var layout = GetOrCreateTextLayout(availableSize.Width);
+        var textWidth = ExcludesTrailingWhitespaceFromWidth ? layout.Width : layout.WidthIncludingTrailingWhitespace;
         var width = double.IsInfinity(availableSize.Width)
-            ? layout.WidthIncludingTrailingWhitespace
+            ? textWidth
             : LayoutTextWrapping == TextWrapping.NoWrap
-                ? Math.Min(availableSize.Width, Math.Ceiling(layout.WidthIncludingTrailingWhitespace))
+                ? Math.Min(availableSize.Width, Math.Ceiling(textWidth))
                 : availableSize.Width;
 
         // Высота без округления вверх: округление до пикселя делает раскладка, а
@@ -333,12 +340,22 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
     public override bool TryGetLinkAt(Point localPoint, out MarkdownLinkSpan linkSpan)
     {
         linkSpan = default;
-        if (StyledText.Links.Count == 0)
+        if (StyledText.Links.Count == 0 && StyledText.BackReferenceNumber is null)
         {
             return false;
         }
 
         var layout = GetOrCreateTextLayout(Math.Max(Bounds.Width, 1));
+        if (StyledText.BackReferenceNumber is { } backReference && layout.IsPointOnBackReference(localPoint))
+        {
+            // Иконка — вне текста фрагмента, поэтому у её ссылки пустой диапазон в конце.
+            linkSpan = new MarkdownLinkSpan(new DocumentTextRange(StyledText.Text.Length, StyledText.Text.Length), string.Empty, null)
+            {
+                Footnote = new MarkdownFootnoteLinkTarget(backReference, IsBackReference: true)
+            };
+            return true;
+        }
+
         if (!layout.IsPointInsideText(localPoint))
         {
             return false;
@@ -544,10 +561,19 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
             ResolveOptionalBrush("MmAccentBrush"),
             BaseFontFeatures,
             inlineCodeForeground: ResolveOptionalBrush("MmAccentBrush"),
-            keyboardForeground: ResolveOptionalBrush("MmTextBrush"));
+            keyboardForeground: ResolveOptionalBrush("MmTextBrush"),
+            backReferenceIcon: ResolveBackReferenceIcon());
 
         return _textLayout;
     }
+
+    /// <summary>Иконка возврата к метке сноски — приглушённым цветом темы.</summary>
+    private MarkdownBackReferenceIcon? ResolveBackReferenceIcon()
+        => StyledText.BackReferenceNumber is not null
+            && this.TryFindResource("LucideCornerUpLeftGeometry", ActualThemeVariant, out var value)
+            && value is Geometry geometry
+                ? new MarkdownBackReferenceIcon(geometry, ResolveOptionalBrush("MmTextFaintBrush") ?? ResolveBaseTextBrush())
+                : null;
 
     private FontFamily ResolveInlineCodeFontFamily()
     {
@@ -707,7 +733,7 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
 
 
     private void OnPointerMoved(object? sender, PointerEventArgs e)
-        => Cursor = StyledText.Links.Count > 0 && TryGetLinkAt(e.GetPosition(this), out _)
+        => Cursor = (StyledText.Links.Count > 0 || StyledText.BackReferenceNumber is not null) && TryGetLinkAt(e.GetPosition(this), out _)
             ? TryCreateCursor(StandardCursorType.Hand)
             : TryCreateCursor(StandardCursorType.Ibeam);
 

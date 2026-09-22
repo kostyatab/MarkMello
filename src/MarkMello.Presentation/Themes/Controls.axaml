@@ -1369,9 +1369,10 @@
     <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
 
+  <!-- Маркеры списка — цветом текста -->
   <Style Selector="TextBlock.mm-md-list-bullet">
     <Setter Property="UseLayoutRounding" Value="True" />
-    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
   </Style>
 
   <!--

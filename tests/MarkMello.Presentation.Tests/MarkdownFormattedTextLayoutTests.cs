@@ -145,6 +145,33 @@ public sealed class MarkdownFormattedTextLayoutTests
         }, CancellationToken.None);
     }
 
+    /// <summary>
+    /// Метка сноски — как sup на холсте: .75em текста, поднята на .5em своего
+    /// кегля (.375em текста), средним начертанием и в обычном, и в жирном тексте.
+    /// </summary>
+    [Theory]
+    [InlineData(14)]
+    [InlineData(18)]
+    public Task FootnoteNumberIsThreeQuartersOfTheTextRaisedByHalfItsSizeInMediumWeight(double fontSize)
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            foreach (var weight in new[] { FontWeight.Normal, FontWeight.Bold })
+            {
+                using var metrics = MarkdownFootnoteReferenceMetrics.Create(
+                    FontFamily.Default,
+                    fontSize,
+                    weight,
+                    FontStyle.Normal,
+                    Brushes.Black);
+
+                Assert.Equal(fontSize * 0.75, metrics.FontSize, 3);
+                Assert.Equal(metrics.FontSize * 0.5, metrics.Raise, 3);
+                Assert.Equal(FontWeight.Medium, metrics.Typeface.Weight);
+            }
+        }, CancellationToken.None);
+    }
+
     [Fact]
     public Task StrikethroughStyleDrawsStrikethroughInTextForegroundWithoutBold()
     {

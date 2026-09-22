@@ -8,6 +8,7 @@ internal sealed class MarkdownDisplayLayoutModel
     private const char LeftCodePaddingMarker = '\uE000';
     private const char RightCodePaddingMarker = '\uE001';
     private const char KeyboardGapMarker = '\uE002';
+    private const char BackReferenceMarker = '\uE003';
 
     private readonly int[] _displayCaretToCanonicalCaret;
     private readonly int[] _canonicalCaretToDisplayStart;
@@ -191,12 +192,20 @@ internal sealed class MarkdownDisplayLayoutModel
                 index = end;
             }
 
+            // Каретки, у которых есть место в тексте: иконка возврата в конце сноски
+            // стоит после них, и ни выделение, ни подсветка поиска на неё не заходят.
+            var textCaretCount = _displayCaretToCanonicalCaret.Count;
+            if (_styledText.BackReferenceNumber is not null)
+            {
+                AppendPadding(MarkdownDisplaySegmentKind.FootnoteBackReference, BackReferenceMarker, MarkdownInlineStyleState.Default);
+            }
+
             var canonicalLength = _styledText.Text.Length;
             var canonicalCaretToDisplayStart = new int[canonicalLength + 1];
             var canonicalCaretToDisplayEnd = new int[canonicalLength + 1];
             Array.Fill(canonicalCaretToDisplayStart, -1);
 
-            for (var displayCaret = 0; displayCaret < _displayCaretToCanonicalCaret.Count; displayCaret++)
+            for (var displayCaret = 0; displayCaret < textCaretCount; displayCaret++)
             {
                 var canonicalCaret = _displayCaretToCanonicalCaret[displayCaret];
                 if (canonicalCaretToDisplayStart[canonicalCaret] < 0)
@@ -424,5 +433,8 @@ internal enum MarkdownDisplaySegmentKind
     FootnoteReference,
 
     /// <summary>Зазор между клавишами, стоящими вплотную.</summary>
-    KeyboardGap
+    KeyboardGap,
+
+    /// <summary>Иконка возврата к метке в конце сноски — только на экране.</summary>
+    FootnoteBackReference
 }

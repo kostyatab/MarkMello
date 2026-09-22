@@ -185,12 +185,32 @@ internal static class TelegramMarkdownV2Writer
         string path,
         MarkdownSelectionFormatContext context)
     {
+        var outerNesting = context.ListNesting;
+        var level = outerNesting.LevelOf(list);
+        context.ListNesting = outerNesting.Enter(list);
+        try
+        {
+            return AppendListItems(builder, list, level, path, context);
+        }
+        finally
+        {
+            context.ListNesting = outerNesting;
+        }
+    }
+
+    private static bool AppendListItems(
+        StringBuilder builder,
+        MarkdownListBlock list,
+        int level,
+        string path,
+        MarkdownSelectionFormatContext context)
+    {
         var appended = false;
         for (var itemIndex = 0; itemIndex < list.Items.Count; itemIndex++)
         {
             var item = list.Items[itemIndex];
             var itemBuilder = new StringBuilder();
-            var marker = MarkdownDocumentTextMap.GetListMarkerText(list, itemIndex);
+            var marker = MarkdownDocumentTextMap.GetListMarkerText(list, itemIndex, level);
             AppendTextFragment(itemBuilder, $"{path}.i{itemIndex}.m", marker, context, MarkdownV2Escaper.EscapeText);
             if (item.IsChecked is { } isChecked)
             {
@@ -225,7 +245,7 @@ internal static class TelegramMarkdownV2Writer
         return appended;
     }
 
-    /// <summary>Сноски — как нумерованный список: «1\. текст сноски».</summary>
+    /// <summary>Сноски — как нумерованный список: «1 текст сноски».</summary>
     private static bool AppendFootnotes(
         StringBuilder builder,
         MarkdownFootnotesBlock footnotes,

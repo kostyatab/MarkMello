@@ -20,6 +20,13 @@ internal sealed class MarkdownSelectionFormatContext
 
     public bool IsSelection => _textMap is not null;
 
+    /// <summary>
+    /// Вложенность списков в том месте, где сейчас идёт обход документа: от неё
+    /// зависит маркер пункта. Писатель заходит в список через
+    /// <see cref="MarkdownListNesting.Enter"/> и восстанавливает значение на выходе.
+    /// </summary>
+    public MarkdownListNesting ListNesting { get; set; }
+
     /// <param name="alertTitle">
     /// Заголовки GitHub alerts — те же, что показывает viewer. Без них —
     /// <see cref="MarkdownDocumentTextMap.GetDefaultAlertTitle"/>.

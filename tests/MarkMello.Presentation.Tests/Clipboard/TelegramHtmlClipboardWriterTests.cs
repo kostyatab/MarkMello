@@ -82,6 +82,44 @@ public sealed class TelegramHtmlClipboardWriterTests
         Assert.Equal("☑ done<br>☐ open<br>• plain", result);
     }
 
+    /// <summary>Маркеры в копии — те же, что на экране: по уровню и в виде автора.</summary>
+    [Fact]
+    public void FormatSelectionHtmlMarksNestedListsByLevelLikeTheScreen()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownListBlock(false,
+            [
+                new MarkdownListItem(
+                [
+                    new MarkdownParagraphBlock([new MarkdownTextInline("one")]),
+                    new MarkdownListBlock(false,
+                    [
+                        new MarkdownListItem(
+                        [
+                            new MarkdownParagraphBlock([new MarkdownTextInline("two")]),
+                            new MarkdownListBlock(false, [new MarkdownListItem([new MarkdownParagraphBlock([new MarkdownTextInline("three")])])])
+                        ])
+                    ])
+                ])
+            ]),
+            new MarkdownListBlock(true,
+            [
+                new MarkdownListItem(
+                [
+                    new MarkdownParagraphBlock([new MarkdownTextInline("first")]),
+                    new MarkdownListBlock(true, [new MarkdownListItem([new MarkdownParagraphBlock([new MarkdownTextInline("sub")])])]),
+                    new MarkdownListBlock(true, [new MarkdownListItem([new MarkdownParagraphBlock([new MarkdownTextInline("roman")])])], StartNumber: 3, Numbering: MarkdownListNumbering.UpperRoman)
+                ])
+            ])
+        ]);
+
+        var textMap = MarkdownDocumentTextMap.Create(document);
+        var result = TelegramMarkdownFormatter.FormatSelectionHtml(document, new DocumentTextRange(0, textMap.Text.Length));
+
+        Assert.Equal("• one<br><br>◦ two<br><br>▪ three<br><br>1. first<br><br>a. sub<br><br>III. roman", result);
+    }
+
     [Fact]
     public void FormatSelectionHtmlKeepsTheStartNumberOfOrderedList()
     {
@@ -116,7 +154,7 @@ public sealed class TelegramHtmlClipboardWriterTests
         var textMap = MarkdownDocumentTextMap.Create(document);
         var result = TelegramMarkdownFormatter.FormatSelectionHtml(document, new DocumentTextRange(0, textMap.Text.Length));
 
-        Assert.Equal("Markdig[1]<br><br>1. Fast &amp; small.", result);
+        Assert.Equal("Markdig[1]<br><br>1 Fast &amp; small.", result);
     }
 
     [Fact]

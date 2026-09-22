@@ -16,6 +16,13 @@ internal sealed record MarkdownStyledText(
     public IReadOnlyList<MarkdownFootnoteReferenceSpan> FootnoteReferences { get; init; } =
         FootnoteReferences ?? Array.Empty<MarkdownFootnoteReferenceSpan>();
 
+    /// <summary>
+    /// Сноска, к метке которой ведёт иконка возврата в конце текста, — у
+    /// последнего абзаца сноски. Иконка только на экране: в <see cref="Text"/>,
+    /// выделение и копию она не попадает.
+    /// </summary>
+    public int? BackReferenceNumber { get; init; }
+
     public static MarkdownStyledText Empty { get; } = new(
         string.Empty,
         Array.Empty<MarkdownTextStyleSpan>(),
@@ -23,7 +30,7 @@ internal sealed record MarkdownStyledText(
         Array.Empty<MarkdownInlineImageSpan>());
 
     /// <summary>
-    /// Номер сноски в блоке сносок («1. »): сам номер — ссылка обратно к метке в тексте.
+    /// Номер сноски в блоке сносок («1 »): сам номер — ссылка обратно к метке в тексте.
     /// </summary>
     public static MarkdownStyledText ForFootnoteMarker(int number)
     {
