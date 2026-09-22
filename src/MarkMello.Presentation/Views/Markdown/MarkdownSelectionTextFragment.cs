@@ -272,7 +272,10 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
                 ? Math.Min(availableSize.Width, Math.Ceiling(layout.WidthIncludingTrailingWhitespace))
                 : availableSize.Width;
 
-        return new Size(width, Math.Ceiling(layout.Height));
+        // Высота без округления вверх: округление до пикселя делает раскладка, а
+        // Math.Ceiling копил бы по полпикселя на каждом блоке, и к концу страницы
+        // текст уезжал бы от макета на несколько пикселей.
+        return new Size(width, layout.Height);
     }
 
     public override void Render(DrawingContext context)
@@ -624,7 +627,7 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
         var codeRadius = BaseFontSize * MarkdownDocumentMetrics.InlineCodeFontScale * MarkdownDocumentMetrics.InlineCodeCornerRadius;
         var keyFill = ResolveOptionalBrush("MmKeyboardBackgroundBrush");
         var keyEdge = ResolveOptionalBrush("MmKeyboardBorderBrush");
-        var keyPen = keyEdge is null ? null : new Pen(keyEdge, 1);
+        var keyPen = keyEdge is null ? null : new Pen(keyEdge, MarkdownKeyboardKeyMetrics.KeyboardBorderThickness);
         var keyRadius = BaseFontSize * MarkdownDocumentMetrics.KeyboardCornerRadius;
 
         foreach (var codeBox in layout.CodeBoxes)

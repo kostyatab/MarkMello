@@ -262,9 +262,11 @@ public sealed class MarkdownDocumentStyleTests
             Assert.Equal(code.Height, squareKey.Height, Tolerance);
             Assert.Equal(code.Top, squareKey.Top, Tolerance);
 
-            // «O» — квадрат, длинная подпись — шире с полями .36em по бокам.
+            // «O» — квадрат, длинная подпись — шире: поля .36em по бокам внутри
+            // рамки 1 px, как padding и border в CSS.
             Assert.Equal(squareKey.Height, squareKey.Width, 0.5);
-            Assert.True(wideKey.Width > wideKey.Height);
+            using var label = new Avalonia.Media.TextFormatting.TextLayout("Shift", new Typeface(Sans), 14 * 0.8, Brushes.Black);
+            Assert.Equal(label.WidthIncludingTrailingWhitespace + 2 * (14 * 0.36 + 1), wideKey.Width, 0.5);
 
             // Строку плашки не раздвигают.
             Assert.Equal(14 * 1.6, Assert.Single(layout.GetLineMetrics()).Bounds.Height, 0.5);

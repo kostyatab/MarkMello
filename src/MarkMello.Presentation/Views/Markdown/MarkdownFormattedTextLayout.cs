@@ -803,6 +803,9 @@ internal readonly record struct MarkdownInlineCodePadMetrics(
 /// </summary>
 internal sealed class MarkdownKeyboardKeyMetrics
 {
+    /// <summary>Толщина рамки клавиши.</summary>
+    public const double KeyboardBorderThickness = 1;
+
     private readonly Dictionary<string, double> _sideWidths = new(StringComparer.Ordinal);
     private readonly Typeface _typeface;
     private readonly double _keyFontSize;
@@ -813,7 +816,8 @@ internal sealed class MarkdownKeyboardKeyMetrics
     {
         _typeface = typeface;
         _keyFontSize = keyFontSize;
-        _padding = textFontSize * MarkdownDocumentMetrics.KeyboardHorizontalPadding;
+        // Поле .36em — внутри рамки, как padding в CSS: рамка 1 px добавляется к нему.
+        _padding = textFontSize * MarkdownDocumentMetrics.KeyboardHorizontalPadding + KeyboardBorderThickness;
         _minWidth = height;
         Gap = textFontSize * MarkdownDocumentMetrics.KeyboardGap;
     }
