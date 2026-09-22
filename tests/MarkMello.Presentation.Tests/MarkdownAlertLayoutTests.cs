@@ -16,10 +16,10 @@ using AvaloniaApplication = Avalonia.Application;
 namespace MarkMello.Presentation.Tests;
 
 /// <summary>
-/// GitHub alert рисуется как на GitHub: полоса цвета вида, шапка с иконкой Lucide
-/// и заголовком того же цвета, тело — обычным, не курсивным текстом. Заголовок —
-/// часть текста документа: выделяется, ищется и копируется вместе с alert
-/// (ADR-0001), на языке интерфейса. Обычная цитата выглядит как раньше.
+/// GitHub alert — плашка цвета вида без полосы: иконка Lucide в своей колонке
+/// слева, справа заголовок того же цвета и тело обычным, не курсивным текстом.
+/// Заголовок — часть текста документа: выделяется, ищется и копируется вместе с
+/// alert (ADR-0001), на языке интерфейса. Обычная цитата остаётся цитатой.
 /// </summary>
 [Collection(AvaloniaHeadlessTestGroup.Name)]
 public sealed class MarkdownAlertLayoutTests
@@ -40,16 +40,26 @@ public sealed class MarkdownAlertLayoutTests
             Assert.Contains("mm-md-alert-note", alert.Classes);
 
             var (icon, title) = Header(alert);
-            var iconSize = Math.Round(ReadingPreferences.Default.FontSize * 1.25);
+            var fontSize = ReadingPreferences.Default.FontSize;
+            var iconSize = Math.Round(fontSize * 1.15);
             Assert.Equal(iconSize, icon.Width);
             Assert.Equal(iconSize, icon.Height);
             Assert.Contains("mm-md-alert-note", icon.Classes);
+
+            // Иконка — в своей колонке слева и чуть ниже верха заголовка, текст — справа от неё.
+            Assert.Equal(0, Grid.GetColumn(icon));
+            Assert.Equal(1, Grid.GetColumn(Stack(alert)));
+            Assert.Equal(fontSize * 0.2, icon.Margin.Top, 3);
+            Assert.Equal(fontSize * 0.6, Assert.IsType<Grid>(alert.Child).ColumnSpacing, 3);
+            Assert.Equal(new Thickness(fontSize * 0.8, fontSize * 0.85, fontSize, fontSize * 0.85), alert.Padding);
+            Assert.Equal(new CornerRadius(fontSize * 4 / 14), alert.CornerRadius);
             Assert.Equal("Note", title.StyledText.Text);
             Assert.Equal(FontWeight.SemiBold, title.BaseFontWeight);
             Assert.Equal("MmAlertNoteBrush", title.BaseForegroundResourceKey);
 
             var body = Assert.IsType<MarkdownSelectionTextFragment>(Body(alert)[0]);
             Assert.Equal("Useful information.", body.StyledText.Text);
+            Assert.Equal(fontSize * 0.15, body.Margin.Top, 3);
             Assert.Equal(FontStyle.Normal, body.BaseFontStyle);
             Assert.Null(body.BaseForeground);
         }, CancellationToken.None);
@@ -77,14 +87,14 @@ public sealed class MarkdownAlertLayoutTests
             var window = Show(view);
 
             var alert = Assert.IsType<Border>(Root(view).Children[0]);
-            var header = Stack(alert).Children[0];
+            var header = Header(alert).Title;
             var lastText = alert.GetVisualDescendants().OfType<MarkdownSelectionTextFragment>().Last();
             var above = header.TranslatePoint(default, alert)!.Value.Y;
             var below = alert.Bounds.Height - lastText.TranslatePoint(new Point(0, lastText.Bounds.Height), alert)!.Value.Y;
 
-            // У вложенной цитаты под текстом остаётся только её собственный
-            // внутренний отступ — такой же, как у неё сверху.
-            var nestedQuotePadding = Body(alert)[^1] is Border nested ? nested.Padding.Bottom : 0;
+            // У цитаты внутри alert под текстом остаётся только её собственное
+            // поле — такое же, как у неё сверху.
+            var nestedQuotePadding = Body(alert)[^1] is Border nested ? Stack(nested).Margin.Bottom : 0;
             Assert.Equal(above + nestedQuotePadding, below, 0.5);
 
             // Между блоками внутри alert просвет остаётся.
@@ -127,13 +137,13 @@ public sealed class MarkdownAlertLayoutTests
 
             var quote = TopLevelQuote(view);
             Assert.Equal(["mm-md-quote"], quote.Classes);
+            Assert.Contains("mm-md-quote-mark", Assert.Single(quote.GetVisualDescendants().OfType<LucideIcon>()).Classes);
 
             var paragraph = Assert.IsType<MarkdownSelectionTextFragment>(Assert.Single(Stack(quote).Children));
             Assert.Equal("Just a quote.", paragraph.StyledText.Text);
             // Несколько строк курсивом читать тяжело: цитата — прямым шрифтом цветом текста.
             Assert.Equal(FontStyle.Normal, paragraph.BaseFontStyle);
             Assert.Null(paragraph.BaseForeground);
-            Assert.Empty(quote.GetVisualDescendants().OfType<LucideIcon>());
         }, CancellationToken.None);
     }
 
@@ -165,14 +175,17 @@ public sealed class MarkdownAlertLayoutTests
             var alert = TopLevelQuote(view);
             var (icon, title) = Header(alert);
             var brush = Resource<IBrush>(window, brushKey, theme);
+            var background = Resource<ISolidColorBrush>(window, brushKey.Replace("Brush", "BackgroundBrush", StringComparison.Ordinal), theme);
 
             Assert.Same(Resource<Geometry>(window, geometryKey, theme), icon.Data);
             Assert.Same(brush, icon.Foreground);
-            Assert.Same(brush, alert.BorderBrush);
             Assert.Equal(brushKey, title.BaseForegroundResourceKey);
 
-            // Цвет вида отличается от серой полосы обычной цитаты.
-            Assert.NotSame(Resource<IBrush>(window, "MmQuoteBarBrush", theme), alert.BorderBrush);
+            // Плашка — цвет вида с прозрачностью 8 % в светлой теме и 10 % в тёмной, без полосы.
+            Assert.Same(background, alert.Background);
+            var colour = Assert.IsAssignableFrom<ISolidColorBrush>(brush).Color;
+            Assert.Equal(Color.FromArgb(themeName == "Light" ? (byte)0x14 : (byte)0x1A, colour.R, colour.G, colour.B), background.Color);
+            Assert.Equal(default, alert.BorderThickness);
 
             window.Close();
         }, CancellationToken.None);
@@ -197,7 +210,7 @@ public sealed class MarkdownAlertLayoutTests
 
             var dark = Resource<IBrush>(window, "MmAlertWarningBrush", ThemeVariant.Dark);
             Assert.Same(alert, TopLevelQuote(view));
-            Assert.Same(dark, alert.BorderBrush);
+            Assert.Same(Resource<IBrush>(window, "MmAlertWarningBackgroundBrush", ThemeVariant.Dark), alert.Background);
             Assert.Same(dark, icon.Foreground);
             Assert.Same(dark, title.ResolveBaseTextBrush());
 
@@ -426,15 +439,20 @@ public sealed class MarkdownAlertLayoutTests
     private static Border TopLevelQuote(MarkdownDocumentView view)
         => Assert.IsType<Border>(Assert.Single(Root(view).Children));
 
-    private static StackPanel Stack(Border quote) => Assert.IsType<StackPanel>(quote.Child);
+    /// <summary>Блоки цитаты или alert: у цитаты рядом значок, у alert — иконка.</summary>
+    private static StackPanel Stack(Border quote) => quote.Child switch
+    {
+        StackPanel stack => stack,
+        Grid grid => Assert.Single(grid.Children.OfType<StackPanel>()),
+        var child => throw new InvalidOperationException($"Unexpected quote content {child}")
+    };
 
     private static (LucideIcon Icon, MarkdownSelectionTextFragment Title) Header(Border alert)
     {
-        var header = Assert.IsType<StackPanel>(Stack(alert).Children[0]);
-        Assert.Equal(Orientation.Horizontal, header.Orientation);
+        var grid = Assert.IsType<Grid>(alert.Child);
         return (
-            Assert.IsType<LucideIcon>(header.Children[0]),
-            Assert.IsType<MarkdownSelectionTextFragment>(header.Children[1]));
+            Assert.Single(grid.Children.OfType<LucideIcon>()),
+            Assert.IsType<MarkdownSelectionTextFragment>(Stack(alert).Children[0]));
     }
 
     private static Control[] Body(Border alert) => Stack(alert).Children.Skip(1).ToArray();

@@ -508,7 +508,8 @@ public sealed class MarkdownTableLayoutTests
             await WaitUntilAsync(() =>
             {
                 window.UpdateLayout();
-                return Cell(panel, 1, 0).Child!.Bounds.Height is > 1 and < PlaceholderImageHeight - 1;
+                var image = Assert.IsType<MarkdownImageFlowFragment>(Cell(panel, 1, 0).Child);
+                return image.Bounds.Height is > 1 && image.Bounds.Height < PlaceholderImageHeight(image) - 1;
             });
 
             // Обе картинки ужаты до половины колонки и стоят рядом, без прокрутки.
@@ -738,8 +739,8 @@ public sealed class MarkdownTableLayoutTests
     private static double Right(Visual control, Visual relativeTo)
         => control.TranslatePoint(new Point(control.Bounds.Width, 0), relativeTo)!.Value.X;
 
-    /// <summary>Высота заглушки одиночной картинки, пока она не загрузилась.</summary>
-    private const double PlaceholderImageHeight = 180;
+    /// <summary>Высота заглушки одиночной картинки, пока она не загрузилась: 180 px при тексте 14.</summary>
+    private static double PlaceholderImageHeight(MarkdownImageFlowFragment image) => image.BaseFontSize * 180 / 14;
 
     private static MarkdownTableCell Image(string url) => new([new MarkdownImageInline(url, url, null)]);
 

@@ -51,16 +51,8 @@ public sealed class MarkdownDocumentView : UserControl
         AvaloniaProperty.Register<MarkdownDocumentView, IImageSourceResolver?>(nameof(ImageSourceResolver));
 
     private const double DragSelectionThreshold = 4;
-    private const double CodeBlockHorizontalScrollBarReserve = 16;
     private const double TableHorizontalScrollBarReserve = 16;
     private static readonly TimeSpan CodeCopyConfirmationDuration = TimeSpan.FromSeconds(1.5);
-
-    // The code block copy button is a 24px hit target around a 13px Lucide icon.
-    // What has to line up with the info label is the icon's ink (2..22 of the
-    // 24 grid), not the button box, so the button is shifted out by this inset.
-    private const double CodeCopyButtonSize = 24;
-    private const double CodeCopyIconSize = 13;
-    private const double CodeCopyIconInkInset = (CodeCopyButtonSize - CodeCopyIconSize) / 2 + CodeCopyIconSize * 2 / 24;
 
     private static readonly DataFormat<byte[]> WindowsHtmlClipboardFormat = DataFormat.CreateBytesPlatformFormat("HTML Format");
     private static readonly DataFormat<byte[]> HtmlClipboardFormat = DataFormat.CreateBytesPlatformFormat("text/html");
@@ -100,8 +92,14 @@ public sealed class MarkdownDocumentView : UserControl
     // Метрики текущих настроек чтения; пересчитываются в начале каждой пересборки.
     private MarkdownDocumentMetrics _metrics = new(ReadingPreferences.Default);
 
+    // Глубина цитат во время сборки: цитата внутри цитаты рисуется без плашки.
+    private int _quoteDepth;
+
     // Заголовки GitHub alerts, с которыми построены текстовая карта и блоки.
     private MarkdownAlertTitles _alertTitles = MarkdownAlertTitles.Create(GetLocalizedString);
+
+    // Заголовки неудавшейся диаграммы, с которыми построены блоки.
+    private MarkdownDiagramStrings _diagramStrings = CreateDiagramStrings();
     private ILocalizationService? _localization;
     private bool _isPointerPressed;
     private bool _isDraggingSelection;
@@ -187,7 +185,7 @@ public sealed class MarkdownDocumentView : UserControl
         }
 
         // Язык мог смениться, пока view не было в дереве.
-        RefreshAlertTitles();
+        RefreshLocalizedBlocks();
     }
 
     private void OnDetachedFromVisualTree(object? sender, VisualTreeAttachmentEventArgs e)
@@ -803,8 +801,11 @@ public sealed class MarkdownDocumentView : UserControl
         // документе были alert, блоки строятся заново, иначе у переиспользованного
         // alert остался бы заголовок на прежнем языке.
         var alertTitles = MarkdownAlertTitles.Create(GetLocalizedString);
-        var canReuseBlocks = alertTitles.HasSameTitles(_alertTitles) || !HasAlertTitles(_textMap);
+        var diagramStrings = CreateDiagramStrings();
+        var canReuseBlocks = (alertTitles.HasSameTitles(_alertTitles) || !HasAlertTitles(_textMap))
+            && (diagramStrings == _diagramStrings || document is null || !ContainsDiagram(document.Blocks));
         _alertTitles = alertTitles;
+        _diagramStrings = diagramStrings;
 
         _textMap = document is null
             ? MarkdownDocumentTextMap.Empty
@@ -1451,8 +1452,8 @@ public sealed class MarkdownDocumentView : UserControl
         _sourceLineAnchors.Add(new MarkdownSourceLineVisualAnchor(control, sourceSpan));
     }
 
-    private static MarkdownDiagramBlockView BuildDiagramBlock(MarkdownDiagramBlock block)
-        => new(block);
+    private MarkdownDiagramBlockView BuildDiagramBlock(MarkdownDiagramBlock block)
+        => new(block, CreateBlockTypography(), _diagramStrings, BuildDiagramSourceBlock);
 
     private MarkdownImageView BuildImageBlock(MarkdownImageBlock block)
         => new(
@@ -1462,11 +1463,28 @@ public sealed class MarkdownDocumentView : UserControl
             title: block.Title,
             width: block.Width,
             height: block.Height,
-            baseDirectory: Document?.BaseDirectory)
+            baseDirectory: Document?.BaseDirectory,
+            typography: CreateBlockTypography(),
+            loadingText: GetLocalizedString("ImageLoading", "Loading…"));
+
+    private MarkdownBlockTypography CreateBlockTypography()
+        => new(_metrics, ResolveBodyFontFamily(), ResolveMonoFontFamily());
+
+    private static MarkdownDiagramStrings CreateDiagramStrings()
+        => new(
+            GetLocalizedString("DiagramRenderFailed", MarkdownDiagramStrings.English.RenderFailed),
+            GetLocalizedString("DiagramSvgUnsupported", MarkdownDiagramStrings.English.SvgUnsupported));
+
+    /// <summary>Есть ли в блоках диаграмма — на любой глубине: в цитате, списке, сноске.</summary>
+    private static bool ContainsDiagram(IEnumerable<MarkdownBlock> blocks)
+        => blocks.Any(static block => block switch
         {
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            MaxWidth = 1200,
-        };
+            MarkdownDiagramBlock => true,
+            MarkdownQuoteBlock quote => ContainsDiagram(quote.Blocks),
+            MarkdownListBlock list => list.Items.Any(static item => ContainsDiagram(item.Blocks)),
+            MarkdownFootnotesBlock footnotes => footnotes.Footnotes.Any(static footnote => ContainsDiagram(footnote.Blocks)),
+            _ => false
+        });
 
     private Control BuildHeading(MarkdownHeadingBlock block, string path)
     {
@@ -1501,21 +1519,73 @@ public sealed class MarkdownDocumentView : UserControl
             FontStyle.Normal,
             fallbackClassName: "mm-md-paragraph");
 
+    /// <summary>
+    /// Цитата — тёплая плашка с полосой слева и значком кавычек в правом верхнем
+    /// углу. Цитата внутри цитаты — только полоса, без плашки и значка: вложенность
+    /// читается по отступу, а не по стопке плашек. GitHub alert строится своим
+    /// видом (<see cref="BuildAlert"/>).
+    /// </summary>
     private Border BuildQuote(MarkdownQuoteBlock block, string path)
     {
+        if (block.AlertKind is { } alertKind)
+        {
+            return BuildAlert(block, alertKind, path);
+        }
+
+        var isNested = _quoteDepth > 0;
         var stack = new StackPanel
         {
             Orientation = Orientation.Vertical,
             Spacing = 0
         };
 
-        var border = new Border
+        _quoteDepth++;
+        try
         {
-            Classes = { "mm-md-quote" },
-            Padding = new Thickness(_metrics.QuoteHorizontalPadding, _metrics.QuoteVerticalPadding, 0, _metrics.QuoteVerticalPadding),
-            Child = stack
+            stack.Children.AddRange(BuildQuoteChildren(block, path));
+        }
+        finally
+        {
+            _quoteDepth--;
+        }
+
+        if (isNested)
+        {
+            return new Border
+            {
+                Classes = { "mm-md-quote", "mm-md-quote-nested" },
+                Padding = new Thickness(_metrics.NestedQuoteLeftPadding, 0, 0, 0),
+                Child = stack
+            };
+        }
+
+        stack.Margin = _metrics.QuotePadding;
+        var markSize = _metrics.QuoteMarkSize;
+        var mark = new LucideIcon
+        {
+            Width = markSize,
+            Height = markSize,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, _metrics.QuoteMarkTop, _metrics.QuoteMarkRight, 0),
+            Classes = { "mm-md-quote-mark" }
         };
 
+        return new Border
+        {
+            Classes = { "mm-md-quote" },
+            CornerRadius = new CornerRadius(_metrics.QuoteCornerRadius),
+            Child = new Grid { Children = { stack, mark } }
+        };
+    }
+
+    /// <summary>
+    /// Блоки цитаты в ритме документа; вложенная цитата стоит ближе к тексту над
+    /// ней, чем абзац, — она продолжает ту же цитату. Нижний просвет блока над
+    /// ней (у таблицы) по-прежнему не складывается, а берётся больший.
+    /// </summary>
+    private Control[] BuildQuoteChildren(MarkdownQuoteBlock block, string path)
+    {
         var children = new Control[block.Blocks.Count];
         for (var index = 0; index < block.Blocks.Count; index++)
         {
@@ -1524,40 +1594,45 @@ public sealed class MarkdownDocumentView : UserControl
 
         ApplyBlockRhythm(block.Blocks, children);
 
-        if (block.AlertKind is { } alertKind)
+        if (_quoteDepth > 0)
         {
-            var kindClass = GetAlertClass(alertKind);
-            border.Classes.Add("mm-md-alert");
-            border.Classes.Add(kindClass);
-            stack.Children.Add(BuildAlertHeader(alertKind, kindClass, path));
-
-            // Шапка — не блок документа: от неё до текста alert свой, меньший просвет.
-            if (children.Length > 0)
+            for (var index = 1; index < children.Length; index++)
             {
-                SetBlockGap(children[0], _metrics.AlertHeaderGap);
+                if (block.Blocks[index] is MarkdownQuoteBlock { AlertKind: null })
+                {
+                    SetBlockGap(
+                        children[index],
+                        Math.Max(_metrics.NestedQuoteGap, _metrics.GetSpacing(block.Blocks[index - 1]).Bottom));
+                }
             }
         }
 
-        stack.Children.AddRange(children);
-        return border;
+        return children;
     }
 
     /// <summary>
-    /// Шапка GitHub alert: иконка и заголовок цвета вида. Заголовок — фрагмент
-    /// текстового потока (выделяется, ищется и копируется вместе с alert), иконка —
-    /// только украшение. Иконку и цвет полосы задают стили по классу вида
+    /// GitHub alert — плашка цвета вида без полосы: иконка в своей колонке слева,
+    /// справа заголовок и текст. Заголовок — фрагмент текстового потока
+    /// (выделяется, ищется и копируется вместе с alert), иконка — только
+    /// украшение. Иконку и цвет плашки задают стили по классу вида
     /// (<c>Themes/Controls.axaml</c>).
     /// </summary>
-    private StackPanel BuildAlertHeader(MarkdownAlertKind kind, string kindClass, string path)
+    private Border BuildAlert(MarkdownQuoteBlock block, MarkdownAlertKind kind, string path)
     {
-        var iconSize = _metrics.AlertIconSize;
-        var icon = new LucideIcon
+        var kindClass = GetAlertClass(kind);
+
+        // Внутри alert цитата снова своя, с плашкой: alert — не цитата.
+        var quoteDepth = _quoteDepth;
+        _quoteDepth = 0;
+        Control[] children;
+        try
         {
-            Width = iconSize,
-            Height = iconSize,
-            VerticalAlignment = VerticalAlignment.Center,
-            Classes = { "mm-md-alert-icon", kindClass }
-        };
+            children = BuildQuoteChildren(block, path);
+        }
+        finally
+        {
+            _quoteDepth = quoteDepth;
+        }
 
         var title = BuildSelectionFragment(
             $"{path}.a",
@@ -1570,13 +1645,43 @@ public sealed class MarkdownDocumentView : UserControl
             fallbackClassName: "mm-md-alert-title",
             textWrapping: TextWrapping.NoWrap,
             baseForegroundResourceKey: GetAlertBrushKey(kind));
-        title.VerticalAlignment = VerticalAlignment.Center;
 
-        return new StackPanel
+        // Шапка — не блок документа: от неё до текста alert свой, меньший просвет.
+        if (children.Length > 0)
         {
-            Orientation = Orientation.Horizontal,
-            Spacing = _metrics.AlertIconTitleGap,
-            Children = { icon, title }
+            SetBlockGap(children[0], _metrics.AlertTitleGap);
+        }
+
+        var stack = new StackPanel
+        {
+            Orientation = Orientation.Vertical,
+            Spacing = 0
+        };
+        stack.Children.Add(title);
+        stack.Children.AddRange(children);
+        Grid.SetColumn(stack, 1);
+
+        var iconSize = _metrics.AlertIconSize;
+        var icon = new LucideIcon
+        {
+            Width = iconSize,
+            Height = iconSize,
+            VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, _metrics.AlertIconTop, 0, 0),
+            Classes = { "mm-md-alert-icon", kindClass }
+        };
+
+        return new Border
+        {
+            Classes = { "mm-md-quote", "mm-md-alert", kindClass },
+            CornerRadius = new CornerRadius(_metrics.AlertCornerRadius),
+            Padding = _metrics.AlertPadding,
+            Child = new Grid
+            {
+                ColumnDefinitions = new ColumnDefinitions("Auto,*"),
+                ColumnSpacing = _metrics.AlertIconColumnGap,
+                Children = { icon, stack }
+            }
         };
     }
 
@@ -1601,28 +1706,34 @@ public sealed class MarkdownDocumentView : UserControl
     };
 
     private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)
-        => RefreshAlertTitles();
+        => RefreshLocalizedBlocks();
 
     /// <summary>
-    /// Смена языка меняет заголовки alert, а с ними и текстовый поток: документ
-    /// с alert пересобирается. Смена языка шлёт несколько уведомлений подряд —
-    /// пересборка случается на первом, остальные видят те же заголовки.
+    /// Смена языка меняет заголовки alert, а с ними и текстовый поток, и
+    /// заголовки неудавшихся диаграмм: документ с ними пересобирается. Смена
+    /// языка шлёт несколько уведомлений подряд — пересборка случается на первом,
+    /// остальные видят те же строки.
     /// </summary>
-    private void RefreshAlertTitles()
+    private void RefreshLocalizedBlocks()
     {
         var alertTitles = MarkdownAlertTitles.Create(GetLocalizedString);
-        if (alertTitles.HasSameTitles(_alertTitles))
+        var diagramStrings = CreateDiagramStrings();
+        var alertTitlesChanged = !alertTitles.HasSameTitles(_alertTitles);
+        var diagramStringsChanged = diagramStrings != _diagramStrings;
+        if (!alertTitlesChanged && !diagramStringsChanged)
         {
             return;
         }
 
-        if (HasAlertTitles(_textMap))
+        if ((alertTitlesChanged && HasAlertTitles(_textMap))
+            || (diagramStringsChanged && Document is { } document && ContainsDiagram(document.Blocks)))
         {
             Rebuild();
             return;
         }
 
         _alertTitles = alertTitles;
+        _diagramStrings = diagramStrings;
     }
 
     private static bool HasAlertTitles(MarkdownDocumentTextMap textMap)
@@ -1867,31 +1978,12 @@ public sealed class MarkdownDocumentView : UserControl
 
     private Border BuildCodeBlock(MarkdownCodeBlock block, string path)
     {
-        var body = new StackPanel
-        {
-            Orientation = Orientation.Vertical,
-            Spacing = 8
-        };
-
-        TextBlock? infoLabel = null;
-        if (!string.IsNullOrWhiteSpace(block.Info))
-        {
-            infoLabel = new TextBlock
-            {
-                Text = block.Info,
-                UseLayoutRounding = true,
-                Classes = { "mm-md-code-info" }
-            };
-            body.Children.Add(infoLabel);
-        }
-
-        var codeLineHeight = Math.Max(16, (ReadingPreferences.FontSize - 2) * 1.5);
         var codeFragment = BuildSelectionFragment(
             path,
             [new MarkdownTextInline(block.Code)],
             margin: default,
-            fontSize: Math.Max(12, ReadingPreferences.FontSize - 2),
-            lineHeight: codeLineHeight,
+            fontSize: _metrics.CodeBlockFontSize,
+            lineHeight: _metrics.CodeBlockLineHeight,
             fontWeight: FontWeight.Normal,
             fontStyle: FontStyle.Normal,
             fallbackClassName: "mm-md-codeblock-text",
@@ -1899,57 +1991,94 @@ public sealed class MarkdownDocumentView : UserControl
             textWrapping: TextWrapping.NoWrap,
             baseFontFeatures: MarkdownTextRunPropertiesFactory.CodeFontFeatures);
 
-        body.Children.Add(new ScrollViewer
+        return BuildCodeBlockSheet(block.Info, block.Code, codeFragment);
+    }
+
+    /// <summary>
+    /// Исходник диаграммы, которую не удалось показать, — тем же блоком кода, но
+    /// вне текстового потока документа: диаграмма в нём не участвует (ADR-0005 §8).
+    /// </summary>
+    private Border BuildDiagramSourceBlock(string language, string source)
+    {
+        var code = new TextBlock
+        {
+            Text = source,
+            FontFamily = ResolveMonoFontFamily(),
+            FontSize = _metrics.CodeBlockFontSize,
+            LineHeight = _metrics.CodeBlockLineHeight,
+            FontFeatures = MarkdownTextRunPropertiesFactory.CodeFontFeatures,
+            TextWrapping = TextWrapping.NoWrap,
+            UseLayoutRounding = true,
+            Classes = { "mm-md-codeblock-text", "mm-md-diagram-source" }
+        };
+
+        return BuildCodeBlockSheet(language, source, code);
+    }
+
+    /// <summary>
+    /// Лист блока кода вокруг готового текста: рамка без шапки, язык и
+    /// «Копировать» стоят в верхнем поле. Без языка поле узкое, «Копировать» —
+    /// на уровне первой строки, и код не доходит до кнопки.
+    /// </summary>
+    /// <remarks>
+    /// Нижнее поле живёт внутри прокрутки: полоса прокрутки широкого кода ложится
+    /// в него, а не на последнюю строку.
+    /// </remarks>
+    private Border BuildCodeBlockSheet(string? language, string code, Control codeText)
+    {
+        var hasLanguage = !string.IsNullOrWhiteSpace(language);
+        var side = _metrics.CodeBlockSidePadding;
+        var buttonSize = _metrics.CodeCopyButtonSize;
+        var copyRight = _metrics.GetCodeCopyRight(hasLanguage);
+        var head = _metrics.CodeBlockHeadTop;
+
+        var content = new Grid();
+        content.Children.Add(new ScrollViewer
         {
             HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
             VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            // Without a language label the copy button sits on the first line of
-            // code, so the code stops short of it instead of running underneath.
-            Margin = infoLabel is null ? new Thickness(0, 0, CodeCopyButtonSize, 0) : default,
+            Margin = new Thickness(
+                side,
+                _metrics.GetCodeBlockTopPadding(hasLanguage),
+                hasLanguage ? side : side + _metrics.CodeBlockCodeClearanceWithoutLanguage,
+                0),
             Content = new Border
             {
-                Padding = new Thickness(0, 0, 0, CodeBlockHorizontalScrollBarReserve),
-                Child = codeFragment
+                Padding = new Thickness(0, 0, 0, _metrics.CodeBlockBottomPadding),
+                Child = codeText
             }
         });
 
-        var contentGrid = new Grid();
-        contentGrid.Children.Add(body);
+        if (hasLanguage)
+        {
+            // Строка языка высотой в кегль, по центру высоты кнопки.
+            var labelSize = _metrics.CodeBlockLanguageFontSize;
+            content.Children.Add(new TextBlock
+            {
+                Text = language,
+                FontSize = labelSize,
+                LineHeight = labelSize,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(side, head + (buttonSize - labelSize) / 2, copyRight + buttonSize, 0),
+                Classes = { "mm-md-code-info" }
+            });
+        }
 
-        var copyButton = CreateCodeCopyButton(block.Code);
+        var copyButton = CreateCodeCopyButton(code);
         copyButton.HorizontalAlignment = HorizontalAlignment.Right;
         copyButton.VerticalAlignment = VerticalAlignment.Top;
-        contentGrid.Children.Add(copyButton);
-
-        // Centre the icon on the block's first line: the info label when there
-        // is one (its height comes from the font, so it is read after layout),
-        // otherwise the first line of code.
-        if (infoLabel is null)
-        {
-            AlignCodeCopyButton(copyButton, codeLineHeight);
-        }
-        else
-        {
-            infoLabel.SizeChanged += (_, e) => AlignCodeCopyButton(copyButton, e.NewSize.Height);
-        }
+        copyButton.Margin = new Thickness(0, head, copyRight, 0);
+        content.Children.Add(copyButton);
 
         return new Border
         {
             Classes = { "mm-md-codeblock" },
-            Child = contentGrid
+            CornerRadius = new CornerRadius(_metrics.CodeBlockCornerRadius),
+            Child = content
         };
     }
-
-    /// <summary>
-    /// Puts the copy icon on the same line as the block's first line and mirrors
-    /// the label's left inset on the right, measured to the icon's ink.
-    /// </summary>
-    private static void AlignCodeCopyButton(Button button, double firstLineHeight)
-        => button.Margin = new Thickness(
-            0,
-            (firstLineHeight - CodeCopyButtonSize) / 2,
-            -CodeCopyIconInkInset,
-            0);
 
     private Button CreateCodeCopyButton(string code)
     {
@@ -1958,12 +2087,13 @@ public sealed class MarkdownDocumentView : UserControl
         var button = new Button
         {
             Classes = { "mm-icon-button", "mm-icon-button-raised", "mm-code-copy-button" },
-            Width = CodeCopyButtonSize,
-            Height = CodeCopyButtonSize,
+            Width = _metrics.CodeCopyButtonSize,
+            Height = _metrics.CodeCopyButtonSize,
+            CornerRadius = new CornerRadius(_metrics.CodeCopyCornerRadius),
             Content = new LucideIcon
             {
-                Width = CodeCopyIconSize,
-                Height = CodeCopyIconSize
+                Width = _metrics.CodeCopyIconSize,
+                Height = _metrics.CodeCopyIconSize
             },
             IsTabStop = true
         };

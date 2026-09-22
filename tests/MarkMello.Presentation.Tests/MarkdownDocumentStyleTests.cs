@@ -336,7 +336,7 @@ public sealed class MarkdownDocumentStyleTests
             maxWidth: maxWidth,
             foreground: Brushes.Black,
             linkDecorations: null,
-            imagePlaceholderBrushes: new(Brushes.Transparent, Brushes.Black, Brushes.Black));
+            imagePlaceholderBrushes: new(Brushes.Black, Brushes.Black));
 
     private static MarkdownParagraphBlock Paragraph(string text) => new([new MarkdownTextInline(text)]);
 

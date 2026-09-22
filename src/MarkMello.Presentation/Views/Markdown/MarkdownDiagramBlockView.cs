@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using Avalonia;
 using Avalonia.Controls;
@@ -18,9 +19,10 @@ namespace MarkMello.Presentation.Views.Markdown;
 ///   <item>Success: SVG payload from the renderer is fed through
 ///   <see cref="AotSafeSvgImage"/> and displayed as a native picture inside
 ///   a horizontal scroller for oversize diagrams.</item>
-///   <item>Failure: a quiet error block carrying the dialect name, the
-///   renderer message and the original source so the author keeps access to
-///   what they wrote (ADR-0005 §6, §8).</item>
+///   <item>Failure: the same dashed "place for the image" as a broken
+///   image, carrying the dialect name, the gist of the renderer message and
+///   the original source in a code block, so the author keeps access to what
+///   they wrote (ADR-0005 §6, §8).</item>
 /// </list>
 ///
 /// The control is intentionally not part of the document text map — diagram
@@ -29,11 +31,31 @@ namespace MarkMello.Presentation.Views.Markdown;
 /// </summary>
 internal sealed class MarkdownDiagramBlockView : ContentControl
 {
-    private const double DefaultFontSize = 13;
+    private readonly MarkdownBlockTypography _typography;
+    private readonly MarkdownDiagramStrings _strings;
+    private readonly Func<string, string, Control> _buildSourceBlock;
 
-    public MarkdownDiagramBlockView(MarkdownDiagramBlock block)
+    /// <param name="block">The diagram with its materialized render result.</param>
+    /// <param name="typography">Document sizes and fonts for the error block.</param>
+    /// <param name="strings">Localized titles of the error block.</param>
+    /// <param name="buildSourceBlock">
+    /// Builds the code block for the diagram source from its language and text —
+    /// the same sheet as a code block in the document, owned by the document view.
+    /// </param>
+    public MarkdownDiagramBlockView(
+        MarkdownDiagramBlock block,
+        MarkdownBlockTypography typography,
+        MarkdownDiagramStrings strings,
+        Func<string, string, Control> buildSourceBlock)
     {
         ArgumentNullException.ThrowIfNull(block);
+        ArgumentNullException.ThrowIfNull(typography);
+        ArgumentNullException.ThrowIfNull(strings);
+        ArgumentNullException.ThrowIfNull(buildSourceBlock);
+
+        _typography = typography;
+        _strings = strings;
+        _buildSourceBlock = buildSourceBlock;
 
         HorizontalAlignment = HorizontalAlignment.Stretch;
         HorizontalContentAlignment = HorizontalAlignment.Stretch;
@@ -42,7 +64,7 @@ internal sealed class MarkdownDiagramBlockView : ContentControl
         Content = BuildContent(block);
     }
 
-    private static Border BuildContent(MarkdownDiagramBlock block)
+    private Control BuildContent(MarkdownDiagramBlock block)
         => block.RenderResult switch
         {
             DiagramRenderResult.Success success => BuildSuccess(success, block),
@@ -50,7 +72,7 @@ internal sealed class MarkdownDiagramBlockView : ContentControl
             _ => BuildPending(block),
         };
 
-    private static Border BuildSuccess(DiagramRenderResult.Success success, MarkdownDiagramBlock block)
+    private Control BuildSuccess(DiagramRenderResult.Success success, MarkdownDiagramBlock block)
     {
         var svgBytes = Encoding.UTF8.GetBytes(success.Svg);
 
@@ -86,46 +108,15 @@ internal sealed class MarkdownDiagramBlockView : ContentControl
         };
     }
 
-    private static Border BuildFailure(DiagramRenderResult.Failure failure, MarkdownDiagramKind kind)
-    {
-        var stack = new StackPanel
-        {
-            Orientation = Orientation.Vertical,
-            Spacing = 8,
-        };
+    private Grid BuildFailure(DiagramRenderResult.Failure failure, MarkdownDiagramKind kind)
+        => BuildErrorFrame(
+            "mm-md-diagram-error",
+            Format(_strings.RenderFailed, kind),
+            SummarizeMessage(failure.Message),
+            kind,
+            failure.Source);
 
-        stack.Children.Add(new TextBlock
-        {
-            Text = $"{kind} diagram could not be rendered",
-            FontWeight = FontWeight.SemiBold,
-            FontSize = DefaultFontSize,
-            TextWrapping = TextWrapping.Wrap,
-            Classes = { "mm-md-diagram-error-title" },
-        });
-
-        if (!string.IsNullOrWhiteSpace(failure.Message))
-        {
-            stack.Children.Add(new TextBlock
-            {
-                Text = failure.Message,
-                FontSize = DefaultFontSize,
-                TextWrapping = TextWrapping.Wrap,
-                Classes = { "mm-md-diagram-error-message" },
-            });
-        }
-
-        stack.Children.Add(BuildSourceBlock(failure.Source));
-
-        return new Border
-        {
-            Classes = { "mm-md-diagram", "mm-md-diagram-error" },
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            Padding = new Thickness(16, 14),
-            Child = stack,
-        };
-    }
-
-    private static Border BuildPending(MarkdownDiagramBlock block)
+    private Grid BuildPending(MarkdownDiagramBlock block)
     {
         // If we ever reach the view with an un-materialized RenderResult,
         // surface it as an error rather than silently rendering as a code
@@ -138,51 +129,114 @@ internal sealed class MarkdownDiagramBlockView : ContentControl
             block.Kind);
     }
 
-    private static Border BuildSvgUnsupportedPlaceholder(MarkdownDiagramBlock block)
+    private Grid BuildSvgUnsupportedPlaceholder(MarkdownDiagramBlock block)
+        => BuildErrorFrame(
+            "mm-md-diagram-svg-unsupported",
+            Format(_strings.SvgUnsupported, block.Kind),
+            message: null,
+            block.Kind,
+            block.Source);
+
+    /// <summary>
+    /// The dashed frame of a broken image: the icon, the title and the message
+    /// centred, the source below them across the whole frame.
+    /// </summary>
+    private Grid BuildErrorFrame(string stateClass, string title, string? message, MarkdownDiagramKind kind, string source)
     {
-        var stack = new StackPanel
+        var metrics = _typography.Metrics;
+        var content = new StackPanel
         {
             Orientation = Orientation.Vertical,
-            Spacing = 8,
+            Spacing = 0,
         };
 
-        stack.Children.Add(new TextBlock
+        var icon = MarkdownMissingContentFrame.CreateIcon(metrics, "mm-md-diagram-error-icon");
+        icon.Margin = new Thickness(0, 0, 0, metrics.MissingIconGap);
+        content.Children.Add(icon);
+
+        content.Children.Add(new TextBlock
         {
-            Text = $"{block.Kind} diagram rendered, but the SVG features used are not yet supported by the native viewer",
-            FontWeight = FontWeight.SemiBold,
-            FontSize = DefaultFontSize,
+            Text = title,
+            FontFamily = _typography.BodyFontFamily,
+            FontSize = metrics.FontSize,
+            LineHeight = metrics.BodyLineHeight,
+            TextAlignment = TextAlignment.Center,
             TextWrapping = TextWrapping.Wrap,
             Classes = { "mm-md-diagram-error-title" },
         });
 
-        stack.Children.Add(BuildSourceBlock(block.Source));
-
-        return new Border
+        if (!string.IsNullOrWhiteSpace(message))
         {
-            Classes = { "mm-md-diagram", "mm-md-diagram-svg-unsupported" },
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            Padding = new Thickness(16, 14),
-            Child = stack,
-        };
+            content.Children.Add(new TextBlock
+            {
+                Text = message,
+                FontFamily = _typography.BodyFontFamily,
+                FontSize = metrics.DiagramErrorMessageFontSize,
+                LineHeight = metrics.DiagramErrorMessageLineHeight,
+                Margin = new Thickness(0, metrics.DiagramErrorMessageGap, 0, 0),
+                TextAlignment = TextAlignment.Center,
+                TextWrapping = TextWrapping.Wrap,
+                Classes = { "mm-md-diagram-error-message" },
+            });
+        }
+
+        var sourceBlock = _buildSourceBlock(GetLanguage(kind), source);
+        sourceBlock.Margin = new Thickness(0, metrics.DiagramErrorSourceGap, 0, 0);
+        content.Children.Add(sourceBlock);
+
+        var frame = MarkdownMissingContentFrame.Create(metrics, metrics.DiagramErrorPadding, minHeight: 0, content);
+        frame.Classes.Add("mm-md-diagram");
+        frame.Classes.Add(stateClass);
+        return frame;
     }
 
-    private static ScrollViewer BuildSourceBlock(string source)
+    /// <summary>
+    /// The gist of a renderer message: its first line, then where the parser
+    /// stopped. Naiad reports a parse error over several lines — what it met,
+    /// the long list of what it expected, and the position — and the list is
+    /// noise for the reader. A message without that shape is shown as it is.
+    /// </summary>
+    internal static string SummarizeMessage(string? message)
     {
-        var sourceText = new TextBlock
+        if (string.IsNullOrWhiteSpace(message))
         {
-            Text = source,
-            FontFamily = new FontFamily("Cascadia Code, Consolas, Menlo, Monaco, monospace"),
-            FontSize = DefaultFontSize - 1,
-            TextWrapping = TextWrapping.NoWrap,
-            UseLayoutRounding = true,
-        };
-        sourceText.Classes.Add("mm-md-diagram-source");
+            return string.Empty;
+        }
 
-        return new ScrollViewer
+        var lines = message
+            .Split('\n')
+            .Select(static line => line.Trim())
+            .Where(static line => line.Length > 0)
+            .ToArray();
+        if (lines.Length <= 1)
         {
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
-            Content = sourceText,
-        };
+            return lines.Length == 0 ? string.Empty : lines[0];
+        }
+
+        var unexpected = lines.FirstOrDefault(static line => line.StartsWith("unexpected ", StringComparison.Ordinal));
+        var position = lines.LastOrDefault(static line => line.StartsWith("at line ", StringComparison.Ordinal));
+        if (unexpected is null && position is null)
+        {
+            return string.Join('\n', lines);
+        }
+
+        var detail = unexpected is not null && position is not null
+            ? $"{unexpected} {position}"
+            : unexpected ?? position;
+        return $"{lines[0]}\n{detail}";
     }
+
+    private static string GetLanguage(MarkdownDiagramKind kind)
+        => kind.ToString().ToLowerInvariant();
+
+    private static string Format(string format, MarkdownDiagramKind kind)
+        => string.Format(CultureInfo.CurrentCulture, format, kind);
+}
+
+/// <summary>Localized titles of a diagram that could not be shown; <c>{0}</c> is the dialect.</summary>
+internal sealed record MarkdownDiagramStrings(string RenderFailed, string SvgUnsupported)
+{
+    public static MarkdownDiagramStrings English { get; } = new(
+        "{0} diagram could not be rendered",
+        "{0} diagram rendered, but its SVG is not yet supported by the built-in viewer");
 }

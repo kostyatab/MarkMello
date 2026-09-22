@@ -601,17 +601,19 @@ internal sealed class MarkdownSelectionTextFragment : MarkdownDocumentSelectionF
             ?? Brushes.Black;
 
     /// <summary>
-    /// Заглушка строчной картинки — цветами заглушки блочной: фон и рамка как
-    /// у кода, подпись приглушённым текстом. Без палитры остаётся рамка цветом
-    /// текста, чтобы подпись читалась на любом фоне.
+    /// Заглушка строчной картинки — видом «места под картинку» блочной:
+    /// пунктир цвета рамки клавиши, иконка image-off приглушённым цветом. Без
+    /// палитры рамка и иконка — цветом текста, чтобы читаться на любом фоне.
     /// </summary>
     private MarkdownInlineImagePlaceholderBrushes ResolveImagePlaceholderBrushes()
     {
-        var foreground = ResolveOptionalBrush("MmTextSoftBrush") ?? ResolveBaseTextBrush();
+        var foreground = ResolveBaseTextBrush();
         return new MarkdownInlineImagePlaceholderBrushes(
-            ResolveOptionalBrush("MmCodeBackgroundBrush") ?? Brushes.Transparent,
-            ResolveOptionalBrush("MmCodeBorderBrush") ?? foreground,
-            foreground);
+            ResolveOptionalBrush("MmKeyboardBorderBrush") ?? foreground,
+            ResolveOptionalBrush("MmTextFaintBrush") ?? foreground,
+            this.TryFindResource("LucideImageOffGeometry", ActualThemeVariant, out var value) && value is Geometry geometry
+                ? geometry
+                : null);
     }
 
     private void DrawInlineCodeBackgrounds(DrawingContext context, MarkdownFormattedTextLayout layout)

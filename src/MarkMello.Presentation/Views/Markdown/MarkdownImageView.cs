@@ -10,9 +10,11 @@ namespace MarkMello.Presentation.Views.Markdown;
 /// <summary>
 /// Block-level image view. Loads the image lazily when attached to the visual
 /// tree (so opening a markdown file with many images does not block the viewer
-/// path). Shows a placeholder block with the alt text if the image cannot be
-/// loaded -- see constitution §6 "fast path must stay simple" and the viewer
-/// error-handling rules in architecture.md.
+/// path). The image sits on the left in its own size, no wider than the column,
+/// with the alt text as its caption. While it loads, and if it cannot be
+/// loaded, a dashed "place for the image" stands in its stead -- see
+/// constitution §6 "fast path must stay simple" and the viewer error-handling
+/// rules in architecture.md.
 ///
 /// The control is intentionally NOT part of the document text map: image
 /// rendering lives outside MarkdownSelectionTextFragment's text-flow model
@@ -26,6 +28,8 @@ internal sealed class MarkdownImageView : ContentControl, IDisposable
     private readonly double? _width;
     private readonly double? _height;
     private readonly string? _baseDirectory;
+    private readonly MarkdownBlockTypography _typography;
+    private readonly string _loadingText;
     private readonly CancellationTokenSource _cts = new();
     private IImage? _loadedImage;
     private Stream? _loadedImageBackingStream;
@@ -41,24 +45,34 @@ internal sealed class MarkdownImageView : ContentControl, IDisposable
         string? title,
         double? width,
         double? height,
-        string? baseDirectory)
+        string? baseDirectory,
+        MarkdownBlockTypography typography,
+        string loadingText)
     {
+        ArgumentNullException.ThrowIfNull(typography);
+
         _resolver = resolver;
         _url = url ?? string.Empty;
         _altText = altText;
         _width = width;
         _height = height;
         _baseDirectory = baseDirectory;
+        _typography = typography;
+        _loadingText = loadingText;
 
-        HorizontalAlignment = HorizontalAlignment.Center;
-        HorizontalContentAlignment = HorizontalAlignment.Center;
+        HorizontalAlignment = HorizontalAlignment.Stretch;
+        HorizontalContentAlignment = HorizontalAlignment.Stretch;
         UseLayoutRounding = true;
 
         // Render a quiet placeholder first; the actual image (or a failure
         // placeholder) replaces it when loading completes.
         Content = BuildLoadingPlaceholder();
 
-        ToolTip.SetTip(this, string.IsNullOrWhiteSpace(title) ? altText : title);
+        // The alt text is the caption; the title is only a tooltip.
+        if (!string.IsNullOrWhiteSpace(title))
+        {
+            ToolTip.SetTip(this, title);
+        }
 
         AttachedToVisualTree += OnAttachedToVisualTree;
         DetachedFromVisualTree += OnDetachedFromVisualTree;
@@ -154,42 +168,51 @@ internal sealed class MarkdownImageView : ContentControl, IDisposable
         _loadedImageBackingStream = backingStream;
         _loadCompleted = true;
 
+        var metrics = _typography.Metrics;
         var image = new Image
         {
             Source = imageSource,
             Stretch = Stretch.Uniform,
             StretchDirection = StretchDirection.DownOnly,
-            HorizontalAlignment = HorizontalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Left,
             UseLayoutRounding = true,
         };
 
         _imageControl = image;
         ApplyImageConstraints(Bounds.Width);
 
+        // The corners are clipped by the border, so the image has no frame of its own.
+        var frame = new Border
+        {
+            CornerRadius = new CornerRadius(metrics.ImageCornerRadius),
+            ClipToBounds = true,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Child = image
+        };
+
         if (string.IsNullOrWhiteSpace(_altText))
         {
-            Content = image;
+            Content = frame;
             return;
         }
 
-        // Caption below the image, in the "soft text" style -- mirrors the
-        // "figure > figcaption" convention for markdown image blocks.
         var caption = new TextBlock
         {
             Text = _altText,
-            FontSize = 12,
-            Opacity = 0.75,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            Margin = new Thickness(0, 8, 0, 0),
+            FontFamily = _typography.BodyFontFamily,
+            FontSize = metrics.ImageCaptionFontSize,
+            LineHeight = metrics.ImageCaptionLineHeight,
+            Margin = metrics.ImageCaptionMargin,
+            HorizontalAlignment = HorizontalAlignment.Left,
             TextWrapping = TextWrapping.Wrap,
+            Classes = { "mm-md-image-caption" }
         };
-        caption.Classes.Add("mm-md-image-caption");
 
         Content = new StackPanel
         {
             Orientation = Orientation.Vertical,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            Children = { image, caption }
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Children = { frame, caption }
         };
     }
 
@@ -202,44 +225,80 @@ internal sealed class MarkdownImageView : ContentControl, IDisposable
         _loadCompleted = true;
         _imageControl = null;
 
-        var label = string.IsNullOrWhiteSpace(_altText)
-            ? "Image unavailable"
-            : $"Image unavailable — {_altText}";
-
-        var border = new Border
+        // The alt text says what is missing, the path says where it was looked for.
+        var metrics = _typography.Metrics;
+        var text = new StackPanel
         {
-            Padding = new Thickness(16, 14),
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            Child = new TextBlock
-            {
-                Text = label,
-                TextWrapping = TextWrapping.Wrap,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                FontSize = 12,
-                Opacity = 0.7,
-            }
+            Orientation = Orientation.Vertical,
+            Spacing = metrics.MissingTextGap,
+            HorizontalAlignment = HorizontalAlignment.Center
         };
-        border.Classes.Add("mm-md-image-placeholder");
-        Content = border;
+
+        if (!string.IsNullOrWhiteSpace(_altText))
+        {
+            text.Children.Add(BuildPlaceholderText(_altText));
+        }
+
+        // Путь есть не у всякой картинки: у data-URI вместо него были бы
+        // строки base64.
+        if (!string.IsNullOrWhiteSpace(_url) && !_url.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+        {
+            text.Children.Add(new TextBlock
+            {
+                Text = _url,
+                FontFamily = _typography.MonoFontFamily,
+                FontSize = metrics.MissingPathFontSize,
+                LineHeight = metrics.MissingPathFontSize * metrics.LineHeightRatio,
+                TextAlignment = TextAlignment.Center,
+                TextWrapping = TextWrapping.Wrap,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                MaxLines = 2,
+                Classes = { "mm-md-image-missing-path" }
+            });
+        }
+
+        var content = new StackPanel
+        {
+            Orientation = Orientation.Vertical,
+            Spacing = metrics.MissingIconGap,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Children = { MarkdownMissingContentFrame.CreateIcon(metrics, "mm-md-image-missing-icon") }
+        };
+
+        if (text.Children.Count > 0)
+        {
+            content.Children.Add(text);
+        }
+
+        Content = BuildFrame(content);
     }
 
-    private Border BuildLoadingPlaceholder()
+    private Grid BuildLoadingPlaceholder()
+        => BuildFrame(BuildPlaceholderText(string.IsNullOrWhiteSpace(_altText) ? _loadingText : _altText));
+
+    private Grid BuildFrame(Control content)
     {
-        var border = new Border
+        var metrics = _typography.Metrics;
+        return MarkdownMissingContentFrame.Create(
+            metrics,
+            new Thickness(metrics.MissingFramePadding),
+            metrics.MissingFrameMinHeight,
+            content);
+    }
+
+    private TextBlock BuildPlaceholderText(string text)
+    {
+        var metrics = _typography.Metrics;
+        return new TextBlock
         {
-            Padding = new Thickness(16, 14),
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            Child = new TextBlock
-            {
-                Text = string.IsNullOrWhiteSpace(_altText) ? "Loading image…" : _altText,
-                TextWrapping = TextWrapping.Wrap,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                FontSize = 12,
-                Opacity = 0.55,
-            }
+            Text = text,
+            FontFamily = _typography.BodyFontFamily,
+            FontSize = metrics.FontSize,
+            LineHeight = metrics.BodyLineHeight,
+            TextAlignment = TextAlignment.Center,
+            TextWrapping = TextWrapping.Wrap,
+            Classes = { "mm-md-image-missing-text" }
         };
-        border.Classes.Add("mm-md-image-placeholder");
-        return border;
     }
 
     private void ApplyImageConstraints(double availableWidth)

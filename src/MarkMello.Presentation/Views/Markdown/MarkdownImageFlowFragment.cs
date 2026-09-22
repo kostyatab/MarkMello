@@ -12,8 +12,22 @@ namespace MarkMello.Presentation.Views.Markdown;
 
 internal sealed class MarkdownImageFlowFragment : MarkdownDocumentSelectionFragmentBase
 {
-    private const double InlineGap = 8;
-    private const double RowGap = 10;
+    // Все размеры — в долях размера текста (прежние пиксели при тексте 14).
+    private const double InlineGapRatio = 8.0 / 14;
+    private const double RowGapRatio = 10.0 / 14;
+    private const double MinRowHeightRatio = 18.0 / 14;
+    private const double InlineHeightRatio = 0.85;
+    private const double SingleImageMaxHeightRatio = 720.0 / 14;
+    private const double PlaceholderCharWidthRatio = 0.55;
+    private const double PlaceholderPaddingRatio = 20.0 / 14;
+    private const double PlaceholderMinWidthRatio = 44.0 / 14;
+    private const double PlaceholderMaxWidthRatio = 220.0 / 14;
+    private const double SinglePlaceholderMinWidthRatio = 260.0 / 14;
+    private const double SinglePlaceholderCharWidthRatio = 9.0 / 14;
+    private const double SinglePlaceholderHeightRatio = 180.0 / 14;
+    private const double PlaceholderIconRatio = 0.7;
+    private const double PlaceholderMaxIconRatio = 1.7;
+    private const double ImageCornerRadiusRatio = MarkdownDocumentMetrics.ImageCornerRadiusRatio;
 
     private readonly List<MarkdownImageFlowItem> _items;
     private readonly Dictionary<int, LoadedImageState> _loadedImages = [];
@@ -344,6 +358,8 @@ internal sealed class MarkdownImageFlowFragment : MarkdownDocumentSelectionFragm
             return new ImageFlowLayout(new Size(0, 0), entries);
         }
 
+        var inlineGap = Em(InlineGapRatio);
+        var rowGap = Em(RowGapRatio);
         var contentWidth = 0d;
         var x = 0d;
         var y = 0d;
@@ -357,30 +373,27 @@ internal sealed class MarkdownImageFlowFragment : MarkdownDocumentSelectionFragm
 
             if (item.BreakBefore && x > 0)
             {
-                contentWidth = Math.Max(contentWidth, x - InlineGap);
+                contentWidth = Math.Max(contentWidth, x - inlineGap);
                 x = 0;
-                y += rowHeight + RowGap;
+                y += rowHeight + rowGap;
                 rowHeight = 0;
             }
 
             if (!singleImage && x > 0 && x + size.Width > availableWidth)
             {
-                contentWidth = Math.Max(contentWidth, x - InlineGap);
+                contentWidth = Math.Max(contentWidth, x - inlineGap);
                 x = 0;
-                y += rowHeight + RowGap;
+                y += rowHeight + rowGap;
                 rowHeight = 0;
             }
 
-            var left = singleImage ? Math.Max(0, (availableWidth - size.Width) / 2) : x;
-            var rect = new Rect(left, y, size.Width, size.Height);
+            // Картинки стоят от левого края, как блочная картинка.
+            var rect = new Rect(x, y, size.Width, size.Height);
             entries.Add(new ImageFlowEntry(item, rect, index));
 
-            x = singleImage ? size.Width : left + size.Width + InlineGap;
+            x = rect.Right + inlineGap;
             rowHeight = Math.Max(rowHeight, size.Height);
-
-            // A single image is centred in the width it is given, but it only
-            // needs its own width: the centring offset is not part of it.
-            contentWidth = Math.Max(contentWidth, singleImage ? size.Width : rect.Right);
+            contentWidth = Math.Max(contentWidth, rect.Right);
         }
 
         return new ImageFlowLayout(new Size(Math.Min(contentWidth, availableWidth), y + rowHeight), entries);
@@ -388,31 +401,40 @@ internal sealed class MarkdownImageFlowFragment : MarkdownDocumentSelectionFragm
 
     private Size GetDesiredSize(MarkdownImageFlowItem item, double availableWidth, bool singleImage)
     {
+        var inlineHeight = Math.Max(
+            Em(MinRowHeightRatio),
+            double.IsNaN(_lineHeight) ? Em(1.2) : _lineHeight * InlineHeightRatio);
+
         if (_loadedImages.TryGetValue(item.Index, out var state) && state.Image is not null)
         {
             var natural = state.Image.Size;
             if (singleImage)
             {
                 var maxWidth = Math.Max(1, availableWidth);
-                var maxHeight = 720d;
+                var maxHeight = Em(SingleImageMaxHeightRatio);
                 var scale = Math.Min(1d, Math.Min(maxWidth / Math.Max(1, natural.Width), maxHeight / Math.Max(1, natural.Height)));
                 return new Size(Math.Max(1, natural.Width * scale), Math.Max(1, natural.Height * scale));
             }
 
-            var desiredHeight = Math.Max(18, double.IsNaN(_lineHeight) ? _baseFontSize * 1.2 : _lineHeight * 0.85);
-            var scaleInline = Math.Min(1d, desiredHeight / Math.Max(1, natural.Height));
+            var scaleInline = Math.Min(1d, inlineHeight / Math.Max(1, natural.Height));
             return new Size(Math.Max(1, natural.Width * scaleInline), Math.Max(1, natural.Height * scaleInline));
         }
 
         if (singleImage)
         {
-            return new Size(Math.Min(Math.Max(260, item.PlainText.Length * 9), availableWidth), 180);
+            return new Size(
+                Math.Min(Math.Max(Em(SinglePlaceholderMinWidthRatio), item.PlainText.Length * Em(SinglePlaceholderCharWidthRatio)), availableWidth),
+                Em(SinglePlaceholderHeightRatio));
         }
 
-        var placeholderHeight = Math.Max(18, double.IsNaN(_lineHeight) ? _baseFontSize * 1.2 : _lineHeight * 0.85);
-        var placeholderWidth = Math.Clamp(item.PlainText.Length * (_baseFontSize * 0.55) + 20, 44, 220);
-        return new Size(placeholderWidth, placeholderHeight);
+        var placeholderWidth = Math.Clamp(
+            item.PlainText.Length * Em(PlaceholderCharWidthRatio) + Em(PlaceholderPaddingRatio),
+            Em(PlaceholderMinWidthRatio),
+            Em(PlaceholderMaxWidthRatio));
+        return new Size(placeholderWidth, inlineHeight);
     }
+
+    private double Em(double ratio) => _baseFontSize * ratio;
 
     private void DrawSelection(DrawingContext context, ImageFlowLayout layout)
     {
@@ -436,44 +458,47 @@ internal sealed class MarkdownImageFlowFragment : MarkdownDocumentSelectionFragm
         }
     }
 
+    /// <summary>
+    /// Картинка со скруглением или «место под картинку»: пунктирная рамка, у
+    /// битой — иконка image-off по центру, как у блочной картинки.
+    /// </summary>
     private void DrawEntry(DrawingContext context, ImageFlowEntry entry)
     {
         if (_loadedImages.TryGetValue(entry.Index, out var state) && state.Image is not null)
         {
-            context.DrawImage(state.Image, new Rect(state.Image.Size), entry.Bounds);
+            // Скругление — как у блочной картинки.
+            using (context.PushClip(new RoundedRect(entry.Bounds, Em(ImageCornerRadiusRatio))))
+            {
+                context.DrawImage(state.Image, new Rect(state.Image.Size), entry.Bounds);
+            }
+
             return;
         }
 
-        var fill = ResolveOptionalBrush("MmCodeBackgroundBrush") ?? ResolveOptionalBrush("MmSurfaceRaisedBrush") ?? Brushes.LightGray;
-        var borderBrush = ResolveOptionalBrush("MmCodeBorderBrush") ?? ResolveOptionalBrush("MmBorderSubtleBrush") ?? Brushes.Gray;
-        var textBrush = ResolveOptionalBrush("MmTextSoftBrush") ?? ResolveOptionalBrush("MmTextBrush") ?? Brushes.Black;
-        var pen = new Pen(borderBrush, 1);
+        var textBrush = ResolveOptionalBrush("MmTextBrush") ?? Brushes.Black;
+        var borderBrush = ResolveOptionalBrush("MmKeyboardBorderBrush") ?? textBrush;
+        MarkdownMissingContentFrame.Draw(
+            context,
+            MarkdownMissingContentFrame.CreatePen(borderBrush),
+            entry.Bounds,
+            Em(MarkdownDocumentMetrics.MissingFrameCornerRadiusRatio));
 
-        context.DrawRectangle(fill, pen, entry.Bounds, 4, 4);
+        if (state is not { Failed: true }
+            || !this.TryFindResource("LucideImageOffGeometry", ActualThemeVariant, out var value)
+            || value is not Geometry icon)
+        {
+            return;
+        }
 
-        var label = string.IsNullOrWhiteSpace(entry.Item.PlainText)
-            ? (_loadedImages.TryGetValue(entry.Index, out var failedState) && failedState.Failed ? "Image unavailable" : "Loading image…")
-            : entry.Item.PlainText;
-
-        using var textLayout = new TextLayout(
-            label,
-            new Typeface(_baseFontFamily, FontStyle.Normal, FontWeight.Normal),
-            Math.Max(12, _baseFontSize - 2),
-            textBrush,
-            TextAlignment.Center,
-            TextWrapping.Wrap,
-            textDecorations: null,
-            flowDirection: FlowDirection.LeftToRight,
-            maxWidth: Math.Max(1, entry.Bounds.Width - 12),
-            maxHeight: Math.Max(1, entry.Bounds.Height - 8),
-            lineHeight: double.NaN,
-            letterSpacing: 0,
-            maxLines: 3);
-
-        var origin = new Point(
-            entry.Bounds.X + Math.Max(0, (entry.Bounds.Width - textLayout.Width) / 2),
-            entry.Bounds.Y + Math.Max(0, (entry.Bounds.Height - textLayout.Height) / 2));
-        textLayout.Draw(context, origin);
+        var bounds = entry.Bounds;
+        var side = Math.Min(Em(PlaceholderMaxIconRatio), Math.Min(bounds.Width, bounds.Height) * PlaceholderIconRatio);
+        var iconBrush = ResolveOptionalBrush("MmTextFaintBrush") ?? textBrush;
+        using (context.PushTransform(Matrix.CreateTranslation(
+            bounds.X + (bounds.Width - side) / 2,
+            bounds.Y + (bounds.Height - side) / 2)))
+        {
+            LucideIcon.Draw(context, icon, LucideIcon.CreatePen(iconBrush), new Size(side, side));
+        }
     }
 
     private IBrush? ResolveOptionalBrush(string resourceKey)

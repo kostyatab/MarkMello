@@ -280,17 +280,16 @@
   </Style>
 
   <!--
-    «Копировать» у блока кода: размеры и положение задаёт MarkdownDocumentView
-    (иконка выравнивается по подписи языка). В покое иконка того же тона, что и
+    «Копировать» у блока кода: размеры, скругление и положение задаёт MarkdownDocumentView
+    (кнопка стоит в верхнем поле листа). В покое иконка того же тона, что и
     подпись, — они читаются как пара; фон и рамка в покое — цвета блока кода, а не
     Transparent, иначе кнопка проступала бы на полосе прокрутки кода.
   -->
   <Style Selector="Button.mm-icon-button.mm-code-copy-button">
-    <Setter Property="Background" Value="{DynamicResource MmCodeBackgroundBrush}" />
+    <Setter Property="Background" Value="{DynamicResource MmCodeBlockBackgroundBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmCodeBackgroundBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource MmCodeBlockBackgroundBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="6" />
   </Style>
   <Style Selector="Button.mm-icon-button.mm-code-copy-button:pointerover /template/ ContentPresenter, Button.mm-icon-button.mm-code-copy-button:pressed /template/ ContentPresenter">
     <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
@@ -300,8 +299,8 @@
   </Style>
 
   <Style Selector="Button.mm-icon-button.mm-code-copy-button:disabled /template/ ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource MmCodeBackgroundBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmCodeBackgroundBrush}" />
+    <Setter Property="Background" Value="{DynamicResource MmCodeBlockBackgroundBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource MmCodeBlockBackgroundBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
   </Style>
 
@@ -1375,47 +1374,69 @@
     <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
   </Style>
 
-  <!-- Просветы вокруг цитаты и поля внутри неё задаёт MarkdownDocumentMetrics -->
+  <!--
+    Цитата: тёплая плашка, полоса слева и значок кавычек. Поля, скругление и
+    место значка задаёт MarkdownDocumentView по MarkdownDocumentMetrics.
+  -->
   <Style Selector="Border.mm-md-quote">
+    <Setter Property="BorderThickness" Value="3,0,0,0" />
+    <Setter Property="BorderBrush" Value="{DynamicResource MmQuoteMarkBrush}" />
+    <Setter Property="Background" Value="{DynamicResource MmQuoteBackgroundBrush}" />
+  </Style>
+  <Style Selector="views|LucideIcon.mm-md-quote-mark">
+    <Setter Property="StrokeThickness" Value="2" />
+    <Setter Property="Data" Value="{DynamicResource LucideQuoteGeometry}" />
+    <Setter Property="Foreground" Value="{DynamicResource MmQuoteMarkBrush}" />
+  </Style>
+
+  <!-- Цитата внутри цитаты: только полоса, без плашки и значка -->
+  <Style Selector="Border.mm-md-quote.mm-md-quote-nested">
     <Setter Property="BorderThickness" Value="2,0,0,0" />
     <Setter Property="BorderBrush" Value="{DynamicResource MmQuoteBarBrush}" />
+    <Setter Property="Background" Value="Transparent" />
   </Style>
 
   <!--
-    GitHub alert (> [!NOTE] и др.) — цитата, у которой полоса и иконка в шапке
-    цвета вида. Классы вида ставит MarkdownDocumentView, он же красит заголовок
-    тем же ресурсом (заголовок — фрагмент текстового потока, а не TextBlock).
+    GitHub alert (> [!NOTE] и др.) — плашка цвета вида без полосы, иконка того же
+    цвета. Классы вида ставит MarkdownDocumentView, он же красит заголовок тем же
+    ресурсом (заголовок — фрагмент текстового потока, а не TextBlock).
   -->
+  <Style Selector="Border.mm-md-quote.mm-md-alert">
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="views|LucideIcon.mm-md-alert-icon">
+    <Setter Property="StrokeThickness" Value="2" />
+  </Style>
   <Style Selector="Border.mm-md-quote.mm-md-alert-note">
-    <Setter Property="BorderBrush" Value="{DynamicResource MmAlertNoteBrush}" />
+    <Setter Property="Background" Value="{DynamicResource MmAlertNoteBackgroundBrush}" />
   </Style>
   <Style Selector="views|LucideIcon.mm-md-alert-icon.mm-md-alert-note">
     <Setter Property="Data" Value="{DynamicResource LucideInfoGeometry}" />
     <Setter Property="Foreground" Value="{DynamicResource MmAlertNoteBrush}" />
   </Style>
   <Style Selector="Border.mm-md-quote.mm-md-alert-tip">
-    <Setter Property="BorderBrush" Value="{DynamicResource MmAlertTipBrush}" />
+    <Setter Property="Background" Value="{DynamicResource MmAlertTipBackgroundBrush}" />
   </Style>
   <Style Selector="views|LucideIcon.mm-md-alert-icon.mm-md-alert-tip">
     <Setter Property="Data" Value="{DynamicResource LucideLightbulbGeometry}" />
     <Setter Property="Foreground" Value="{DynamicResource MmAlertTipBrush}" />
   </Style>
   <Style Selector="Border.mm-md-quote.mm-md-alert-important">
-    <Setter Property="BorderBrush" Value="{DynamicResource MmAlertImportantBrush}" />
+    <Setter Property="Background" Value="{DynamicResource MmAlertImportantBackgroundBrush}" />
   </Style>
   <Style Selector="views|LucideIcon.mm-md-alert-icon.mm-md-alert-important">
     <Setter Property="Data" Value="{DynamicResource LucideMessageSquareWarningGeometry}" />
     <Setter Property="Foreground" Value="{DynamicResource MmAlertImportantBrush}" />
   </Style>
   <Style Selector="Border.mm-md-quote.mm-md-alert-warning">
-    <Setter Property="BorderBrush" Value="{DynamicResource MmAlertWarningBrush}" />
+    <Setter Property="Background" Value="{DynamicResource MmAlertWarningBackgroundBrush}" />
   </Style>
   <Style Selector="views|LucideIcon.mm-md-alert-icon.mm-md-alert-warning">
     <Setter Property="Data" Value="{DynamicResource LucideTriangleAlertGeometry}" />
     <Setter Property="Foreground" Value="{DynamicResource MmAlertWarningBrush}" />
   </Style>
   <Style Selector="Border.mm-md-quote.mm-md-alert-caution">
-    <Setter Property="BorderBrush" Value="{DynamicResource MmAlertCautionBrush}" />
+    <Setter Property="Background" Value="{DynamicResource MmAlertCautionBackgroundBrush}" />
   </Style>
   <Style Selector="views|LucideIcon.mm-md-alert-icon.mm-md-alert-caution">
     <Setter Property="Data" Value="{DynamicResource LucideOctagonAlertGeometry}" />
@@ -1427,12 +1448,11 @@
     <Setter Property="Background" Value="{DynamicResource MmBorderBrush}" />
   </Style>
 
+  <!-- Блок кода — лист с рамкой; поля и скругление в em задаёт MarkdownDocumentView -->
   <Style Selector="Border.mm-md-codeblock">
-    <Setter Property="Padding" Value="16,12" />
-    <Setter Property="CornerRadius" Value="8" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmCodeBorderBrush}" />
-    <Setter Property="Background" Value="{DynamicResource MmCodeBackgroundBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
+    <Setter Property="Background" Value="{DynamicResource MmCodeBlockBackgroundBrush}" />
   </Style>
 
   <Style Selector="Button.mm-code-copy-button views|LucideIcon">
@@ -1448,8 +1468,6 @@
     <Setter Property="UseLayoutRounding" Value="True" />
     <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
     <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
-    <Setter Property="FontSize" Value="11" />
-    <Setter Property="Margin" Value="0,0,0,4" />
   </Style>
 
   <Style Selector="TextBlock.mm-md-codeblock-text">
@@ -1543,14 +1561,33 @@
     <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
   </Style>
 
-  <Style Selector="Border.mm-md-image-placeholder">
-    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="6" />
-    <Setter Property="Background" Value="{DynamicResource MmSurfaceBrush}" />
+  <!-- Подпись картинки из alt; размеры в em задаёт MarkdownImageView -->
+  <Style Selector="TextBlock.mm-md-image-caption">
+    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
   </Style>
 
-  <Style Selector="TextBlock.mm-md-image-caption">
+  <!--
+    «Место под картинку» — пунктирная рамка битой или загружающейся картинки и
+    неудавшейся диаграммы (MarkdownMissingContentFrame): иконка и сообщение
+    приглушённым, подпись и заголовок мягким цветом.
+  -->
+  <Style Selector="Rectangle.mm-md-missing-frame">
+    <Setter Property="Stroke" Value="{DynamicResource MmKeyboardBorderBrush}" />
+  </Style>
+  <Style Selector="views|LucideIcon.mm-md-missing-icon">
+    <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
+    <Setter Property="StrokeThickness" Value="2" />
+  </Style>
+  <Style Selector="views|LucideIcon.mm-md-image-missing-icon">
+    <Setter Property="Data" Value="{DynamicResource LucideImageOffGeometry}" />
+  </Style>
+  <Style Selector="views|LucideIcon.mm-md-diagram-error-icon">
+    <Setter Property="Data" Value="{DynamicResource LucideCircleAlertGeometry}" />
+  </Style>
+  <Style Selector="TextBlock.mm-md-image-missing-text, TextBlock.mm-md-diagram-error-title">
+    <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+  </Style>
+  <Style Selector="TextBlock.mm-md-image-missing-path, TextBlock.mm-md-diagram-error-message">
     <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
   </Style>
 

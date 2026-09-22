@@ -83,7 +83,7 @@ public sealed class CodeBlockCopyConfirmationTests
         var root = Assert.IsType<StackPanel>(viewport.Child);
         var block = Assert.IsType<Border>(Assert.Single(root.Children));
         var contentGrid = Assert.IsType<Grid>(block.Child);
-        return Assert.IsType<Button>(contentGrid.Children[1]);
+        return Assert.Single(contentGrid.Children.OfType<Button>());
     }
 
     private static async Task WaitUntilAsync(Func<bool> condition)

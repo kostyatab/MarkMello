@@ -98,7 +98,7 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
             lineHeight,
             letterSpacing);
 
-        BuildLines(source, paragraphProperties);
+        BuildLines(source, paragraphProperties, imageMetrics);
     }
 
     public double WidthIncludingTrailingWhitespace { get; private set; }
@@ -256,7 +256,10 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
         _footnoteMetrics?.Dispose();
     }
 
-    private void BuildLines(MarkdownTextSource source, TextParagraphProperties paragraphProperties)
+    private void BuildLines(
+        MarkdownTextSource source,
+        TextParagraphProperties paragraphProperties,
+        MarkdownInlineImageMetrics imageMetrics)
     {
         if (_displayModel.DisplayLength == 0)
         {
@@ -270,7 +273,7 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
 
         while (index < _displayModel.DisplayLength)
         {
-            var line = formatter.FormatLine(source, index, source.MaxWidth, paragraphProperties, previousLineBreak);
+            var line = FormatLineFittingImages(formatter, source, index, paragraphProperties, previousLineBreak, imageMetrics);
             if (line is null)
             {
                 break;
@@ -294,6 +297,68 @@ internal sealed class MarkdownFormattedTextLayout : IDisposable
 
         Height = y;
     }
+
+    /// <summary>
+    /// Строка с картинкой, которая не помещается в межстрочный: Avalonia оставила
+    /// бы строке заданную высоту, и картинка наехала бы на соседнюю строку. Такая
+    /// строка форматируется заново с межстрочным, в который помещается и
+    /// картинка, и обычный зазор строки под базовой линией. Над картинкой Avalonia
+    /// центрирует содержимое, поэтому сверху остаётся столько же лишнего места,
+    /// сколько снизу, — строка немного выше, чем в браузере, но не налезает.
+    /// </summary>
+    private static TextLine? FormatLineFittingImages(
+        TextFormatter formatter,
+        MarkdownTextSource source,
+        int index,
+        TextParagraphProperties properties,
+        TextLineBreak? previousLineBreak,
+        MarkdownInlineImageMetrics imageMetrics)
+    {
+        var line = formatter.FormatLine(source, index, source.MaxWidth, properties, previousLineBreak);
+        if (line is null
+            || double.IsNaN(properties.LineHeight)
+            || properties.LineHeight <= 0
+            || !HasImageOutsideTheLine(line, properties.LineHeight, imageMetrics.StrutDescent))
+        {
+            return line;
+        }
+
+        var natural = formatter.FormatLine(source, index, source.MaxWidth, WithLineHeight(properties, double.NaN), previousLineBreak);
+        if (natural is null)
+        {
+            return line;
+        }
+
+        var height = Math.Max(
+            Math.Max(properties.LineHeight, natural.Height),
+            2 * (imageMetrics.StrutDescent + natural.Baseline) - natural.Height);
+        natural.Dispose();
+        line.Dispose();
+        return formatter.FormatLine(source, index, source.MaxWidth, WithLineHeight(properties, height), previousLineBreak);
+    }
+
+    private static bool HasImageOutsideTheLine(TextLine line, double lineHeight, double strutDescent)
+    {
+        var strutAscent = lineHeight - strutDescent;
+        foreach (var run in line.TextRuns)
+        {
+            if (run is MarkdownInlineImageTextRun image
+                && (image.Baseline > strutAscent || image.Size.Height - image.Baseline > strutDescent))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static GenericTextParagraphProperties WithLineHeight(TextParagraphProperties properties, double lineHeight)
+        => new(
+            properties.DefaultTextRunProperties,
+            properties.TextAlignment,
+            properties.TextWrapping,
+            lineHeight,
+            properties.LetterSpacing);
 
     private IReadOnlyList<Rect> GetDisplayRects(int displayStart, int displayLength)
     {
@@ -473,7 +538,7 @@ internal sealed class MarkdownTextSource : ITextSource
 
         var image = _images[segment.ImageIndex];
         _imageStates.TryGetValue(image.Index, out var state);
-        return MarkdownInlineImageTextRun.Create(image, state, _imageMetrics);
+        return MarkdownInlineImageTextRun.Create(image, state, _imageMetrics, MaxWidth);
     }
 }
 
@@ -847,19 +912,24 @@ internal sealed class MarkdownKeyboardKeyMetrics
 }
 
 /// <summary>
-/// Цвета заглушки строчной картинки, пока та грузится или не загрузилась. Своих
-/// ресурсов у раскладки нет, поэтому кисти темы приносит фрагмент.
+/// Вид заглушки строчной картинки, пока та грузится или не загрузилась: пунктир
+/// «места под картинку» и иконка image-off у битой. Своих ресурсов у раскладки
+/// нет, поэтому кисти и геометрию темы приносит фрагмент.
 /// </summary>
 internal readonly record struct MarkdownInlineImagePlaceholderBrushes(
-    IBrush Fill,
     IBrush Border,
-    IBrush Foreground);
+    IBrush Icon,
+    Geometry? IconGeometry = null);
 
+/// <param name="StrutDescent">
+/// Сколько обычная строка текста занимает под базовой линией при заданном
+/// межстрочном: столько же остаётся под строкой, раздвинутой картинкой.
+/// </param>
 internal readonly record struct MarkdownInlineImageMetrics(
     double MaxHeight,
     double Baseline,
-    Typeface Typeface,
-    double FontSize,
+    double TextFontSize,
+    double StrutDescent,
     MarkdownInlineImagePlaceholderBrushes Placeholder)
 {
     public static MarkdownInlineImageMetrics Create(
@@ -874,7 +944,7 @@ internal readonly record struct MarkdownInlineImageMetrics(
             "M",
             new Typeface(fontFamily, fontStyle, fontWeight),
             fontSize,
-            placeholder.Foreground,
+            placeholder.Icon,
             TextAlignment.Left,
             TextWrapping.NoWrap,
             textTrimming: null,
@@ -890,18 +960,16 @@ internal readonly record struct MarkdownInlineImageMetrics(
         var normalizedLineHeight = double.IsNaN(lineHeight) || lineHeight <= 0
             ? Math.Max(fontSize * 1.25, probe.Height)
             : lineHeight;
-        var maxHeight = Math.Max(12, normalizedLineHeight * 0.9);
+        var maxHeight = normalizedLineHeight * 0.9;
         var baseline = Math.Clamp(
             probe.Baseline + Math.Max(0, (maxHeight - probe.Height) / 2),
             0,
             maxHeight);
 
-        return new MarkdownInlineImageMetrics(
-            maxHeight,
-            baseline,
-            new Typeface(fontFamily, fontStyle, fontWeight),
-            Math.Max(10, fontSize * 0.75),
-            placeholder);
+        // Межстрочный Avalonia делит поровну над и под текстом.
+        var strutDescent = normalizedLineHeight - (probe.Baseline + (normalizedLineHeight - probe.Height) / 2);
+
+        return new MarkdownInlineImageMetrics(maxHeight, baseline, fontSize, strutDescent, placeholder);
     }
 }
 
@@ -910,18 +978,24 @@ internal sealed record MarkdownInlineImageState(IImage? Image, Stream? BackingSt
     public static MarkdownInlineImageState FailedState { get; } = new(null, null, true);
 }
 
+/// <summary>
+/// Картинка в строке текста: в своём размере (не шире строки), чуть ниже
+/// базовой линии. Пока грузится — пунктирная рамка, битая — рамка с иконкой
+/// image-off; размер рамки зависит от alt, чтобы строка не прыгала после загрузки.
+/// </summary>
 internal sealed class MarkdownInlineImageTextRun : DrawableTextRun
 {
-    private const double PlaceholderHorizontalPadding = 8;
-    private const double PlaceholderMinWidth = 34;
-    private const double PlaceholderMaxWidth = 120;
-    private static readonly IBrush DataImageBackground = new SolidColorBrush(Color.FromRgb(250, 250, 250));
+    // Ширина заглушки в долях размера текста: на знак alt, поля и пределы.
+    private const double PlaceholderCharWidthRatio = 0.41;
+    private const double PlaceholderHorizontalPaddingRatio = 0.57;
+    private const double PlaceholderMinWidthRatio = 2.43;
+    private const double PlaceholderMaxWidthRatio = 8.57;
+    private const double PlaceholderHeightRatio = 0.85;
+    private const double PlaceholderIconRatio = 0.7;
 
-    private readonly string _label;
     private readonly MarkdownInlineImageMetrics _metrics;
     private readonly IImage? _image;
     private readonly bool _failed;
-    private readonly bool _drawImageBackground;
     private readonly Size _size;
     private readonly double _baseline;
 
@@ -930,30 +1004,28 @@ internal sealed class MarkdownInlineImageTextRun : DrawableTextRun
         MarkdownInlineImageMetrics metrics,
         IImage? image,
         bool failed,
-        bool drawImageBackground)
+        double maxWidth)
     {
-        _label = string.IsNullOrWhiteSpace(label) ? "image" : label;
         _metrics = metrics;
         _image = image;
         _failed = failed;
-        _drawImageBackground = drawImageBackground;
-        _size = ResolveSize(_label, metrics, image);
-        _baseline = Math.Min(_size.Height, metrics.Baseline);
+        _size = image is null
+            ? ResolvePlaceholderSize(string.IsNullOrWhiteSpace(label) ? "image" : label, metrics)
+            : ResolveImageSize(image, maxWidth);
+        _baseline = image is null
+            ? Math.Min(_size.Height, metrics.Baseline)
+            : Math.Max(0, _size.Height - metrics.TextFontSize * MarkdownDocumentMetrics.InlineImageBaselineDrop);
     }
 
     public static MarkdownInlineImageTextRun Create(
         MarkdownInlineImageSpan image,
         MarkdownInlineImageState? state,
-        MarkdownInlineImageMetrics metrics)
-        => new(
-            image.PlaceholderText,
-            metrics,
-            state?.Image,
-            state?.Failed == true,
-            image.Url.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase));
+        MarkdownInlineImageMetrics metrics,
+        double maxWidth = double.PositiveInfinity)
+        => new(image.PlaceholderText, metrics, state?.Image, state?.Failed == true, maxWidth);
 
     public static MarkdownInlineImageTextRun Placeholder(string label, MarkdownInlineImageMetrics metrics, bool failed)
-        => new(label, metrics, null, failed, drawImageBackground: false);
+        => new(label, metrics, null, failed, double.PositiveInfinity);
 
     public override int Length => 1;
 
@@ -970,59 +1042,49 @@ internal sealed class MarkdownInlineImageTextRun : DrawableTextRun
         var rect = new Rect(origin, _size);
         if (_image is not null)
         {
-            if (_drawImageBackground)
-            {
-                drawingContext.DrawRectangle(DataImageBackground, null, rect, 2, 2);
-            }
-
             drawingContext.DrawImage(_image, new Rect(_image.Size), rect);
             return;
         }
 
         var placeholder = _metrics.Placeholder;
-        var fill = _failed ? Brushes.Transparent : placeholder.Fill;
-        var pen = new Pen(placeholder.Border, 1);
-        drawingContext.DrawRectangle(fill, pen, rect, 3, 3);
+        MarkdownMissingContentFrame.Draw(
+            drawingContext,
+            MarkdownMissingContentFrame.CreatePen(placeholder.Border),
+            rect,
+            _metrics.TextFontSize * MarkdownDocumentMetrics.MissingFrameCornerRadiusRatio);
 
-        using var textLayout = new TextLayout(
-            _failed ? "image" : _label,
-            _metrics.Typeface,
-            _metrics.FontSize,
-            placeholder.Foreground,
-            TextAlignment.Center,
-            TextWrapping.NoWrap,
-            textTrimming: null,
-            textDecorations: null,
-            flowDirection: FlowDirection.LeftToRight,
-            maxWidth: Math.Max(1, rect.Width - PlaceholderHorizontalPadding),
-            maxHeight: Math.Max(1, rect.Height),
-            lineHeight: double.NaN,
-            letterSpacing: 0,
-            maxLines: 1,
-            textStyleOverrides: null);
-
-        var textOrigin = new Point(
-            rect.X + Math.Max(0, (rect.Width - textLayout.Width) / 2),
-            rect.Y + Math.Max(0, (rect.Height - textLayout.Height) / 2));
-        textLayout.Draw(drawingContext, textOrigin);
-    }
-
-    private static Size ResolveSize(string label, MarkdownInlineImageMetrics metrics, IImage? image)
-    {
-        if (image is not null)
+        if (!_failed || placeholder.IconGeometry is not { } icon)
         {
-            var natural = image.Size;
-            var scale = Math.Min(1d, metrics.MaxHeight / Math.Max(1, natural.Height));
-            return new Size(
-                Math.Max(1, natural.Width * scale),
-                Math.Max(1, natural.Height * scale));
+            return;
         }
 
+        var side = Math.Min(rect.Width, rect.Height) * PlaceholderIconRatio;
+        var iconOrigin = new Point(rect.X + (rect.Width - side) / 2, rect.Y + (rect.Height - side) / 2);
+        using (drawingContext.PushTransform(Matrix.CreateTranslation(iconOrigin.X, iconOrigin.Y)))
+        {
+            LucideIcon.Draw(drawingContext, icon, LucideIcon.CreatePen(placeholder.Icon), new Size(side, side));
+        }
+    }
+
+    private static Size ResolveImageSize(IImage image, double maxWidth)
+    {
+        var natural = image.Size;
+        var scale = double.IsFinite(maxWidth) && maxWidth > 0
+            ? Math.Min(1d, maxWidth / Math.Max(1, natural.Width))
+            : 1d;
+        return new Size(
+            Math.Max(1, natural.Width * scale),
+            Math.Max(1, natural.Height * scale));
+    }
+
+    private static Size ResolvePlaceholderSize(string label, MarkdownInlineImageMetrics metrics)
+    {
+        var em = metrics.TextFontSize;
         var width = Math.Clamp(
-            label.Length * Math.Max(5, metrics.FontSize * 0.55) + PlaceholderHorizontalPadding * 2,
-            PlaceholderMinWidth,
-            PlaceholderMaxWidth);
-        return new Size(width, Math.Max(14, metrics.MaxHeight * 0.85));
+            em * (label.Length * PlaceholderCharWidthRatio + PlaceholderHorizontalPaddingRatio * 2),
+            em * PlaceholderMinWidthRatio,
+            em * PlaceholderMaxWidthRatio);
+        return new Size(width, metrics.MaxHeight * PlaceholderHeightRatio);
     }
 
     private sealed class EmptyTextRunProperties : TextRunProperties

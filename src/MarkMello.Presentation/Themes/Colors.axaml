@@ -91,6 +91,12 @@
       <SolidColorBrush x:Key="MmAlertWarningBrush">#935F00</SolidColorBrush>
       <!-- oklch(0.53 0.15 22) -->
       <SolidColorBrush x:Key="MmAlertCautionBrush">#B23F43</SolidColorBrush>
+      <!-- Плашка GitHub alert: цвет вида с непрозрачностью 8 % -->
+      <SolidColorBrush x:Key="MmAlertNoteBackgroundBrush">#14226FB3</SolidColorBrush>
+      <SolidColorBrush x:Key="MmAlertTipBackgroundBrush">#14218041</SolidColorBrush>
+      <SolidColorBrush x:Key="MmAlertImportantBackgroundBrush">#147857AB</SolidColorBrush>
+      <SolidColorBrush x:Key="MmAlertWarningBackgroundBrush">#14935F00</SolidColorBrush>
+      <SolidColorBrush x:Key="MmAlertCautionBackgroundBrush">#14B23F43</SolidColorBrush>
     </ResourceDictionary>
 
     <ResourceDictionary x:Key="Dark">
@@ -167,6 +173,12 @@
       <SolidColorBrush x:Key="MmAlertWarningBrush">#D0A260</SolidColorBrush>
       <!-- oklch(0.74 0.13 22) -->
       <SolidColorBrush x:Key="MmAlertCautionBrush">#F28885</SolidColorBrush>
+      <!-- Плашка GitHub alert: цвет вида с непрозрачностью 10 % -->
+      <SolidColorBrush x:Key="MmAlertNoteBackgroundBrush">#1A73B0EE</SolidColorBrush>
+      <SolidColorBrush x:Key="MmAlertTipBackgroundBrush">#1A76BE86</SolidColorBrush>
+      <SolidColorBrush x:Key="MmAlertImportantBackgroundBrush">#1AB59BE6</SolidColorBrush>
+      <SolidColorBrush x:Key="MmAlertWarningBackgroundBrush">#1AD0A260</SolidColorBrush>
+      <SolidColorBrush x:Key="MmAlertCautionBackgroundBrush">#1AF28885</SolidColorBrush>
     </ResourceDictionary>
 
   </ResourceDictionary.ThemeDictionaries>

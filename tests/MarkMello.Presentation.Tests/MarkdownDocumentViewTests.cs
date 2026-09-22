@@ -149,15 +149,15 @@ public sealed class MarkdownDocumentViewTests
         var root = Assert.IsType<StackPanel>(viewport.Child);
         var codeBlock = Assert.IsType<Border>(Assert.Single(root.Children));
         var contentGrid = Assert.IsType<Grid>(codeBlock.Child);
-        var body = Assert.IsType<StackPanel>(contentGrid.Children[0]);
-        var copyButton = Assert.IsType<Button>(contentGrid.Children[1]);
-        var scrollViewer = Assert.IsType<ScrollViewer>(Assert.Single(body.Children));
+        var copyButton = Assert.Single(contentGrid.Children.OfType<Button>());
+        var scrollViewer = Assert.Single(contentGrid.Children.OfType<ScrollViewer>());
         var scrollContent = Assert.IsType<Border>(scrollViewer.Content);
 
         Assert.Contains("mm-code-copy-button", copyButton.Classes);
         Assert.Equal(ScrollBarVisibility.Auto, scrollViewer.HorizontalScrollBarVisibility);
         Assert.Equal(ScrollBarVisibility.Disabled, scrollViewer.VerticalScrollBarVisibility);
-        Assert.Equal(16, scrollContent.Padding.Bottom);
+        // Нижнее поле блока — внутри прокрутки: полоса прокрутки ложится в него.
+        Assert.Equal(ReadingPreferences.Default.FontSize, scrollContent.Padding.Bottom);
         Assert.NotNull(scrollContent.Child);
     }
 
@@ -173,12 +173,12 @@ public sealed class MarkdownDocumentViewTests
 
         var codeBlock = GetOnlyDocumentChild<Border>(view);
         var contentGrid = Assert.IsType<Grid>(codeBlock.Child);
-        var copyButton = Assert.IsType<Button>(contentGrid.Children[1]);
+        var copyButton = Assert.Single(contentGrid.Children.OfType<Button>());
         var icon = Assert.IsType<LucideIcon>(copyButton.Content);
         var name = AutomationProperties.GetName(copyButton);
 
-        Assert.Equal(13, icon.Width);
-        Assert.Equal(13, icon.Height);
+        Assert.Equal(ReadingPreferences.Default.FontSize * 0.93, icon.Width, 3);
+        Assert.Equal(ReadingPreferences.Default.FontSize * 0.93, icon.Height, 3);
         Assert.False(string.IsNullOrWhiteSpace(name));
         Assert.Equal(name, ToolTip.GetTip(copyButton));
         Assert.Equal(AutomationLiveSetting.Polite, AutomationProperties.GetLiveSetting(copyButton));
