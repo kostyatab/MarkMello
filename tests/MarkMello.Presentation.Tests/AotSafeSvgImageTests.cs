@@ -405,6 +405,90 @@ public sealed class AotSafeSvgImageTests
         Assert.True(image.DrawableCount > 0);
     }
 
+    [Fact]
+    public void RealNaiadClassOutputKeepsEveryClassWithItsMembers()
+    {
+        // MM-20: Naiad 0.1.2 drew only the first class, without members.
+        var labels = RenderMermaidLabels(
+            """
+            classDiagram
+                class Document {
+                    +string Path
+                    +Render() RenderedDocument
+                }
+                class Tab {
+                    +bool IsDirty
+                    +Close()
+                }
+                Tab o-- Document
+            """);
+
+        Assert.Contains("Document", labels);
+        Assert.Contains("Tab", labels);
+        Assert.Contains(labels, label => label.Contains("Path", StringComparison.Ordinal));
+        Assert.Contains(labels, label => label.Contains("Close()", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RealNaiadMindmapShowsTheRootTextWithoutShapeSyntax()
+    {
+        // MM-20: Naiad 0.1.2 printed "root((MarkMello))" literally.
+        var labels = RenderMermaidLabels(
+            """
+            mindmap
+              root((MarkMello))
+                Viewer
+                Editor
+            """);
+
+        Assert.Contains("MarkMello", labels);
+        Assert.DoesNotContain(labels, label => label.Contains("((", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void RealNaiadJourneyListsItsActors()
+    {
+        // MM-20: Naiad 0.1.2 showed "Actors:" with no names after it.
+        var labels = RenderMermaidLabels(
+            """
+            journey
+                title Opening a file
+                section Launch
+                  Double-click the file: 5: Reader
+            """);
+
+        Assert.Contains("Reader", labels);
+    }
+
+    [Fact]
+    public void RealNaiadGanttShowsTaskNamesWithoutTheirIds()
+    {
+        // MM-20: Naiad 0.1.2 printed the task id "a1" inside the first bar
+        // and cut off the last row.
+        var labels = RenderMermaidLabels(
+            """
+            gantt
+                title Release plan
+                dateFormat YYYY-MM-DD
+                section Build
+                Text and lists  :done, a1, 2026-09-01, 3d
+                Tables and code :active, a2, after a1, 2d
+                section Check
+                Manual review   :a3, after a2, 2d
+            """);
+
+        Assert.Contains("Text and lists", labels);
+        Assert.Contains("Manual review", labels);
+        Assert.DoesNotContain(labels, label => label is "a1" or "a2" or "a3");
+    }
+
+    private static List<string> RenderMermaidLabels(string source)
+    {
+        var svg = RenderMermaid(source);
+        Assert.True(AotSafeSvgImage.TryLoad(Encoding.UTF8.GetBytes(svg), out var image));
+        return image.EnumerateTextContents().Select(static label => label.Trim()).ToList();
+    }
+
     private static string RenderMermaid(string source)
     {
         var renderer = new MermaidDiagramRenderer();

@@ -141,7 +141,7 @@ See [LICENSE](LICENSE).
 
 Diagram support in MarkMello is built on open-source projects:
 
-- [Naiad](https://github.com/NaiadDiagrams/Naiad) — a .NET library that renders Mermaid diagrams to SVG in-process, without a browser or external runtime. MIT License.
+- [Naiad](https://github.com/Papyrine/Naiad) — a .NET library that renders Mermaid diagrams to SVG in-process, without a browser or external runtime. MIT License.
 - [Mermaid](https://github.com/mermaid-js/mermaid) — diagram syntax and specification.
 
 Syntax highlighting in code blocks is built on:

@@ -127,6 +127,38 @@ public sealed class MarkdownDiagramErrorLayoutTests
         }, CancellationToken.None);
     }
 
+    [Fact]
+    public Task EmptyDiagramIsExplainedInTheInterfaceLanguage()
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var resources = AvaloniaApplication.Current!.Resources;
+            resources["Localization"] = new LocalizationService(AppLanguage.Russian);
+            try
+            {
+                var diagram = new MarkdownDiagramBlock(MarkdownDiagramKind.Mermaid, Source)
+                {
+                    RenderResult = new DiagramRenderResult.Failure("Mermaid produced an empty diagram.", Source)
+                    {
+                        Reason = DiagramFailureReason.EmptyDiagram,
+                    },
+                };
+                var (window, view) = Show(diagram, ThemeVariant.Light);
+                var frame = ErrorFrame(view, "mm-md-diagram-error");
+
+                // Вместо английской диагностики рендерера — фраза на языке интерфейса.
+                Assert.Equal("Диаграмма получилась пустой. Проверьте синтаксис.", Text(frame, "mm-md-diagram-error-message").Text);
+                CodeBlock(frame);
+
+                window.Close();
+            }
+            finally
+            {
+                resources.Remove("Localization");
+            }
+        }, CancellationToken.None);
+    }
+
     [Theory]
     [InlineData("syntax error", "syntax error")]
     [InlineData("  first line  \n\n  second line ", "first line\nsecond line")]

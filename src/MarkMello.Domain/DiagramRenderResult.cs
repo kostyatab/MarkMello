@@ -19,5 +19,23 @@ public abstract record DiagramRenderResult
     /// is the original diagram source so the viewer can fall back to a
     /// readable error block showing what the author wrote.
     /// </summary>
-    public sealed record Failure(string Message, string Source) : DiagramRenderResult;
+    public sealed record Failure(string Message, string Source) : DiagramRenderResult
+    {
+        /// <summary>
+        /// Why the diagram failed. <see cref="Message"/> stays the renderer's
+        /// own diagnostic; a known reason lets the viewer explain it in the
+        /// reader's language instead.
+        /// </summary>
+        public DiagramFailureReason Reason { get; init; } = DiagramFailureReason.RendererError;
+    }
+}
+
+/// <summary>Why a diagram could not be shown.</summary>
+public enum DiagramFailureReason
+{
+    /// <summary>The renderer rejected the source or failed on it; its message explains why.</summary>
+    RendererError,
+
+    /// <summary>The renderer accepted the source but drew nothing — usually broken syntax it skipped.</summary>
+    EmptyDiagram,
 }

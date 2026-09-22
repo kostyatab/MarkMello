@@ -1534,7 +1534,8 @@ public sealed class MarkdownDocumentView : UserControl
     private static MarkdownDiagramStrings CreateDiagramStrings()
         => new(
             GetLocalizedString("DiagramRenderFailed", MarkdownDiagramStrings.English.RenderFailed),
-            GetLocalizedString("DiagramSvgUnsupported", MarkdownDiagramStrings.English.SvgUnsupported));
+            GetLocalizedString("DiagramSvgUnsupported", MarkdownDiagramStrings.English.SvgUnsupported),
+            GetLocalizedString("DiagramEmpty", MarkdownDiagramStrings.English.EmptyDiagram));
 
     /// <summary>Есть ли в блоках диаграмма — на любой глубине: в цитате, списке, сноске.</summary>
     private static bool ContainsDiagram(IEnumerable<MarkdownBlock> blocks)

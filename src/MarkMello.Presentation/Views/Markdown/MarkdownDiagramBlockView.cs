@@ -112,7 +112,9 @@ internal sealed class MarkdownDiagramBlockView : ContentControl
         => BuildErrorFrame(
             "mm-md-diagram-error",
             Format(_strings.RenderFailed, kind),
-            SummarizeMessage(failure.Message),
+            failure.Reason == DiagramFailureReason.EmptyDiagram
+                ? _strings.EmptyDiagram
+                : SummarizeMessage(failure.Message),
             kind,
             failure.Source);
 
@@ -233,10 +235,14 @@ internal sealed class MarkdownDiagramBlockView : ContentControl
         => string.Format(CultureInfo.CurrentCulture, format, kind);
 }
 
-/// <summary>Localized titles of a diagram that could not be shown; <c>{0}</c> is the dialect.</summary>
-internal sealed record MarkdownDiagramStrings(string RenderFailed, string SvgUnsupported)
+/// <summary>
+/// Localized texts of a diagram that could not be shown: titles, where <c>{0}</c>
+/// is the dialect, and the explanation of an empty diagram.
+/// </summary>
+internal sealed record MarkdownDiagramStrings(string RenderFailed, string SvgUnsupported, string EmptyDiagram)
 {
     public static MarkdownDiagramStrings English { get; } = new(
         "{0} diagram could not be rendered",
-        "{0} diagram rendered, but its SVG is not yet supported by the built-in viewer");
+        "{0} diagram rendered, but its SVG is not yet supported by the built-in viewer",
+        "The diagram came out empty. Check its syntax.");
 }
