@@ -1574,6 +1574,11 @@
     <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
   </Style>
 
+  <!-- Mermaid-диаграмма: подложка из темы, в тёмной — светлый лист (ADR-0005 Decision 12) -->
+  <Style Selector="Border.mm-md-diagram-success">
+    <Setter Property="Background" Value="{DynamicResource MmDiagramBackgroundBrush}" />
+  </Style>
+
   <!--
     «Место под картинку» — пунктирная рамка битой или загружающейся картинки и
     неудавшейся диаграммы (MarkdownMissingContentFrame): иконка и сообщение

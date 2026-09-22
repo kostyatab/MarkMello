@@ -44,6 +44,9 @@
       <SolidColorBrush x:Key="MmCodeBackgroundBrush">#F2EEE9</SolidColorBrush>
       <!-- oklch(0.90 0.008 75) -->
       <SolidColorBrush x:Key="MmCodeBorderBrush">#E1DDD8</SolidColorBrush>
+      <!-- Подложка Mermaid-диаграммы: в светлой теме её нет, диаграмма лежит
+           прямо на странице -->
+      <SolidColorBrush x:Key="MmDiagramBackgroundBrush">Transparent</SolidColorBrush>
       <!-- Клавиша (<kbd>): крышка светлее фона кода, край темнее его рамки,
            чтобы клавиша не читалась как inline-код -->
       <!-- oklch(0.975 0.006 80) -->
@@ -154,6 +157,11 @@
       <SolidColorBrush x:Key="MmCodeBackgroundBrush">#2A2522</SolidColorBrush>
       <!-- oklch(0.33 0.010 60) -->
       <SolidColorBrush x:Key="MmCodeBorderBrush">#393430</SolidColorBrush>
+      <!-- Подложка Mermaid-диаграммы: светлый лист. Naiad рисует SVG только в
+           светлой палитре Mermaid, текст без fill — чёрный, поэтому диаграмме
+           нужен светлый фон, а не перекраска (ADR-0005 Decision 12) -->
+      <!-- oklch(0.926 0.009 78) -->
+      <SolidColorBrush x:Key="MmDiagramBackgroundBrush">#EAE6E0</SolidColorBrush>
       <!-- Клавиша (<kbd>): крышка светлее фона кода, край светлее его рамки -->
       <!-- oklch(0.29 0.010 60) -->
       <SolidColorBrush x:Key="MmKeyboardBackgroundBrush">#2F2A26</SolidColorBrush>

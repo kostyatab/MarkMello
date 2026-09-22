@@ -190,6 +190,11 @@ internal sealed class MarkdownDocumentMetrics
     private const double MissingIconGapRatio = 0.5;
     private const double MissingTextGapRatio = 0.1;
     public const double MissingPathFontScale = 0.8;
+    /// <summary>
+    /// Подложка диаграммы: поле вокруг картинки одинаково в обеих темах, чтобы
+    /// смена темы не сдвигала документ; скругление — как у блока кода.
+    /// </summary>
+    private const double DiagramPaddingRatio = 1;
     private const double DiagramErrorTopPaddingRatio = 1.5;
     private const double DiagramErrorSidePaddingRatio = 1.15;
     public const double DiagramErrorMessageFontScale = 0.857;
@@ -368,6 +373,10 @@ internal sealed class MarkdownDocumentMetrics
     public double MissingTextGap => Em(MissingTextGapRatio);
 
     public double MissingPathFontSize => Em(MissingPathFontScale);
+
+    public double DiagramPadding => Em(DiagramPaddingRatio);
+
+    public double DiagramCornerRadius => CodeBlockCornerRadius;
 
     public Thickness DiagramErrorPadding
         => new(Em(DiagramErrorSidePaddingRatio), Em(DiagramErrorTopPaddingRatio), Em(DiagramErrorSidePaddingRatio), Em(DiagramErrorSidePaddingRatio));

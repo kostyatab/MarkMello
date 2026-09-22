@@ -95,10 +95,15 @@ internal sealed class MarkdownDiagramBlockView : ContentControl
             UseLayoutRounding = true,
         };
 
+        // The background comes from the theme style: Naiad draws only in the
+        // light Mermaid palette, so the dark theme lays a light sheet under it.
+        var metrics = _typography.Metrics;
         return new Border
         {
             Classes = { "mm-md-diagram", "mm-md-diagram-success" },
             HorizontalAlignment = HorizontalAlignment.Stretch,
+            Padding = new Thickness(metrics.DiagramPadding),
+            CornerRadius = new CornerRadius(metrics.DiagramCornerRadius),
             Child = new ScrollViewer
             {
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
