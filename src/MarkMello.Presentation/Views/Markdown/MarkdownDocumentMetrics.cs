@@ -49,13 +49,32 @@ internal sealed class MarkdownDocumentMetrics
 
     // Блоки, чей вид ещё не пересмотрен (MM-62…MM-64): прежние пиксели при
     // тексте 14 переведены в em от 14.
-    private const double TableGap = 1.4;
     private const double TightListItemGap = 6.0 / 14;
     private const double ListItemTextIndentRatio = 12.0 / 14;
     private const double TaskCheckboxIndentAfterNumberRatio = 3.0 / 14;
     private const double FootnoteRowGapRatio = 8.0 / 14;
     private const double FootnoteRuleTopRatio = 1;
     private const double FootnoteRuleBottomRatio = 16.0 / 14;
+
+    /// <summary>Таблица: сетка, кегль текста, ячейка 7 × 9 px при 14, как в Notion.</summary>
+    private const double TableGap = 1.4;
+    public const double TableLineHeightRatio = 1.5;
+    private const double TableCellVerticalPaddingRatio = 0.5;
+    private const double TableCellHorizontalPaddingRatio = 0.643;
+
+    /// <summary>
+    /// Front matter — свойства, как в Notion: две колонки между линиями сверху и
+    /// снизу. Поля, отступ ключа и межстрочный — в долях кегля блока, колонка
+    /// ключей и высота строки — в долях размера текста.
+    /// </summary>
+    public const double FrontMatterFontScale = 0.875;
+    public const double FrontMatterValueLineHeightRatio = 1.45;
+    private const double FrontMatterKeyColumnRatio = 10;
+    private const double FrontMatterRowMinHeightRatio = 2.125;
+    private const double FrontMatterPaddingRatio = 1;
+    private const double FrontMatterKeyGapRatio = 1;
+    // До H1 — как перед H2, а не больший из двух просветов.
+    private const double FrontMatterGapRatio = 2.29;
 
     /// <summary>Блок кода: лист с рамкой, язык и «Копировать» — в верхнем поле.</summary>
     public const double CodeBlockFontScale = 0.85;
@@ -251,6 +270,40 @@ internal sealed class MarkdownDocumentMetrics
 
     public double DiagramErrorSourceGap => Em(DiagramErrorSourceGapRatio);
 
+    public double TableFontSize => FontSize;
+
+    public double TableLineHeight => TableFontSize * TableLineHeightRatio;
+
+    /// <summary>
+    /// Поля ячейки — в целых пикселях экрана (<paramref name="layoutScale"/> —
+    /// масштаб отрисовки): линии сетки остаются на пикселях, а дробное поле при
+    /// округлении раскладки дало бы ячейке с картинкой лишний пиксель высоты.
+    /// Половина пикселя — всегда вверх. При 14 и масштабе 1 — ровно 7 × 9.
+    /// </summary>
+    public Thickness GetTableCellPadding(double layoutScale)
+        => new(
+            RoundToDevicePixels(Em(TableCellHorizontalPaddingRatio), layoutScale),
+            RoundToDevicePixels(Em(TableCellVerticalPaddingRatio), layoutScale));
+
+    private static double RoundToDevicePixels(double value, double layoutScale)
+        => Math.Round(value * layoutScale, MidpointRounding.AwayFromZero) / layoutScale;
+
+    public double FrontMatterFontSize => Em(FrontMatterFontScale);
+
+    /// <summary>Межстрочный ключа — как у текста документа, от кегля блока.</summary>
+    public double FrontMatterKeyLineHeight => FrontMatterFontSize * LineHeightRatio;
+
+    public double FrontMatterValueLineHeight => FrontMatterFontSize * FrontMatterValueLineHeightRatio;
+
+    public double FrontMatterKeyColumnWidth => Em(FrontMatterKeyColumnRatio);
+
+    public double FrontMatterRowMinHeight => Em(FrontMatterRowMinHeightRatio);
+
+    /// <summary>От линии до строк — сверху и снизу поровну.</summary>
+    public double FrontMatterPadding => FrontMatterFontSize * FrontMatterPaddingRatio;
+
+    public double FrontMatterKeyGap => FrontMatterFontSize * FrontMatterKeyGapRatio;
+
     public double FootnoteRowGap => Em(FootnoteRowGapRatio);
 
     public double FootnoteRuleTop => Em(FootnoteRuleTopRatio);
@@ -285,13 +338,20 @@ internal sealed class MarkdownDocumentMetrics
     {
         MarkdownHeadingBlock heading => new(Em(GetHeadingGapRatio(heading.Level)), 0),
         MarkdownHorizontalRuleBlock => new(Em(HorizontalRuleGap), Em(HorizontalRuleGap)),
-        MarkdownTableBlock or MarkdownFrontMatterBlock => new(Em(TableGap), Em(TableGap)),
+        MarkdownTableBlock => new(Em(TableGap), Em(TableGap)),
+        MarkdownFrontMatterBlock => new(0, Em(FrontMatterGapRatio)),
         _ => new(Em(ParagraphGap), 0)
     };
 
-    /// <summary>Просвет между соседними блоками: больший из двух, а не сумма.</summary>
+    /// <summary>
+    /// Просвет между соседними блоками: больший из двух, а не сумма. Заголовок
+    /// сразу под front matter теряет свой просвет — до него ровно нижний просвет
+    /// свойств.
+    /// </summary>
     public double GapBetween(MarkdownBlock previous, MarkdownBlock next)
-        => Math.Max(GetSpacing(previous).Bottom, GetSpacing(next).Top);
+        => previous is MarkdownFrontMatterBlock && next is MarkdownHeadingBlock { Level: 1 }
+            ? GetSpacing(previous).Bottom
+            : Math.Max(GetSpacing(previous).Bottom, GetSpacing(next).Top);
 }
 
 internal readonly record struct MarkdownBlockSpacing(double Top, double Bottom);

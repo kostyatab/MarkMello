@@ -1482,30 +1482,37 @@
 
   <Style Selector="Border.mm-md-table">
     <!--
-      Border-collapse model: no outer frame, no rounded corners. Visual structure is expressed
-      purely through per-cell bottom borders below.
+      No outer frame: the grid is drawn by the cells themselves. Padding and the
+      per-cell border sides are set in code (MarkdownDocumentView.AddTableRow).
     -->
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="ClipToBounds" Value="False" />
   </Style>
 
   <Style Selector="Border.mm-md-table-header-cell">
-    <Setter Property="Padding" Value="14,10" />
-    <!-- Stronger divider directly under the header row, like `.mm-table th` border-bottom. -->
-    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="Background" Value="{DynamicResource MmQuoteBackgroundBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
   </Style>
 
   <Style Selector="Border.mm-md-table-cell">
-    <Setter Property="Padding" Value="14,10" />
-    <!-- Soft divider between data rows, like `.mm-table td` border-bottom. -->
-    <Setter Property="BorderThickness" Value="0,0,0,1" />
-    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
   </Style>
 
-  <!-- Bottom row: no trailing divider. -->
-  <Style Selector="Border.mm-md-table-cell.mm-md-table-cell-last">
-    <Setter Property="BorderThickness" Value="0" />
+  <!-- Front matter: lines above and below, none between the rows. -->
+  <Style Selector="Border.mm-md-front-matter">
+    <Setter Property="BorderThickness" Value="0,1" />
+    <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
+  </Style>
+
+  <Style Selector="TextBlock.mm-md-front-matter-key">
+    <Setter Property="UseLayoutRounding" Value="True" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+
+  <Style Selector="TextBlock.mm-md-front-matter-value">
+    <Setter Property="UseLayoutRounding" Value="True" />
+    <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
 
   <Style Selector="TextBlock.mm-md-table-header">

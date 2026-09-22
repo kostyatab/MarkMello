@@ -16,7 +16,7 @@ namespace MarkMello.Presentation.Views.Markdown;
 /// <see cref="PageEdgeInset"/> с каждой стороны. Слева таблицу отодвигает отступ
 /// на ширину левого поля, поэтому в покое она начинается от колонки чтения,
 /// широкая уходит в правое поле, а при прокрутке — в левое. Таблица уже колонки
-/// остаётся в колонке и растягивается на её ширину.
+/// остаётся в колонке шириной в свои колонки.
 /// <para>
 /// Где колонка стоит на странице, известно только после раскладки, поэтому поля
 /// пересчитываются по <see cref="Layoutable.LayoutUpdated"/>: изменились — ещё
@@ -116,7 +116,7 @@ internal sealed class MarkdownTableHost : Decorator
     protected override Size MeasureOverride(Size availableSize)
     {
         var columnWidth = availableSize.Width;
-        Panel.StretchWidth = double.IsFinite(columnWidth) ? columnWidth : double.NaN;
+        Panel.ReadingColumnWidth = double.IsFinite(columnWidth) ? columnWidth : double.NaN;
 
         ScrollViewer.Measure(availableSize.Inflate(new Thickness(_bleedLeft, 0, _bleedRight, 0)));
         var desired = ScrollViewer.DesiredSize;

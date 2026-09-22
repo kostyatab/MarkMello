@@ -705,8 +705,8 @@ public sealed class MarkdigMarkdownDocumentRenderer : IMarkdownDocumentRenderer
 
     /// <summary>
     /// YAML front matter в начале файла. Плоские пары <c>key: value</c> становятся
-    /// <see cref="MarkdownFrontMatterBlock"/> — viewer рисует его таблицей без строки
-    /// заголовка (ключ — жирным), как в preview VS Code.
+    /// <see cref="MarkdownFrontMatterBlock"/> — viewer рисует его свойствами: ключ и
+    /// значение в две колонки.
     /// Всё, что сложнее (вложенность, списки блоком, многострочные значения
     /// <c>|</c> и <c>&gt;</c>), уходит блоком кода целиком — текст не теряется.
     /// Пустой front matter не даёт блока вовсе.

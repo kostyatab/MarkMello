@@ -20,7 +20,7 @@ namespace MarkMello.Presentation.Tests;
 /// Колонка таблицы шириной в своё содержимое, текст ячеек не переносится. Таблица
 /// шире колонки чтения прокручивается целиком по горизонтали и, как в Notion,
 /// выходит на поля страницы: в покое начинается от колонки, при прокрутке уходит в
-/// левое поле. Таблица, которая помещается, растянута на всю колонку чтения.
+/// левое поле. Таблица, которая помещается, шириной в свои колонки, как в Notion.
 /// Регрессия: все колонки получали равную долю ширины, и узкие «#» и «CPU»
 /// занимали столько же места, сколько длинное «Rationale».
 /// </summary>
@@ -83,8 +83,9 @@ public sealed class MarkdownTableLayoutTests
         }, CancellationToken.None);
     }
 
+    /// <summary>Как в Notion: таблица, которая помещается, шириной в свои колонки, а не в колонку чтения.</summary>
     [Fact]
-    public Task TableThatFitsFillsTheReadingColumnWithoutScrolling()
+    public Task TableThatFitsIsAsWideAsItsColumnsWithoutScrolling()
     {
         return _fixture.Session.Dispatch(() =>
         {
@@ -95,11 +96,12 @@ public sealed class MarkdownTableLayoutTests
             var window = Show(view);
             var (scrollViewer, panel) = Table(view);
 
-            Assert.Equal(scrollViewer.Viewport.Width, scrollViewer.Extent.Width, Tolerance);
-            Assert.Equal(scrollViewer.Viewport.Width, panel.Bounds.Width, Tolerance);
+            Assert.True(panel.Bounds.Width < scrollViewer.Viewport.Width / 2);
+            Assert.True(scrollViewer.Extent.Width <= scrollViewer.Viewport.Width + Tolerance, "a table that fits should not scroll");
+            Assert.Equal(0, panel.Bounds.X, Tolerance);
             Assert.Equal(0, panel.Margin.Bottom);
 
-            // Колонки смыкаются и доходят до правого края.
+            // Колонки смыкаются, таблица кончается вместе с последней.
             Assert.Equal(Cell(panel, 0, 0).Bounds.Right, Cell(panel, 0, 1).Bounds.X, Tolerance);
             Assert.Equal(panel.Bounds.Width, Cell(panel, 0, 1).Bounds.Right, Tolerance);
 
@@ -108,7 +110,7 @@ public sealed class MarkdownTableLayoutTests
     }
 
     [Fact]
-    public Task TableThatFitsSharesTheSpareWidthInProportionToTheColumns()
+    public Task EachColumnOfATableThatFitsIsAsWideAsItsWidestCell()
     {
         return _fixture.Session.Dispatch(() =>
         {
@@ -118,13 +120,11 @@ public sealed class MarkdownTableLayoutTests
             var window = Show(view);
             var (_, panel) = Table(view);
 
-            var narrow = Cell(panel, 1, 0);
-            var wide = Cell(panel, 1, 1);
-            var naturalNarrow = Math.Max(Cell(panel, 0, 0).DesiredSize.Width, narrow.DesiredSize.Width);
-            var naturalWide = Math.Max(Cell(panel, 0, 1).DesiredSize.Width, wide.DesiredSize.Width);
-
-            Assert.True(narrow.Bounds.Width < wide.Bounds.Width / 3);
-            Assert.Equal(naturalNarrow / naturalWide, narrow.Bounds.Width / wide.Bounds.Width, tolerance: 0.005);
+            for (var column = 0; column < 2; column++)
+            {
+                var natural = Math.Max(Cell(panel, 0, column).DesiredSize.Width, Cell(panel, 1, column).DesiredSize.Width);
+                Assert.Equal(natural, Cell(panel, 1, column).Bounds.Width, 1d);
+            }
 
             window.Close();
         }, CancellationToken.None);
@@ -333,7 +333,7 @@ public sealed class MarkdownTableLayoutTests
             var column = ReadingColumn(view, page);
 
             Assert.Equal(column.Left, Left(Cell(panel, 0, 0), page), Tolerance);
-            Assert.Equal(column.Right, Right(Cell(panel, 0, 1), page), Tolerance);
+            Assert.True(Right(Cell(panel, 0, 1), page) < column.Right - 100);
             Assert.True(scrollViewer.Extent.Width <= scrollViewer.Viewport.Width + Tolerance, "a table that fits should not scroll");
             Assert.Equal(0, panel.Margin.Bottom);
 
@@ -519,7 +519,8 @@ public sealed class MarkdownTableLayoutTests
 
             var image = Cell(panel, 1, 0).Child!;
             Assert.True(image.Bounds.Width <= Cell(panel, 1, 0).Bounds.Width);
-            Assert.Equal(1080d / 1920, image.Bounds.Height / image.Bounds.Width, 2);
+            // Раскладка округляет высоту вверх до пикселя.
+            Assert.Equal(image.Bounds.Width * 1080 / 1920, image.Bounds.Height, 1d);
 
             window.Close();
         });
@@ -648,6 +649,146 @@ public sealed class MarkdownTableLayoutTests
                 1 - MarkdownTableHost.EdgeFadeWidth / host.ScrollViewer.Viewport.Width,
                 mask.GradientStops[2].Offset,
                 4);
+
+            window.Close();
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public Task CellsUseTheTextSizeAndTheNotionCellPadding()
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var view = CreateView(Document(Table(["Setting", "Value"], ["Theme", "Dark"])));
+            var window = Show(view);
+            var (_, panel) = Table(view);
+
+            foreach (var (row, column) in new[] { (0, 0), (1, 1) })
+            {
+                var content = Content(panel, row, column);
+                Assert.Equal(14, content.BaseFontSize, 3);
+                Assert.Equal(21, content.BaseLineHeight, 3);
+                Assert.Equal(TextWrapping.NoWrap, content.LayoutTextWrapping);
+                Assert.Equal(new Thickness(9, 7), Cell(panel, row, column).Padding);
+            }
+
+            window.Close();
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public Task CellPaddingKeepsItsProportionAtALargerTextSize()
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var view = CreateView(Document(Table(["Setting", "Value"], ["Theme", "Dark"])));
+            view.ReadingPreferences = ReadingPreferences.Default with { FontSize = 18 };
+            var window = Show(view);
+            var (_, panel) = Table(view);
+
+            Assert.Equal(new Thickness(12, 9), Cell(panel, 1, 0).Padding);
+            Assert.Equal(27, Content(panel, 1, 0).BaseLineHeight, 3);
+
+            window.Close();
+        }, CancellationToken.None);
+    }
+
+    /// <summary>Таблица набрана шрифтом документа: смена Sans на Mono или Serif меняет и её.</summary>
+    [Theory]
+    [InlineData(FontFamilyMode.Sans, "MmDocumentSansFontFamily")]
+    [InlineData(FontFamilyMode.Serif, "MmDocumentSerifFontFamily")]
+    [InlineData(FontFamilyMode.Mono, "MmDocumentMonoFontFamily")]
+    public Task CellsUseTheDocumentFont(FontFamilyMode mode, string resourceKey)
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var view = CreateView(Document(Table(["Setting", "Value"], ["Theme", "Dark"])));
+            view.ReadingPreferences = ReadingPreferences.Default with { FontFamily = mode };
+            var window = Show(view);
+            var (_, panel) = Table(view);
+
+            Assert.True(window.TryFindResource(resourceKey, out var expected));
+            Assert.Equal(expected, Content(panel, 0, 0).BaseFontFamily);
+            Assert.Equal(expected, Content(panel, 1, 1).BaseFontFamily);
+
+            window.Close();
+        }, CancellationToken.None);
+    }
+
+    /// <summary>Шапка — тихая: тот же кегль и цвет текста, 600, без разрядки.</summary>
+    [Fact]
+    public Task TheHeaderIsSemiboldTextOfTheSameSizeWithoutLetterSpacing()
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var view = CreateView(Document(Table(["Setting", "Value"], ["Theme", "Dark"])));
+            var window = Show(view);
+            var (_, panel) = Table(view);
+
+            var header = Content(panel, 0, 0);
+            Assert.Equal(FontWeight.SemiBold, header.BaseFontWeight);
+            Assert.Equal(0, header.BaseLetterSpacing);
+            Assert.Equal(Content(panel, 1, 0).BaseFontSize, header.BaseFontSize);
+            Assert.Equal(Color.Parse("#1F1915"), Assert.IsAssignableFrom<ISolidColorBrush>(header.ResolveBaseTextBrush()).Color);
+            Assert.Equal(FontWeight.Normal, Content(panel, 1, 0).BaseFontWeight);
+
+            window.Close();
+        }, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Сетка в 1 px у всех ячеек, без двойных линий между соседними: у ячейки линии
+    /// слева и сверху, у последней колонки — ещё справа, у последней строки — снизу.
+    /// </summary>
+    [Theory]
+    [InlineData("Light", "#E2DDD7", "#F4F0EA")]
+    [InlineData("Dark", "#3F3935", "#29241F")]
+    public Task EveryCellIsInAOnePixelGridUnderAQuietHeader(string theme, string lineColor, string headerColor)
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var view = CreateView(Document(Table(["A", "B", "C"], ["1", "2", "3"], ["4", "5", "6"])));
+            var window = ThemedTestWindow.Create(theme == "Dark" ? ThemeVariant.Dark : ThemeVariant.Light, view);
+            window.Width = 600;
+            window.Height = 400;
+            window.Show();
+            window.UpdateLayout();
+            var (_, panel) = Table(view);
+
+            for (var row = 0; row < 3; row++)
+            {
+                for (var column = 0; column < 3; column++)
+                {
+                    var cell = Cell(panel, row, column);
+                    Assert.Equal(new Thickness(1, 1, column == 2 ? 1 : 0, row == 2 ? 1 : 0), cell.BorderThickness);
+                    Assert.Equal(Color.Parse(lineColor), Assert.IsAssignableFrom<ISolidColorBrush>(cell.BorderBrush).Color);
+
+                    if (row == 0)
+                    {
+                        Assert.Equal(Color.Parse(headerColor), Assert.IsAssignableFrom<ISolidColorBrush>(cell.Background).Color);
+                    }
+                    else
+                    {
+                        Assert.Null(cell.Background);
+                    }
+                }
+            }
+
+            window.Close();
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public Task ATableWithoutRowsClosesTheGridUnderTheHeader()
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var view = CreateView(Document(new MarkdownTableBlock(Row("A", "B"), [])));
+            var window = Show(view);
+            var (_, panel) = Table(view);
+
+            Assert.Equal(new Thickness(1, 1, 0, 1), Cell(panel, 0, 0).BorderThickness);
+            Assert.Equal(new Thickness(1), Cell(panel, 0, 1).BorderThickness);
 
             window.Close();
         }, CancellationToken.None);

@@ -724,7 +724,8 @@ public sealed class MarkdownDocumentView : UserControl
             || border.Classes.Contains("mm-md-codeblock")
             || border.Classes.Contains("mm-md-table")
             || border.Classes.Contains("mm-md-table-header-cell")
-            || border.Classes.Contains("mm-md-table-cell");
+            || border.Classes.Contains("mm-md-table-cell")
+            || border.Classes.Contains("mm-md-front-matter");
 
     private static bool IsEmptyThickness(Thickness thickness)
         => thickness.Left <= 0 && thickness.Top <= 0 && thickness.Right <= 0 && thickness.Bottom <= 0;
@@ -2132,66 +2133,42 @@ public sealed class MarkdownDocumentView : UserControl
     }
 
     private Control BuildTable(MarkdownTableBlock table, string path)
-        => BuildTableLayout(table, table.Header, table.Rows, table.GetColumnAlignment, path);
-
-    /// <summary>
-    /// Front matter рисуется той же табличной раскладкой, что и обычная таблица:
-    /// строки без шапки, ключ жирным, колонки по левому краю. Вид метаданных
-    /// живёт здесь и от вида таблиц больше не зависит.
-    /// </summary>
-    private Control BuildFrontMatter(MarkdownFrontMatterBlock frontMatter, string path)
-        => BuildTableLayout(
-            frontMatter,
-            [],
-            MarkdownFrontMatterRows.Create(frontMatter),
-            static _ => MarkdownTableColumnAlignment.Left,
-            path);
-
-    private Control BuildTableLayout(
-        MarkdownBlock block,
-        IReadOnlyList<MarkdownTableCell> header,
-        IReadOnlyList<IReadOnlyList<MarkdownTableCell>> rows,
-        Func<int, MarkdownTableColumnAlignment> columnAlignment,
-        string path)
     {
+        var header = table.Header;
+        var rows = table.Rows;
         var columnCount = Math.Max(
             header.Count,
             rows.Count == 0 ? 0 : rows.Max(static row => row.Count));
 
         if (columnCount == 0)
         {
-            return BuildFallback(block);
+            return BuildFallback(table);
         }
 
         var panel = new MarkdownTablePanel(columnCount);
-
-        // Design `.mm-table` switches to the sans stack at 0.92em of body.
-        var sansFontFamily = LookupFontFamily("MmDocumentSansFontFamily");
-        var bodyCellFontSize = ReadingPreferences.FontSize * 0.92;
-        var headerCellFontSize = ReadingPreferences.FontSize * 0.85;
+        var fontFamily = ResolveBodyFontFamily();
+        // Вне окна масштаб неизвестен — 1; при показе документ обычно уже в окне.
+        var cellPadding = _metrics.GetTableCellPadding(LayoutHelper.GetLayoutScale(this));
+        var rowCount = rows.Count + (header.Count > 0 ? 1 : 0);
 
         if (header.Count > 0)
         {
             AddTableRow(
-                panel, columnAlignment, header,
-                isHeader: true, isLastDataRow: false,
+                panel, table.GetColumnAlignment, header,
+                isHeader: true, isLastRow: rowCount == 1,
                 pathPrefix: $"{path}.h",
-                fontFamily: sansFontFamily,
-                headerFontSize: headerCellFontSize,
-                bodyFontSize: bodyCellFontSize);
+                fontFamily: fontFamily,
+                cellPadding: cellPadding);
         }
 
         for (var rowIndex = 0; rowIndex < rows.Count; rowIndex++)
         {
-            // The last data row gets no bottom border so the table does not
-            // end on a line.
             AddTableRow(
-                panel, columnAlignment, rows[rowIndex],
-                isHeader: false, isLastDataRow: rowIndex == rows.Count - 1,
+                panel, table.GetColumnAlignment, rows[rowIndex],
+                isHeader: false, isLastRow: rowIndex == rows.Count - 1,
                 pathPrefix: $"{path}.r{rowIndex}.c",
-                fontFamily: sansFontFamily,
-                headerFontSize: headerCellFontSize,
-                bodyFontSize: bodyCellFontSize);
+                fontFamily: fontFamily,
+                cellPadding: cellPadding);
         }
 
         return new Border
@@ -2201,16 +2178,20 @@ public sealed class MarkdownDocumentView : UserControl
         };
     }
 
+    /// <summary>
+    /// Сетка таблицы: у каждой ячейки линии слева и сверху, у последней колонки —
+    /// ещё справа, у последней строки — снизу, чтобы соседние ячейки не рисовали
+    /// одну линию дважды.
+    /// </summary>
     private void AddTableRow(
         MarkdownTablePanel panel,
         Func<int, MarkdownTableColumnAlignment> columnAlignment,
         IReadOnlyList<MarkdownTableCell> cells,
         bool isHeader,
-        bool isLastDataRow,
+        bool isLastRow,
         string pathPrefix,
         FontFamily fontFamily,
-        double headerFontSize,
-        double bodyFontSize)
+        Thickness cellPadding)
     {
         for (var columnIndex = 0; columnIndex < panel.ColumnCount; columnIndex++)
         {
@@ -2224,62 +2205,102 @@ public sealed class MarkdownDocumentView : UserControl
                 _ => TextAlignment.Left
             };
 
-            Control content;
-            if (isHeader)
-            {
-                // Design: 0.85em size, semibold, soft colour, 0.05em letter-spacing.
-                // Note: design also specifies "text-transform: uppercase", which
-                // Avalonia does not support without mutating the characters
-                // themselves (and breaking copy semantics). We therefore keep
-                // the original case and approximate the visual weight via
-                // letter-spacing + soft colour + smaller size.
-                content = BuildSelectionFragment(
-                    $"{pathPrefix}{columnIndex}",
-                    cell.Inlines,
-                    margin: default,
-                    fontSize: headerFontSize,
-                    lineHeight: Math.Max(headerFontSize * 1.45, headerFontSize + 4),
-                    fontWeight: FontWeight.SemiBold,
-                    fontStyle: FontStyle.Normal,
-                    fallbackClassName: "mm-md-table-header",
-                    baseFontFamily: fontFamily,
-                    textWrapping: TextWrapping.NoWrap,
-                    baseForeground: LookupBrush("MmTextSoftBrush"),
-                    letterSpacing: headerFontSize * 0.05,
-                    textAlignment: textAlignment);
-            }
-            else
-            {
-                content = BuildSelectionFragment(
-                    $"{pathPrefix}{columnIndex}",
-                    cell.Inlines,
-                    margin: default,
-                    fontSize: bodyFontSize,
-                    lineHeight: Math.Max(bodyFontSize * 1.55, bodyFontSize + 4),
-                    fontWeight: FontWeight.Normal,
-                    fontStyle: FontStyle.Normal,
-                    fallbackClassName: "mm-md-table-text",
-                    baseFontFamily: fontFamily,
-                    textWrapping: TextWrapping.NoWrap,
-                    textAlignment: textAlignment);
-            }
+            var content = BuildSelectionFragment(
+                $"{pathPrefix}{columnIndex}",
+                cell.Inlines,
+                margin: default,
+                fontSize: _metrics.TableFontSize,
+                lineHeight: _metrics.TableLineHeight,
+                fontWeight: isHeader ? FontWeight.SemiBold : FontWeight.Normal,
+                fontStyle: FontStyle.Normal,
+                fallbackClassName: isHeader ? "mm-md-table-header" : "mm-md-table-text",
+                baseFontFamily: fontFamily,
+                textWrapping: TextWrapping.NoWrap,
+                textAlignment: textAlignment);
 
             var border = new Border
             {
                 Classes = { isHeader ? "mm-md-table-header-cell" : "mm-md-table-cell" },
+                Padding = cellPadding,
+                BorderThickness = new Thickness(
+                    1,
+                    1,
+                    columnIndex == panel.ColumnCount - 1 ? 1 : 0,
+                    isLastRow ? 1 : 0),
                 Child = content
             };
             MarkdownTablePanel.SetIsShrinkable(border, content is MarkdownImageFlowFragment);
 
-            if (!isHeader && isLastDataRow)
-            {
-                // Suppresses the border-bottom on the final row so the table
-                // does not terminate on an orphan divider line.
-                border.Classes.Add("mm-md-table-cell-last");
-            }
-
             panel.Children.Add(border);
         }
+    }
+
+    /// <summary>
+    /// Front matter — свойства, как в Notion, а не таблица: колонка ключей мягким
+    /// цветом и значения цветом текста между линиями сверху и снизу. Значения
+    /// дословно, без YAML-семантики. Копирование front matter собирает свою
+    /// таблицу (<see cref="MarkdownFrontMatterRows"/>) и от этого вида не зависит.
+    /// </summary>
+    private Control BuildFrontMatter(MarkdownFrontMatterBlock frontMatter, string path)
+    {
+        if (frontMatter.Entries.Count == 0)
+        {
+            return BuildFallback(frontMatter);
+        }
+
+        var fontSize = _metrics.FrontMatterFontSize;
+        var fontFamily = ResolveBodyFontFamily();
+        var grid = new Grid
+        {
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(_metrics.FrontMatterKeyColumnWidth, GridUnitType.Pixel),
+                new ColumnDefinition(1, GridUnitType.Star)
+            }
+        };
+
+        for (var index = 0; index < frontMatter.Entries.Count; index++)
+        {
+            var entry = frontMatter.Entries[index];
+            grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto) { MinHeight = _metrics.FrontMatterRowMinHeight });
+
+            var key = BuildSelectionFragment(
+                $"{path}.r{index}.c0",
+                [new MarkdownTextInline(entry.Key)],
+                margin: new Thickness(0, 0, _metrics.FrontMatterKeyGap, 0),
+                fontSize: fontSize,
+                lineHeight: _metrics.FrontMatterKeyLineHeight,
+                fontWeight: FontWeight.Normal,
+                fontStyle: FontStyle.Normal,
+                fallbackClassName: "mm-md-front-matter-key",
+                baseFontFamily: fontFamily,
+                baseForegroundResourceKey: "MmTextSoftBrush");
+            var value = BuildSelectionFragment(
+                $"{path}.r{index}.c1",
+                entry.Value.Length == 0 ? [] : [new MarkdownTextInline(entry.Value)],
+                margin: default,
+                fontSize: fontSize,
+                lineHeight: _metrics.FrontMatterValueLineHeight,
+                fontWeight: FontWeight.Normal,
+                fontStyle: FontStyle.Normal,
+                fallbackClassName: "mm-md-front-matter-value",
+                baseFontFamily: fontFamily);
+
+            key.VerticalAlignment = VerticalAlignment.Center;
+            value.VerticalAlignment = VerticalAlignment.Center;
+            Grid.SetRow(key, index);
+            Grid.SetRow(value, index);
+            Grid.SetColumn(value, 1);
+            grid.Children.Add(key);
+            grid.Children.Add(value);
+        }
+
+        return new Border
+        {
+            Classes = { "mm-md-front-matter" },
+            Padding = new Thickness(0, _metrics.FrontMatterPadding),
+            Child = grid
+        };
     }
 
     private TextBlock BuildFallback(MarkdownBlock block)

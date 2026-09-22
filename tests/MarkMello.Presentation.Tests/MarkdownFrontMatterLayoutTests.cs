@@ -1,5 +1,8 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Media;
 using Avalonia.Styling;
+using Avalonia.VisualTree;
 using MarkMello.Domain;
 using MarkMello.Presentation.Views;
 using MarkMello.Presentation.Views.Markdown;
@@ -7,55 +10,198 @@ using MarkMello.Presentation.Views.Markdown;
 namespace MarkMello.Presentation.Tests;
 
 /// <summary>
-/// MM-48: front matter — отдельный тип блока, но рисуется он прежней табличной
-/// раскладкой: строки без шапки, ключ жирным. Вид не должен отличаться от MM-46,
-/// когда метаданные были <see cref="MarkdownTableBlock"/> с пустым заголовком.
+/// Front matter — свойства, как в Notion, а не таблица: колонка ключей мягким
+/// цветом, значения цветом текста, линии только сверху и снизу. Вид не зависит
+/// от раскладки таблиц.
 /// </summary>
 [Collection(AvaloniaHeadlessTestGroup.Name)]
 public sealed class MarkdownFrontMatterLayoutTests
 {
+    private const double FontSize = 14;
+    private const double BlockFontSize = FontSize * 0.875;
+
     private readonly AvaloniaHeadlessFixture _fixture;
 
     public MarkdownFrontMatterLayoutTests(AvaloniaHeadlessFixture fixture) => _fixture = fixture;
 
     [Fact]
-    public Task FrontMatterIsDrawnAsATableWithoutAHeaderRow()
+    public Task FrontMatterIsDrawnAsPropertiesAndNotAsATable()
     {
         return _fixture.Session.Dispatch(() =>
         {
             var view = CreateView(Document());
             var window = Show(view);
-            var panel = Table(view);
+            var block = FrontMatter(view);
 
-            Assert.Equal(2, panel.ColumnCount);
-            Assert.Equal(2, panel.Children.Count / panel.ColumnCount);
+            Assert.Empty(block.GetVisualDescendants().OfType<MarkdownTableHost>());
+            Assert.DoesNotContain(
+                block.GetVisualDescendants().OfType<Border>(),
+                static border => border.Classes.Any(static name => name.StartsWith("mm-md-table", StringComparison.Ordinal)));
 
-            // Строки заголовка нет: все ячейки — обычные.
-            Assert.All(panel.Children, child =>
-                Assert.Contains("mm-md-table-cell", Assert.IsType<Border>(child).Classes));
-
-            Assert.Equal("id", Content(panel, 0, 0).StyledText.Text);
-            Assert.Equal("MM-48", Content(panel, 0, 1).StyledText.Text);
+            var grid = Grid(block);
+            Assert.Equal(2, grid.ColumnDefinitions.Count);
+            Assert.Equal(2, grid.RowDefinitions.Count);
+            Assert.Equal("id", Key(grid, 0).StyledText.Text);
+            Assert.Equal("MM-48", Value(grid, 0).StyledText.Text);
 
             window.Close();
         }, CancellationToken.None);
     }
 
     [Fact]
-    public Task TheKeyIsBoldAndTheValueIsPlainText()
+    public Task KeyAndValueAreRegularTextAtSevenEighthsOfTheTextSize()
     {
         return _fixture.Session.Dispatch(() =>
         {
             var view = CreateView(Document());
             var window = Show(view);
-            var panel = Table(view);
+            var grid = Grid(FrontMatter(view));
 
-            var key = Content(panel, 0, 0).StyledText;
-            var span = Assert.Single(key.Spans);
-            Assert.True(span.Style.IsBold);
-            Assert.Equal(new DocumentTextRange(0, key.Text.Length), span.Range);
+            var key = Key(grid, 0);
+            var value = Value(grid, 0);
+            Assert.Empty(key.StyledText.Spans);
+            Assert.Empty(value.StyledText.Spans);
+            Assert.Equal(FontWeight.Normal, key.BaseFontWeight);
+            Assert.Equal(FontWeight.Normal, value.BaseFontWeight);
+            Assert.Equal(BlockFontSize, key.BaseFontSize, 3);
+            Assert.Equal(BlockFontSize, value.BaseFontSize, 3);
+            Assert.Equal(BlockFontSize * 1.45, value.BaseLineHeight, 3);
+            Assert.Equal(TextWrapping.Wrap, value.LayoutTextWrapping);
 
-            Assert.Empty(Content(panel, 0, 1).StyledText.Spans);
+            // Колонка ключей — 10 размеров текста, от ключа до значения — 1em блока.
+            Assert.Equal(FontSize * 10, grid.ColumnDefinitions[0].ActualWidth, 1d);
+            Assert.Equal(BlockFontSize, key.Margin.Right, 3);
+
+            window.Close();
+        }, CancellationToken.None);
+    }
+
+    [Theory]
+    [InlineData("Light", "#5A544F", "#1F1915", "#E2DDD7")]
+    [InlineData("Dark", "#ABA7A1", "#E7E4DF", "#3F3935")]
+    public Task KeyIsSoftTheValueIsTextColouredAndTheLinesAreBorderColoured(
+        string theme, string keyColor, string valueColor, string lineColor)
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var view = CreateView(Document());
+            var window = Show(view, theme == "Dark" ? ThemeVariant.Dark : ThemeVariant.Light);
+            var block = FrontMatter(view);
+            var grid = Grid(block);
+
+            Assert.Equal(Color.Parse(keyColor), Assert.IsAssignableFrom<ISolidColorBrush>(Key(grid, 0).ResolveBaseTextBrush()).Color);
+            Assert.Equal(Color.Parse(valueColor), Assert.IsAssignableFrom<ISolidColorBrush>(Value(grid, 0).ResolveBaseTextBrush()).Color);
+            Assert.Equal(Color.Parse(lineColor), Assert.IsAssignableFrom<ISolidColorBrush>(block.BorderBrush).Color);
+
+            window.Close();
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public Task LinesRunAboveAndBelowOneBlockEmFromTheRowsAndNotBetweenThem()
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var view = CreateView(Document());
+            var window = Show(view);
+            var block = FrontMatter(view);
+
+            Assert.Equal(new Thickness(0, 1, 0, 1), block.BorderThickness);
+            Assert.Equal(new Thickness(0, BlockFontSize, 0, BlockFontSize), block.Padding);
+            Assert.Equal(Root(view).Bounds.Width, block.Bounds.Width, 1d);
+            Assert.DoesNotContain(
+                block.GetVisualDescendants().OfType<Border>(),
+                static border => border.BorderThickness != default);
+
+            window.Close();
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public Task RowsAreAtLeastTwoAndAnEighthTextSizesTallWithTheTextCentred()
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var view = CreateView(Document());
+            var window = Show(view);
+            var grid = Grid(FrontMatter(view));
+
+            var row = grid.RowDefinitions[0];
+            Assert.Equal(FontSize * 2.125, row.ActualHeight, 1d);
+
+            var key = Key(grid, 0);
+            var value = Value(grid, 0);
+            Assert.Equal(row.ActualHeight / 2, key.Bounds.Center.Y, 1d);
+            Assert.Equal(row.ActualHeight / 2, value.Bounds.Center.Y, 1d);
+
+            window.Close();
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public Task ALongValueWrapsInsideItsColumn()
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var view = CreateView(new RenderedMarkdownDocument(
+            [
+                new MarkdownFrontMatterBlock(
+                [
+                    new MarkdownFrontMatterEntry(
+                        "description",
+                        string.Join(' ', Enumerable.Repeat("Every common Markdown element in one file", 6)))
+                ])
+            ]));
+            var window = Show(view);
+            var grid = Grid(FrontMatter(view));
+            var value = Value(grid, 0);
+
+            Assert.True(value.Bounds.Height > BlockFontSize * 1.45 * 2);
+            Assert.True(value.Bounds.Right <= grid.Bounds.Width + 0.5);
+            Assert.True(grid.RowDefinitions[0].ActualHeight > FontSize * 2.125);
+
+            window.Close();
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public Task AnEmptyValueIsAnEmptyCell()
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var view = CreateView(Document());
+            var window = Show(view);
+            var grid = Grid(FrontMatter(view));
+
+            Assert.Equal("empty", Key(grid, 1).StyledText.Text);
+            Assert.DoesNotContain(
+                grid.Children,
+                static child => Avalonia.Controls.Grid.GetRow(child) == 1 && Avalonia.Controls.Grid.GetColumn(child) == 1 && child.Bounds.Height > 0);
+            Assert.Equal(FontSize * 2.125, grid.RowDefinitions[1].ActualHeight, 1d);
+
+            window.Close();
+        }, CancellationToken.None);
+    }
+
+    /// <summary>
+    /// До H1 под свойствами — просвет как перед H2, а не больший из двух просветов.
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public Task TheBlockBelowIsTwoPointTwoNineTextSizesAway(bool heading)
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            MarkdownBlock next = heading
+                ? new MarkdownHeadingBlock(1, [new MarkdownTextInline("Title")])
+                : new MarkdownParagraphBlock([new MarkdownTextInline("Text")]);
+            var view = CreateView(new RenderedMarkdownDocument([Document().Blocks[0], next]));
+            var window = Show(view);
+
+            var children = Root(view).Children;
+            Assert.Equal(0, children[0].Margin.Top);
+            Assert.Equal(FontSize * 2.29, children[1].Margin.Top, 3);
 
             window.Close();
         }, CancellationToken.None);
@@ -107,9 +253,9 @@ public sealed class MarkdownFrontMatterLayoutTests
             Document = document
         };
 
-    private static Window Show(MarkdownDocumentView view)
+    private static Window Show(MarkdownDocumentView view, ThemeVariant? theme = null)
     {
-        var window = ThemedTestWindow.Create(ThemeVariant.Light, view);
+        var window = ThemedTestWindow.Create(theme ?? ThemeVariant.Light, view);
         window.Width = 600;
         window.Height = 400;
         window.Show();
@@ -123,14 +269,21 @@ public sealed class MarkdownFrontMatterLayoutTests
         return Assert.IsType<StackPanel>(viewport.Child);
     }
 
-    private static MarkdownTablePanel Table(MarkdownDocumentView view)
+    private static Border FrontMatter(MarkdownDocumentView view)
     {
-        var block = Assert.IsType<Border>(Assert.Single(Root(view).Children));
-        Assert.Contains("mm-md-table", block.Classes);
-        return Assert.IsType<MarkdownTableHost>(block.Child).Panel;
+        var block = Assert.IsType<Border>(Root(view).Children[0]);
+        Assert.Contains("mm-md-front-matter", block.Classes);
+        return block;
     }
 
-    private static MarkdownSelectionTextFragment Content(MarkdownTablePanel panel, int row, int column)
-        => Assert.IsType<MarkdownSelectionTextFragment>(
-            Assert.IsType<Border>(panel.Children[(row * panel.ColumnCount) + column]).Child);
+    private static Grid Grid(Border block) => Assert.IsType<Grid>(block.Child);
+
+    private static MarkdownSelectionTextFragment Key(Grid grid, int row) => Cell(grid, row, 0);
+
+    private static MarkdownSelectionTextFragment Value(Grid grid, int row) => Cell(grid, row, 1);
+
+    private static MarkdownSelectionTextFragment Cell(Grid grid, int row, int column)
+        => Assert.IsType<MarkdownSelectionTextFragment>(Assert.Single(
+            grid.Children,
+            child => Avalonia.Controls.Grid.GetRow(child) == row && Avalonia.Controls.Grid.GetColumn(child) == column));
 }

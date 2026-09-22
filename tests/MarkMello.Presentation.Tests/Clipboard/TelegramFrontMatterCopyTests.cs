@@ -25,6 +25,10 @@ public sealed class TelegramFrontMatterCopyTests
     public void HtmlCopyOfFrontMatterMatchesTheTableOutput()
     {
         Assert.Equal(
+            "<strong>id</strong> &middot; MM-48<br><strong>empty</strong>",
+            TelegramMarkdownFormatter.FormatSelectionHtml(FrontMatter(), WholeDocument(FrontMatter())));
+
+        Assert.Equal(
             TelegramMarkdownFormatter.FormatSelectionHtml(AsTable(), WholeDocument(AsTable())),
             TelegramMarkdownFormatter.FormatSelectionHtml(FrontMatter(), WholeDocument(FrontMatter())));
     }
@@ -40,6 +44,21 @@ public sealed class TelegramFrontMatterCopyTests
         Assert.Equal(
             TelegramMarkdownFormatter.FormatSelection(AsTable(), selection),
             TelegramMarkdownFormatter.FormatSelection(document, selection));
+    }
+
+    /// <summary>Значение копируется дословно: в MarkdownV2 его спецсимволы экранируются, в HTML — нет.</summary>
+    [Fact]
+    public void AValueWithMarkdownCharactersIsCopiedVerbatim()
+    {
+        var document = new RenderedMarkdownDocument(
+        [
+            new MarkdownFrontMatterBlock([new MarkdownFrontMatterEntry("title", "A_b *c*")])
+        ]);
+
+        Assert.Equal("*title* · A\\_b \\*c\\*", TelegramMarkdownFormatter.Format(document));
+        Assert.Equal(
+            "<strong>title</strong> &middot; A_b *c*",
+            TelegramMarkdownFormatter.FormatSelectionHtml(document, WholeDocument(document)));
     }
 
     private static DocumentTextRange WholeDocument(RenderedMarkdownDocument document)

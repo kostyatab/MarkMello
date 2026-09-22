@@ -13,10 +13,9 @@ namespace MarkMello.Presentation.Views.Markdown;
 /// <remarks>
 /// Панель живёт внутри горизонтального <see cref="ScrollViewer"/>
 /// (<see cref="MarkdownTableHost"/>): таблица шире колонки чтения сохраняет свою
-/// ширину и прокручивается целиком. Таблица уже колонки растягивается до
-/// <see cref="StretchWidth"/>, и свободное место делится между колонками
-/// пропорционально их ширине — как у HTML-таблицы с <c>width: 100%</c>: узкие
-/// колонки остаются узкими.
+/// ширину и прокручивается целиком. Таблица уже колонки остаётся шириной в свои
+/// колонки, как в Notion, — колонка чтения (<see cref="ReadingColumnWidth"/>)
+/// ограничивает только картинки.
 /// <para>
 /// Ячейки — дочерние контролы по строкам слева направо, ровно
 /// <see cref="ColumnCount"/> на строку.
@@ -26,7 +25,7 @@ internal sealed class MarkdownTablePanel : Panel
 {
     private double[] _columnWidths = [];
     private double[] _rowHeights = [];
-    private double _stretchWidth = double.NaN;
+    private double _readingColumnWidth = double.NaN;
 
     public MarkdownTablePanel(int columnCount)
     {
@@ -47,20 +46,20 @@ internal sealed class MarkdownTablePanel : Panel
     public int ColumnCount { get; }
 
     /// <summary>
-    /// Ширина, до которой растягивается таблица уже её: ширина колонки чтения.
-    /// <see cref="double.NaN"/> — до ширины, которую отвёл родитель.
+    /// Ширина колонки чтения: в неё ужимаются колонки с картинками.
+    /// <see cref="double.NaN"/> — без ограничения.
     /// </summary>
-    public double StretchWidth
+    public double ReadingColumnWidth
     {
-        get => _stretchWidth;
+        get => _readingColumnWidth;
         set
         {
-            if (_stretchWidth.Equals(value))
+            if (_readingColumnWidth.Equals(value))
             {
                 return;
             }
 
-            _stretchWidth = value;
+            _readingColumnWidth = value;
             InvalidateMeasure();
         }
     }
@@ -94,7 +93,7 @@ internal sealed class MarkdownTablePanel : Panel
         _columnWidths = ComputeColumnWidths(
             fixedWidths,
             shrinkableWidths,
-            double.IsNaN(StretchWidth) ? double.PositiveInfinity : StretchWidth);
+            double.IsNaN(ReadingColumnWidth) ? double.PositiveInfinity : ReadingColumnWidth);
 
         // A shrinkable cell's height depends on the width its column got.
         for (var index = 0; index < Children.Count; index++)
@@ -109,10 +108,7 @@ internal sealed class MarkdownTablePanel : Panel
             _rowHeights[index / ColumnCount] = Math.Max(_rowHeights[index / ColumnCount], cell.DesiredSize.Height);
         }
 
-        var naturalWidth = _columnWidths.Sum();
-        return new Size(
-            double.IsNaN(StretchWidth) ? naturalWidth : Math.Max(naturalWidth, StretchWidth),
-            _rowHeights.Sum());
+        return new Size(_columnWidths.Sum(), _rowHeights.Sum());
     }
 
     /// <summary>
@@ -162,21 +158,19 @@ internal sealed class MarkdownTablePanel : Panel
 
     protected override Size ArrangeOverride(Size finalSize)
     {
-        var naturalWidth = _columnWidths.Sum();
-        var width = Math.Max(finalSize.Width, naturalWidth);
-        var stretch = naturalWidth > 0 ? width / naturalWidth : 1;
+        var width = _columnWidths.Sum();
         var scale = LayoutHelper.GetLayoutScale(this);
 
-        // Границы колонок округляются до пикселя, чтобы нижние линии соседних
+        // Границы колонок округляются до пикселя, чтобы линии сетки соседних
         // ячеек сходились без щелей и наложений.
         var columnEdges = new double[ColumnCount + 1];
-        var naturalLeft = 0d;
+        var left = 0d;
         for (var column = 0; column < ColumnCount; column++)
         {
-            naturalLeft += _columnWidths[column];
+            left += _columnWidths[column];
             columnEdges[column + 1] = column == ColumnCount - 1
                 ? width
-                : LayoutHelper.RoundLayoutValue(naturalLeft * stretch, scale);
+                : LayoutHelper.RoundLayoutValue(left, scale);
         }
 
         var top = 0d;
