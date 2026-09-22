@@ -417,11 +417,16 @@ public sealed class MarkdownTableLayoutTests
         return _fixture.Session.Dispatch(() =>
         {
             // На середине прокрутки таблица должна уходить за оба края дальше, чем
-            // на ширину затухания, — крупный текст делает её для этого достаточно широкой.
+            // на ширину затухания. Длинная ячейка удвоена: ширину текста задаёт шрифт,
+            // а он в сессии зависит от порядка тестов — первым тест мерит узким Inter,
+            // после других — широкой заглушкой.
             var view = new MarkdownDocumentView
             {
                 ReadingPreferences = ReadingPreferences.Default with { FontSize = 18 },
-                Document = WideTable()
+                Document = Document(Table(
+                    ["#", "CPU", "Rationale"],
+                    ["1", "2 vCPU", LongText + " " + LongText],
+                    ["3", "8 vCPU", "Mirror of the first node."]))
             };
             var (window, _) = ShowOnPage(view);
             var host = Host(view);
