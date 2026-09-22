@@ -2664,7 +2664,7 @@ public sealed class MarkdownDocumentView : UserControl
         SelectionEnd = anchor;
         ApplySelectionToFragments();
 
-        e.Pointer.Capture(this);
+        CapturePointer(e);
         e.Handled = true;
     }
 
@@ -2681,7 +2681,12 @@ public sealed class MarkdownDocumentView : UserControl
             return;
         }
 
-        _isDraggingSelection = true;
+        if (!_isDraggingSelection)
+        {
+            _isDraggingSelection = true;
+            Cursor = TryCreateCursor(StandardCursorType.Ibeam);
+        }
+
         var offset = ResolveDocumentOffset(position);
         SetSelection(SelectionAnchor.Value, offset);
         e.Handled = true;
@@ -3218,7 +3223,32 @@ public sealed class MarkdownDocumentView : UserControl
         _pressedLink = allowLinkActivation && fragment.TryGetLinkAt(localPosition, out var pressedLink)
             ? pressedLink
             : null;
+        CapturePointer(e);
+    }
+
+    /// <summary>
+    /// Пока указатель захвачен, Avalonia показывает курсор захватившего
+    /// элемента, а не того, что под мышью. Документ на время нажатия берёт
+    /// курсор элемента, над которым нажали, чтобы захват его не сбрасывал;
+    /// с началом протягивания курсор становится текстовым.
+    /// </summary>
+    private void CapturePointer(PointerPressedEventArgs e)
+    {
+        Cursor = ResolveCursorAt(e.Source);
         e.Pointer.Capture(this);
+    }
+
+    private Cursor? ResolveCursorAt(object? source)
+    {
+        for (var element = source as Visual; element is not null && !ReferenceEquals(element, this); element = element.GetVisualParent())
+        {
+            if (element is InputElement { Cursor: { } cursor })
+            {
+                return cursor;
+            }
+        }
+
+        return null;
     }
 
     private int ResolveDocumentOffset(Point position)
@@ -3336,6 +3366,7 @@ public sealed class MarkdownDocumentView : UserControl
         _pointerPressOrigin = default;
         _pressedFragment = null;
         _pressedLink = null;
+        ClearValue(CursorProperty);
     }
 
     private FontFamily ResolveBodyFontFamily() => ReadingPreferences.FontFamily switch
