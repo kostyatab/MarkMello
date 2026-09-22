@@ -38,6 +38,10 @@ public sealed class MarkdownDiagramSheetTests
             Assert.True(Contrast(background, Avalonia.Media.Color.Parse("#333333")) >= 7);
             Assert.Same(Resource(window, "MmDiagramBackgroundBrush", ThemeVariant.Dark), sheet.Background);
 
+            // Полоса прокрутки лежит на светлом листе — ей светлая тема.
+            var scroll = Assert.Single(sheet.GetVisualDescendants().OfType<ScrollViewer>());
+            Assert.Equal(ThemeVariant.Light, scroll.ActualThemeVariant);
+
             window.Close();
         }, CancellationToken.None);
     }

@@ -191,8 +191,8 @@ internal sealed class MarkdownDocumentMetrics
     private const double MissingTextGapRatio = 0.1;
     public const double MissingPathFontScale = 0.8;
     /// <summary>
-    /// Подложка диаграммы: поле вокруг картинки одинаково в обеих темах, чтобы
-    /// смена темы не сдвигала документ; скругление — как у блока кода.
+    /// Поле вокруг картинки на подложке диаграммы — одинаковое в обеих темах,
+    /// чтобы смена темы не сдвигала документ.
     /// </summary>
     private const double DiagramPaddingRatio = 1;
     private const double DiagramErrorTopPaddingRatio = 1.5;

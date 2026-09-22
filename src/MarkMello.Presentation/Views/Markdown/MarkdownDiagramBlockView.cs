@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Styling;
 using MarkMello.Domain;
 
 namespace MarkMello.Presentation.Views.Markdown;
@@ -104,11 +105,19 @@ internal sealed class MarkdownDiagramBlockView : ContentControl
             HorizontalAlignment = HorizontalAlignment.Stretch,
             Padding = new Thickness(metrics.DiagramPadding),
             CornerRadius = new CornerRadius(metrics.DiagramCornerRadius),
-            Child = new ScrollViewer
+            // The scroll bar sits on the sheet, which is light in both themes,
+            // so it takes the light variant. The scope stays inside the border:
+            // on the border itself the sheet brush would resolve to the light
+            // theme's transparent one.
+            Child = new ThemeVariantScope
             {
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-                VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
-                Content = imageControl,
+                RequestedThemeVariant = ThemeVariant.Light,
+                Child = new ScrollViewer
+                {
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                    Content = imageControl,
+                },
             },
         };
     }
