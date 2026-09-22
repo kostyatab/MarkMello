@@ -44,6 +44,37 @@ public sealed class MarkdownSelectionCursorTests
         }, CancellationToken.None);
     }
 
+    /// <summary>
+    /// Пересборка посреди протягивания сбрасывает нажатие — и вместе с ним
+    /// отпускает захват, иначе до отпускания кнопки под мышью был бы только
+    /// документ, а элементы внутри него не получали бы наведения.
+    /// </summary>
+    [Fact]
+    public Task RebuildWhileDraggingReleasesThePointer()
+    {
+        return _fixture.Session.Dispatch(() =>
+        {
+            var (window, view, fragment) = ShowParagraph();
+            var start = PointOnCharacter(window, fragment, 1);
+            var end = PointOnCharacter(window, fragment, 12);
+            var viewport = Assert.IsType<Border>(view.Content);
+
+            window.MouseDown(start, MouseButton.Left);
+            window.MouseMove(end);
+            Assert.False(viewport.IsPointerOver);
+
+            view.Document = ParagraphDocument();
+            window.UpdateLayout();
+            window.MouseMove(end);
+
+            Assert.Null(view.Cursor);
+            Assert.True(viewport.IsPointerOver);
+
+            window.MouseUp(end, MouseButton.Left);
+            window.Close();
+        }, CancellationToken.None);
+    }
+
     /// <summary>Середина символа <paramref name="character"/> в координатах окна.</summary>
     private static Point PointOnCharacter(Window window, MarkdownSelectionTextFragment fragment, int character)
     {
@@ -57,15 +88,7 @@ public sealed class MarkdownSelectionCursorTests
         var view = new MarkdownDocumentView
         {
             ReadingPreferences = ReadingPreferences.Default,
-            Document = new RenderedMarkdownDocument(
-            [
-                new MarkdownParagraphBlock(
-                [
-                    new MarkdownTextInline("See "),
-                    new MarkdownLinkInline([new MarkdownTextInline("docs")], "https://example.com/docs", null),
-                    new MarkdownTextInline(" now and then some more text")
-                ])
-            ])
+            Document = ParagraphDocument()
         };
 
         var window = new Window { Width = 600, Height = 400, Content = view };
@@ -76,4 +99,15 @@ public sealed class MarkdownSelectionCursorTests
         var root = Assert.IsType<StackPanel>(viewport.Child);
         return (window, view, Assert.IsType<MarkdownSelectionTextFragment>(Assert.Single(root.Children)));
     }
+
+    private static RenderedMarkdownDocument ParagraphDocument()
+        => new(
+        [
+            new MarkdownParagraphBlock(
+            [
+                new MarkdownTextInline("See "),
+                new MarkdownLinkInline([new MarkdownTextInline("docs")], "https://example.com/docs", null),
+                new MarkdownTextInline(" now and then some more text")
+            ])
+        ]);
 }

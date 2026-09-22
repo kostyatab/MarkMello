@@ -114,6 +114,7 @@ public sealed class MarkdownDocumentView : UserControl
     private Point _pointerPressOrigin;
     private MarkdownDocumentSelectionFragmentBase? _pressedFragment;
     private MarkdownLinkSpan? _pressedLink;
+    private IPointer? _capturedPointer;
     private bool _preserveSelectionOnRelease;
     private MenuItem? _copyMenuItem;
     private MenuItem? _copyLinkMenuItem;
@@ -2707,7 +2708,6 @@ public sealed class MarkdownDocumentView : UserControl
         }
 
         ResetPointerState();
-        e.Pointer.Capture(null);
         e.Handled = true;
     }
 
@@ -3235,6 +3235,7 @@ public sealed class MarkdownDocumentView : UserControl
     private void CapturePointer(PointerPressedEventArgs e)
     {
         Cursor = ResolveCursorAt(e.Source);
+        _capturedPointer = e.Pointer;
         e.Pointer.Capture(this);
     }
 
@@ -3367,6 +3368,16 @@ public sealed class MarkdownDocumentView : UserControl
         _pressedFragment = null;
         _pressedLink = null;
         ClearValue(CursorProperty);
+
+        // Сброс посреди нажатия (например, пересборка документа) не должен
+        // оставлять указатель захваченным: иначе до отпускания кнопки мышь
+        // не видит элементов под собой и выделение не тянется.
+        var pointer = _capturedPointer;
+        _capturedPointer = null;
+        if (pointer is not null && ReferenceEquals(pointer.Captured, this))
+        {
+            pointer.Capture(null);
+        }
     }
 
     private FontFamily ResolveBodyFontFamily() => ReadingPreferences.FontFamily switch
