@@ -83,6 +83,10 @@ cleanup() {
 trap cleanup EXIT
 
 cp -R "$app_bundle" "$staging_dir/Softmark.app"
+
+# Anything written into the bundle after signing (a smoke run, say)
+# breaks the seal, and macOS then calls the downloaded app "damaged".
+codesign --verify --deep --strict "$staging_dir/Softmark.app" >&2
 ln -s /Applications "$staging_dir/Applications"
 
 dmg_path="$output_dir/Softmark-$asset_suffix.dmg"

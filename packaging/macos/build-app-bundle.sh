@@ -113,6 +113,10 @@ cp -R "$publish_dir"/. "$macos_path/"
 # publish/ directory for symbol uploads if ever needed.
 find "$macos_path" -type f -name '*.pdb' -delete
 
+# The same goes for the *.dSYM bundle next to the native binary. It also
+# has to go before signing: codesign treats it as a nested bundle.
+find "$macos_path" -maxdepth 1 -type d -name '*.dSYM' -exec rm -rf {} +
+
 cp "$icon_path" "$resources_path/$app_name.icns"
 
 sed \
@@ -124,5 +128,12 @@ sed \
 if [[ -f "$macos_path/$app_name" ]]; then
   chmod +x "$macos_path/$app_name"
 fi
+
+# The linker signs only the binary, and a bundle without a sealed
+# signature is reported as "damaged" once it carries the quarantine
+# flag from a browser download. An ad-hoc signature over the whole
+# bundle lets Gatekeeper offer "Open Anyway" instead.
+codesign --force --deep --sign - "$bundle_path" >&2
+codesign --verify --deep --strict "$bundle_path" >&2
 
 echo "$bundle_path"
