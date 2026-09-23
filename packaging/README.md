@@ -60,17 +60,19 @@ dotnet publish .\src\MarkMello.Desktop\MarkMello.Desktop.csproj `
 - The desktop entry advertises Markdown support through `MimeType=text/markdown;` and includes AppImage-specific metadata keys.
 - The first packaging pass intentionally stays AppImage-first instead of adding distro-specific installers.
 
-## Shared icon source
+## Icons
 
-- `packaging/assets/base-803-crop.png` is the icon master tracked in the repository.
-- `packaging/generate-icons.py` regenerates Windows `.ico`, macOS `.icns`, and Linux `.png` assets from that master.
-- The generator preserves the original artwork framing and only resizes it for platform-specific formats.
+- `packaging/draw-softmark-icons.py` draws the icon and writes every platform asset: Windows `.ico`, the macOS iconset, and the Linux `.png`.
+- The artwork is drawn per platform instead of being resized from one master, because the platforms frame icons differently: macOS keeps wide margins around a squircle, Windows and Linux fill the square almost completely.
+- Sizes of 32px and below get a flat drawing without the highlight and the drop shadow, which turn into mud when scaled down.
+- `packaging/assets/softmark-master-{macos,windows,linux}.png` are the 1024px renders, kept for reference and for store listings.
+- The macOS `.icns` is packed from the iconset afterwards: `iconutil -c icns -o packaging/macos/MarkMello.icns packaging/macos/AppIcon.iconset`.
 
 Example:
 
-```powershell
-$py = "C:\Users\drmar\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
-& $py .\packaging\generate-icons.py
+```bash
+python3 packaging/draw-softmark-icons.py
+iconutil -c icns -o packaging/macos/MarkMello.icns packaging/macos/AppIcon.iconset
 ```
 
 ## Update source
