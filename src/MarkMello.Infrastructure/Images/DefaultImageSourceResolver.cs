@@ -49,7 +49,7 @@ public sealed class DefaultImageSourceResolver : IImageSourceResolver
         };
         // Some CDNs (github user-content, imgur, etc.) serve a generic page
         // if the UA looks like a robot. A plain UA avoids that surface.
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("MarkMello/1.0 (viewer)");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("Softmark/1.0 (viewer)");
         return client;
     }
 

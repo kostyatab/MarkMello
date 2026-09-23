@@ -19,9 +19,9 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = ROOT / "packaging" / "assets"
-WINDOW_ICON = ROOT / "src" / "MarkMello.Presentation" / "Assets" / "Icons" / "markmello.ico"
-INSTALLER_ICON = ROOT / "packaging" / "windows" / "markmello-installer.ico"
-LINUX_ICON = ROOT / "packaging" / "linux" / "markmello.png"
+WINDOW_ICON = ROOT / "src" / "MarkMello.Presentation" / "Assets" / "Icons" / "softmark.ico"
+INSTALLER_ICON = ROOT / "packaging" / "windows" / "softmark-installer.ico"
+LINUX_ICON = ROOT / "packaging" / "linux" / "softmark.png"
 MAC_ICONSET = ROOT / "packaging" / "macos" / "AppIcon.iconset"
 
 # Colours of the "зефирный объём" artboard.
@@ -289,7 +289,7 @@ def main() -> None:
     print(f"- {LINUX_ICON}")
     print(f"- {MAC_ICONSET}")
     print(f"- {ASSETS}/softmark-master-*.png")
-    print("Run `iconutil -c icns -o packaging/macos/MarkMello.icns packaging/macos/AppIcon.iconset` for the bundle icon.")
+    print("Run `iconutil -c icns -o packaging/macos/Softmark.icns packaging/macos/AppIcon.iconset` for the bundle icon.")
 
 
 if __name__ == "__main__":

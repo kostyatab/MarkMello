@@ -73,8 +73,8 @@ case "$runtime_id" in
     ;;
 esac
 
-if [[ ! -x "$publish_dir/MarkMello" ]]; then
-  echo "Published executable not found: $publish_dir/MarkMello" >&2
+if [[ ! -x "$publish_dir/Softmark" ]]; then
+  echo "Published executable not found: $publish_dir/Softmark" >&2
   exit 1
 fi
 
@@ -82,13 +82,13 @@ mkdir -p "$output_dir"
 output_dir="$(cd "$output_dir" && pwd)"
 publish_dir="$(cd "$publish_dir" && pwd)"
 
-staging_dir="$(mktemp -d "${TMPDIR:-/tmp}/markmello-appimage.XXXXXX")"
+staging_dir="$(mktemp -d "${TMPDIR:-/tmp}/softmark-appimage.XXXXXX")"
 cleanup() {
   rm -rf "$staging_dir"
 }
 trap cleanup EXIT
 
-app_dir="$staging_dir/MarkMello.AppDir"
+app_dir="$staging_dir/Softmark.AppDir"
 mkdir -p \
   "$app_dir/usr/bin" \
   "$app_dir/usr/share/applications" \
@@ -96,32 +96,32 @@ mkdir -p \
   "$app_dir/usr/share/metainfo"
 
 cp -R "$publish_dir/." "$app_dir/usr/bin/"
-chmod +x "$app_dir/usr/bin/MarkMello"
+chmod +x "$app_dir/usr/bin/Softmark"
 
 # Версия и архитектура попадают в desktop entry: AppImage читает их оттуда,
 # отдельного манифеста у формата нет.
 sed \
   -e "s/@VERSION@/$version/" \
   -e "s/@ARCH@/$arch/" \
-  "$script_dir/markmello.desktop" \
-  > "$app_dir/usr/share/applications/markmello.desktop"
+  "$script_dir/softmark.desktop" \
+  > "$app_dir/usr/share/applications/softmark.desktop"
 
-cp "$script_dir/markmello.png" "$app_dir/usr/share/icons/hicolor/512x512/apps/markmello.png"
+cp "$script_dir/softmark.png" "$app_dir/usr/share/icons/hicolor/512x512/apps/softmark.png"
 
 # Корневые копии обязательны: appimagetool ищет entry и иконку именно в корне AppDir.
-cp "$app_dir/usr/share/applications/markmello.desktop" "$app_dir/markmello.desktop"
-cp "$script_dir/markmello.png" "$app_dir/markmello.png"
-ln -sf markmello.png "$app_dir/.DirIcon"
+cp "$app_dir/usr/share/applications/softmark.desktop" "$app_dir/softmark.desktop"
+cp "$script_dir/softmark.png" "$app_dir/softmark.png"
+ln -sf softmark.png "$app_dir/.DirIcon"
 
 # AppRun должен пережить и запуск по симлинку, и запуск из каталога с пробелами.
 cat > "$app_dir/AppRun" <<'EOF'
 #!/bin/sh
 here="$(dirname "$(readlink -f "$0")")"
-exec "$here/usr/bin/MarkMello" "$@"
+exec "$here/usr/bin/Softmark" "$@"
 EOF
 chmod +x "$app_dir/AppRun"
 
-appimage_path="$output_dir/MarkMello-linux-$arch.AppImage"
+appimage_path="$output_dir/Softmark-linux-$arch.AppImage"
 rm -f "$appimage_path"
 
 # extract-and-run: на CI-раннерах нет FUSE, без этого appimagetool не стартует сам.

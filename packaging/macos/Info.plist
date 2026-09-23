@@ -6,15 +6,15 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleDisplayName</key>
-    <string>MarkMello</string>
+    <string>Softmark</string>
     <key>CFBundleExecutable</key>
-    <string>MarkMello</string>
+    <string>Softmark</string>
     <key>CFBundleIdentifier</key>
     <string>$(MARKMELLO_BUNDLE_ID)</string>
     <key>CFBundleIconFile</key>
-    <string>MarkMello.icns</string>
+    <string>Softmark.icns</string>
     <key>CFBundleName</key>
-    <string>MarkMello</string>
+    <string>Softmark</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>

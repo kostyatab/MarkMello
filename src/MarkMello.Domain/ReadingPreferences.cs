@@ -7,13 +7,14 @@ namespace MarkMello.Domain;
 /// <param name="FontSize">Базовый размер шрифта в пикселях.</param>
 /// <param name="LineHeight">Межстрочный интервал (множитель к размеру шрифта).</param>
 /// <param name="ContentWidth">Максимальная полезная ширина текста документа в пикселях.</param>
-/// <param name="DocumentMinimapMode">Режим отображения миникарты документа.</param>
+/// <param name="DocumentMinimapMode">Режим отображения миникарты документа. По умолчанию выключена:
+/// чистый лист документа без боковой панели, миникарту включают в настройках вида.</param>
 public sealed record ReadingPreferences(
     FontFamilyMode FontFamily,
     int FontSize,
     double LineHeight,
     int ContentWidth,
-    DocumentMinimapMode DocumentMinimapMode = DocumentMinimapMode.Auto)
+    DocumentMinimapMode DocumentMinimapMode = DocumentMinimapMode.Off)
 {
     public const int MinFontSize = 12;
     public const int MaxFontSize = 24;
@@ -39,7 +40,7 @@ public sealed record ReadingPreferences(
         FontSize: 14,
         LineHeight: 1.6,
         ContentWidth: MediumContentWidth,
-        DocumentMinimapMode: DocumentMinimapMode.Auto);
+        DocumentMinimapMode: DocumentMinimapMode.Off);
 
     /// <summary>
     /// Нормализует пользовательские настройки до безопасного и предсказуемого диапазона.

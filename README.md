@@ -26,25 +26,25 @@ Download the latest build from [Releases](../../releases/latest).
 
 ### Windows
 
-1. Download `MarkMello-setup-win-x64.exe` or `MarkMello-setup-win-arm64.exe`, depending on your computer architecture.
+1. Download `Softmark-setup-win-x64.exe` or `Softmark-setup-win-arm64.exe`, depending on your computer architecture.
 2. Run the installer.
-3. Launch MarkMello from the Start menu or open a `.md` file with MarkMello.
+3. Launch Softmark from the Start menu or open a `.md` file with Softmark.
 
 ### macOS
 
-1. Download `MarkMello-macos-arm64.dmg` for Apple Silicon or `MarkMello-macos-x64.dmg` for Intel Mac.
+1. Download `Softmark-macos-arm64.dmg` for Apple Silicon or `Softmark-macos-x64.dmg` for Intel Mac.
 2. Open the DMG.
-3. Drag `MarkMello.app` into `Applications`.
+3. Drag `Softmark.app` into `Applications`.
 4. Launch the app from `Applications`.
 
 ### Linux
 
-1. Download `MarkMello-linux-x86_64.AppImage`.
+1. Download `Softmark-linux-x86_64.AppImage`.
 2. Make it executable and run it:
 
 ```bash
-chmod +x MarkMello-linux-x86_64.AppImage
-./MarkMello-linux-x86_64.AppImage
+chmod +x Softmark-linux-x86_64.AppImage
+./Softmark-linux-x86_64.AppImage
 ```
 
 The AppImage needs FUSE to mount itself. Distributions that ship only FUSE 3 need
@@ -75,15 +75,15 @@ If macOS says the app is damaged, cannot be verified, or cannot be opened becaus
 
 1. Open `System Settings`.
 2. Go to `Privacy & Security`.
-3. Find the message about blocked `MarkMello`.
+3. Find the message about blocked `Softmark`.
 4. Click `Open Anyway`.
 5. Confirm the launch.
 
 If you need to remove the quarantine flag manually for a one-time test:
 
 ```bash
-xattr -dr com.apple.quarantine /Applications/MarkMello.app
-open /Applications/MarkMello.app
+xattr -dr com.apple.quarantine /Applications/Softmark.app
+open /Applications/Softmark.app
 ```
 
 ## Build from source
@@ -129,7 +129,7 @@ dotnet run --project ./src/MarkMello.Desktop/MarkMello.Desktop.csproj -- ./sampl
 
 ## Ideas and suggestions
 
-Have an idea or suggestion? Share it in [GitHub Discussions: Ideas](https://github.com/dartdavros/MarkMello/discussions/categories/ideas).
+Have an idea or suggestion? Share it in [GitHub Discussions: Ideas](https://github.com/kostyatab/Softmark/discussions/categories/ideas).
 
 ## License
 

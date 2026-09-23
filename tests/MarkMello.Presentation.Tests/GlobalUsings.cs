@@ -1,4 +1,4 @@
 global using Xunit;
 
-[assembly: System.Reflection.AssemblyMetadata("MarkMelloReleaseOwner", "dartdavros")]
-[assembly: System.Reflection.AssemblyMetadata("MarkMelloReleaseRepo", "MarkMello")]
+[assembly: System.Reflection.AssemblyMetadata("MarkMelloReleaseOwner", "kostyatab")]
+[assembly: System.Reflection.AssemblyMetadata("MarkMelloReleaseRepo", "Softmark")]

@@ -22,12 +22,12 @@ public sealed class GitHubReleaseUpdateServiceTests
             {
               "tag_name": "v1.2.3",
               "name": "v1.2.3",
-              "html_url": "https://github.com/dartdavros/MarkMello/releases/tag/v1.2.3",
+              "html_url": "https://github.com/kostyatab/Softmark/releases/tag/v1.2.3",
               "published_at": "2026-04-19T12:00:00Z",
               "assets": [
                 {
                   "name": "{{assetName}}",
-                  "browser_download_url": "https://github.com/dartdavros/MarkMello/releases/download/v1.2.3/{{assetName}}",
+                  "browser_download_url": "https://github.com/kostyatab/Softmark/releases/download/v1.2.3/{{assetName}}",
                   "state": "uploaded"
                 }
               ]
@@ -56,12 +56,12 @@ public sealed class GitHubReleaseUpdateServiceTests
             {
               "tag_name": "v1.0.0",
               "name": "v1.0.0",
-              "html_url": "https://github.com/dartdavros/MarkMello/releases/tag/v1.0.0",
+              "html_url": "https://github.com/kostyatab/Softmark/releases/tag/v1.0.0",
               "published_at": "2026-04-19T12:00:00Z",
               "assets": [
                 {
                   "name": "{{assetName}}",
-                  "browser_download_url": "https://github.com/dartdavros/MarkMello/releases/download/v1.0.0/{{assetName}}",
+                  "browser_download_url": "https://github.com/kostyatab/Softmark/releases/download/v1.0.0/{{assetName}}",
                   "state": "uploaded"
                 }
               ]
@@ -96,8 +96,8 @@ public sealed class GitHubReleaseUpdateServiceTests
         {
             return RuntimeInformation.OSArchitecture switch
             {
-                Architecture.X64 => "MarkMello-setup-win-x64.exe",
-                Architecture.Arm64 => "MarkMello-setup-win-arm64.exe",
+                Architecture.X64 => "Softmark-setup-win-x64.exe",
+                Architecture.Arm64 => "Softmark-setup-win-arm64.exe",
                 _ => null
             };
         }
@@ -106,8 +106,8 @@ public sealed class GitHubReleaseUpdateServiceTests
         {
             return RuntimeInformation.OSArchitecture switch
             {
-                Architecture.X64 => "MarkMello-macos-x64.dmg",
-                Architecture.Arm64 => "MarkMello-macos-arm64.dmg",
+                Architecture.X64 => "Softmark-macos-x64.dmg",
+                Architecture.Arm64 => "Softmark-macos-arm64.dmg",
                 _ => null
             };
         }
@@ -116,8 +116,8 @@ public sealed class GitHubReleaseUpdateServiceTests
         {
             return RuntimeInformation.OSArchitecture switch
             {
-                Architecture.X64 => "MarkMello-linux-x86_64.AppImage",
-                Architecture.Arm64 => "MarkMello-linux-aarch64.AppImage",
+                Architecture.X64 => "Softmark-linux-x86_64.AppImage",
+                Architecture.Arm64 => "Softmark-linux-aarch64.AppImage",
                 _ => null
             };
         }

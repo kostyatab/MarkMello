@@ -7,6 +7,7 @@ using MarkMello.Application.UseCases;
 using MarkMello.Domain.Diagnostics;
 using MarkMello.Presentation.Localization;
 using MarkMello.Presentation.Services;
+using MarkMello.Presentation.ViewModels;
 using MarkMello.Presentation.Views;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -32,7 +33,7 @@ public partial class App : global::Avalonia.Application
 
         // Имя приложения для macOS: заголовок системного меню и «Hide …». В .app его даёт
         // CFBundleName, но запуск собранного бинарника без бандла остался бы безымянным.
-        Name = "MarkMello";
+        Name = AppProductInfo.Name;
 
         var localization = Services?.GetService<ILocalizationService>() ?? new LocalizationService();
         Resources["Localization"] = localization;

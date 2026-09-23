@@ -197,7 +197,7 @@ public partial class ShellViewModel : ObservableObject
     private MarkdownSource? _document;
 
     [ObservableProperty]
-    private string _windowTitle = "MarkMello";
+    private string _windowTitle = AppProductInfo.Name;
 
     [ObservableProperty]
     private bool _isDragHovering;
@@ -473,10 +473,13 @@ public partial class ShellViewModel : ObservableObject
     private bool IsUnsavedDraft => EditorSession is not null && Document is null;
 
     /// <summary>
-    /// Нижняя строка окна «Настройки»: продукт, версия сборки и лицензия; имя автора
-    /// идёт за ней ссылкой. Слов для перевода здесь нет.
+    /// Нижняя строка окна «Настройки»: продукт, версия сборки и лицензия. Слов для
+    /// перевода здесь нет.
     /// </summary>
-    public string AppSettingsVersionLine => $"{AppProductInfo.Name} {_aboutVersion} · {_aboutLicense} ·";
+    public string AppSettingsVersionLine => $"{AppProductInfo.Name} {_aboutVersion} · {_aboutLicense}";
+
+    /// <summary>Ссылка на репозиторий в нижней строке окна «Настройки» — та же, что в «О программе».</summary>
+    public string AppSettingsGitHubUrl { get; } = AppProductInfo.GitHubUrl;
 
     public bool HasDirtyPromptError => !string.IsNullOrWhiteSpace(DirtyPromptErrorMessage);
 
@@ -2331,11 +2334,11 @@ public partial class ShellViewModel : ObservableObject
 
         if (State != ViewState.Viewing || string.IsNullOrWhiteSpace(FileName))
         {
-            WindowTitle = $"{folderSegment}MarkMello";
+            WindowTitle = $"{folderSegment}{AppProductInfo.Name}";
             return;
         }
 
-        WindowTitle = $"{TitleFileDisplayName} — {folderSegment}MarkMello";
+        WindowTitle = $"{TitleFileDisplayName} — {folderSegment}{AppProductInfo.Name}";
     }
 
     private void UpdateCommandStates()

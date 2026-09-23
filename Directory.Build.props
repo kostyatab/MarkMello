@@ -7,9 +7,10 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
-    <Product>MarkMello</Product>
-    <Authors>MarkMello contributors</Authors>
-    <Copyright>(c) 2026 MarkMello contributors</Copyright>
+    <Product>Softmark</Product>
+    <Authors>Softmark contributors</Authors>
+    <!-- Softmark is a GPLv3 fork of MarkMello; the original copyright stays next to ours (ADR-0011). -->
+    <Copyright>(c) 2026 Softmark contributors; (c) 2026 MarkMello contributors</Copyright>
     <NeutralLanguage>en-US</NeutralLanguage>
   </PropertyGroup>
   <PropertyGroup Label="Naiad maintenance fee">

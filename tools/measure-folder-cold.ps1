@@ -8,7 +8,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$settings = Join-Path $env:APPDATA "MarkMello\settings.json"
+$settings = Join-Path $env:APPDATA "Softmark\settings.json"
 $script = Join-Path $PSScriptRoot "measure-startup.ps1"
 
 function Clear-Session {

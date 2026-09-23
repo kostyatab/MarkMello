@@ -85,7 +85,7 @@ public sealed class DocumentTabsShellTests
 
         Assert.Equal(readsBefore, harness.Loader.LoadCount);
         Assert.Equal(TestPaths.At("docs", "first.md"), harness.ViewModel.CurrentDocumentPath);
-        Assert.Equal("first.md — MarkMello", harness.ViewModel.WindowTitle);
+        Assert.Equal("first.md — Softmark", harness.ViewModel.WindowTitle);
     }
 
     [Fact]
@@ -652,7 +652,7 @@ public sealed class DocumentTabsShellTests
         Assert.Equal("report.pdf", harness.ViewModel.OpenDocuments.ActiveTab!.Title);
         Assert.Equal(LoadErrorKind.UnsupportedType, harness.ViewModel.ErrorKind);
         Assert.Equal("This isn't Markdown", harness.ViewModel.ErrorTitle);
-        Assert.Equal("MarkMello opens .md, .markdown and .txt files.", harness.ViewModel.ErrorDescription);
+        Assert.Equal("Softmark opens .md, .markdown and .txt files.", harness.ViewModel.ErrorDescription);
         Assert.False(harness.ViewModel.ShowsLoadErrorRetry);
     }
 
@@ -666,7 +666,7 @@ public sealed class DocumentTabsShellTests
 
         Assert.Equal(LoadErrorKind.AccessDenied, harness.ViewModel.ErrorKind);
         Assert.Equal("Access denied", harness.ViewModel.ErrorTitle);
-        Assert.Equal("MarkMello doesn't have permission to read this file.", harness.ViewModel.ErrorDescription);
+        Assert.Equal("Softmark doesn't have permission to read this file.", harness.ViewModel.ErrorDescription);
         Assert.True(harness.ViewModel.ShowsLoadErrorRetry);
 
         harness.Loader.NextException = new IOException("The disk is busy.");

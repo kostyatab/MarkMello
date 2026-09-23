@@ -1,6 +1,6 @@
-#define MyAppName "MarkMello"
-#define MyAppExeName "MarkMello.exe"
-#define MyAppProgId "MarkMello.Markdown"
+#define MyAppName "Softmark"
+#define MyAppExeName "Softmark.exe"
+#define MyAppProgId "Softmark.Markdown"
 
 #ifndef MyAppVersion
   #define MyAppVersion "0.0.0-dev"
@@ -19,11 +19,11 @@
 #endif
 
 #ifndef MyOutputBaseName
-  #define MyOutputBaseName "MarkMello-setup-win-x64"
+  #define MyOutputBaseName "Softmark-setup-win-x64"
 #endif
 
 #ifndef MySetupIconFile
-  #define MySetupIconFile ".\markmello-installer.ico"
+  #define MySetupIconFile ".\softmark-installer.ico"
 #endif
 
 #ifndef MyArchitecturesAllowed
@@ -35,22 +35,22 @@
 #endif
 
 #ifndef MyAppId
-  #define MyAppId "{{5E8D6758-6EAE-470A-A32D-5F941B1458C8}"
+  #define MyAppId "{{763DFBA8-3EE1-4796-BDE3-512381BF602A}"
 #endif
 
 #ifndef MyReleaseOwner
-  #define MyReleaseOwner "dartdavros"
+  #define MyReleaseOwner "kostyatab"
 #endif
 
 #ifndef MyReleaseRepo
-  #define MyReleaseRepo "MarkMello"
+  #define MyReleaseRepo "Softmark"
 #endif
 
 [Setup]
 AppId={#MyAppId}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
-AppPublisher=MarkMello contributors
+AppPublisher=Softmark contributors
 AppPublisherURL=https://github.com/{#MyReleaseOwner}/{#MyReleaseRepo}
 AppUpdatesURL=https://github.com/{#MyReleaseOwner}/{#MyReleaseRepo}/releases/latest
 ; {autopf} follows the install mode picked in the privileges dialog:
@@ -97,7 +97,7 @@ Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Registry]
-; Register MarkMello as an available Markdown handler without forcing the default app.
+; Register Softmark as an available Markdown handler without forcing the default app.
 ; HKA follows the install mode: HKLM for an all-users install, so every account
 ; on the machine gets the association, and HKCU for a per-user one. Hard-coded
 ; HKCU would register the handler only for whoever ran the installer.

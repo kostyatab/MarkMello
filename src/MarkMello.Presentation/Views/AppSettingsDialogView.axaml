@@ -132,33 +132,15 @@
       <Border Classes="mm-app-settings-footer">
         <Grid ColumnDefinitions="*,Auto"
               ColumnSpacing="12">
-          <!-- Длинная версия (1.0.0-preview.12) переносит имя автора, а не наезжает на ссылки -->
-          <WrapPanel Orientation="Horizontal"
-                     ItemSpacing="4">
-            <TextBlock Classes="mm-app-settings-caption"
-                       VerticalAlignment="Center"
-                       Text="{Binding AppSettingsVersionLine}" />
-            <Button Classes="mm-link"
-                    Tag="https://ermolaev.tech"
-                    Click="OnLinkClick"
-                    Content="Andrey Ermolaev" />
-          </WrapPanel>
-          <StackPanel Grid.Column="1"
-                      Orientation="Horizontal"
-                      Spacing="12">
-            <Button Classes="mm-link"
-                    Tag="https://markmello.ru"
-                    Click="OnLinkClick"
-                    Content="{Binding AppSettingsWebsite}" />
-            <Button Classes="mm-link"
-                    Tag="https://t.me/mark_mello"
-                    Click="OnLinkClick"
-                    Content="Telegram" />
-            <Button Classes="mm-link"
-                    Tag="https://github.com/dartdavros/MarkMello"
-                    Click="OnLinkClick"
-                    Content="GitHub" />
-          </StackPanel>
+          <TextBlock Classes="mm-app-settings-caption"
+                     VerticalAlignment="Center"
+                     TextWrapping="Wrap"
+                     Text="{Binding AppSettingsVersionLine}" />
+          <Button Grid.Column="1"
+                  Classes="mm-link"
+                  Tag="{Binding AppSettingsGitHubUrl}"
+                  Click="OnLinkClick"
+                  Content="GitHub" />
         </Grid>
       </Border>
     </StackPanel>

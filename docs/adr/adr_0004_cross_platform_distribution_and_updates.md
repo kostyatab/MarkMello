@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted. Partially superseded by [ADR-0011](adr_0011_fork_identity_and_release_source.md) (2026-09-23): the release matrix and the default release source (`kostyatab/Softmark`) are defined there. The rest of this decision stays in force.
 
 ## Date
 
@@ -99,6 +99,8 @@ Important constraints:
 Follow-up packaging may later add `.deb` packages if deeper distro integration becomes necessary. This is explicitly out of scope for the first packaging pass.
 
 ## Release Matrix
+
+Superseded by [ADR-0011](adr_0011_fork_identity_and_release_source.md): the artifacts are named `Softmark-*`.
 
 The intended public release matrix is:
 

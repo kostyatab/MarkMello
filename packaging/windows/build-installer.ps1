@@ -11,11 +11,11 @@ param(
 
     [string]$OutputDir = (Join-Path $PSScriptRoot "dist"),
 
-    [string]$SetupIconPath = (Join-Path $PSScriptRoot "markmello-installer.ico"),
+    [string]$SetupIconPath = (Join-Path $PSScriptRoot "softmark-installer.ico"),
 
-    [string]$ReleaseOwner = "dartdavros",
+    [string]$ReleaseOwner = "kostyatab",
 
-    [string]$ReleaseRepo = "MarkMello"
+    [string]$ReleaseRepo = "Softmark"
 )
 
 $ErrorActionPreference = "Stop"
@@ -31,7 +31,7 @@ $setupIcon = Resolve-Path -LiteralPath $SetupIconPath
 New-Item -ItemType Directory -Force -Path $outputPath | Out-Null
 
 $architecturesAllowed = if ($RuntimeId -eq "win-arm64") { "arm64" } else { "x64compatible" }
-$outputBaseName = "MarkMello-setup-$RuntimeId"
+$outputBaseName = "Softmark-setup-$RuntimeId"
 
 # The machine-wide locations come first because that is where CI installs
 # Inno Setup. The per-user one is what an unelevated `winget install

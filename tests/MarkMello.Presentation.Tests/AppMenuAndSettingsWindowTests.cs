@@ -182,7 +182,7 @@ public sealed class AppMenuAndSettingsWindowTests
             Assert.Contains("Window border", texts);
             Assert.Contains("UPDATES", texts);
             Assert.Contains("Manual checks", texts);
-            Assert.Contains(texts, static text => text is not null && text.StartsWith("MarkMello ", StringComparison.Ordinal) && text.EndsWith("· GPLv3 ·", StringComparison.Ordinal));
+            Assert.Contains(texts, static text => text is not null && text.StartsWith("Softmark ", StringComparison.Ordinal) && text.EndsWith("· GPLv3", StringComparison.Ordinal));
             Assert.Null(dialog.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault());
 
             var update = dialog.GetVisualDescendants().OfType<Button>().Single(static button => button.Name == "UpdateActionButton");
@@ -191,7 +191,7 @@ public sealed class AppMenuAndSettingsWindowTests
             Assert.Same(Resource(window, "MmTabBrush"), dialog.GetVisualDescendants().OfType<Border>().Single(static border => border.Classes.Contains("mm-app-settings-update")).Background);
 
             Assert.Equal(
-                ["https://ermolaev.tech", "https://markmello.ru", "https://t.me/mark_mello", "https://github.com/dartdavros/MarkMello"],
+                ["https://github.com/kostyatab/Softmark"],
                 dialog.GetVisualDescendants().OfType<Button>().Where(static button => button.Classes.Contains("mm-link")).Select(static button => button.Tag as string));
 
             window.Hide();

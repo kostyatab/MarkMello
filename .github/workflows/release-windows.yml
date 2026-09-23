@@ -217,8 +217,8 @@ jobs:
           # libonigwrap.dll — regex engine of code highlighting (ADR-0010 §6),
           # shipped unsigned by its NuGet package.
           $paths = @(
-            (Join-Path $publishDir "MarkMello.exe"),
-            (Join-Path $publishDir "MarkMello.dll"),
+            (Join-Path $publishDir "Softmark.exe"),
+            (Join-Path $publishDir "Softmark.dll"),
             (Join-Path $publishDir "libonigwrap.dll")
           ) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf }
 
@@ -246,7 +246,7 @@ jobs:
         shell: pwsh
         run: |
           $outputDir = Join-Path $env:GITHUB_WORKSPACE "artifacts" "${{ matrix.runtime_id }}"
-          $installerPath = Join-Path $outputDir "MarkMello-setup-${{ matrix.runtime_id }}.exe"
+          $installerPath = Join-Path $outputDir "Softmark-setup-${{ matrix.runtime_id }}.exe"
 
           .\packaging\windows\sign-files.ps1 `
             -Paths @($installerPath) `
@@ -257,7 +257,7 @@ jobs:
         shell: pwsh
         run: |
           $outputDir = Join-Path $env:GITHUB_WORKSPACE "artifacts" "${{ matrix.runtime_id }}"
-          $installerPath = Join-Path $outputDir "MarkMello-setup-${{ matrix.runtime_id }}.exe"
+          $installerPath = Join-Path $outputDir "Softmark-setup-${{ matrix.runtime_id }}.exe"
           $hash = (Get-FileHash -LiteralPath $installerPath -Algorithm SHA256).Hash.ToLowerInvariant()
           $checksumPath = "$installerPath.sha256"
           [System.IO.File]::WriteAllText(
@@ -269,8 +269,8 @@ jobs:
         with:
           name: windows-${{ matrix.runtime_id }}
           path: |
-            artifacts/${{ matrix.runtime_id }}/MarkMello-setup-${{ matrix.runtime_id }}.exe
-            artifacts/${{ matrix.runtime_id }}/MarkMello-setup-${{ matrix.runtime_id }}.exe.sha256
+            artifacts/${{ matrix.runtime_id }}/Softmark-setup-${{ matrix.runtime_id }}.exe
+            artifacts/${{ matrix.runtime_id }}/Softmark-setup-${{ matrix.runtime_id }}.exe.sha256
           if-no-files-found: error
 
       - name: Upload release assets
@@ -280,7 +280,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
         run: |
           $outputDir = Join-Path $env:GITHUB_WORKSPACE "artifacts" "${{ matrix.runtime_id }}"
-          $installerPath = Join-Path $outputDir "MarkMello-setup-${{ matrix.runtime_id }}.exe"
+          $installerPath = Join-Path $outputDir "Softmark-setup-${{ matrix.runtime_id }}.exe"
           $checksumPath = "$installerPath.sha256"
 
           gh release upload $env:RELEASE_TAG $installerPath $checksumPath --clobber
@@ -298,10 +298,10 @@ jobs:
         include:
           - runtime_id: osx-arm64
             runner: macos-26
-            asset_name: MarkMello-macos-arm64.dmg
+            asset_name: Softmark-macos-arm64.dmg
           - runtime_id: osx-x64
             runner: macos-26-intel
-            asset_name: MarkMello-macos-x64.dmg
+            asset_name: Softmark-macos-x64.dmg
 
     env:
       RELEASE_TAG: ${{ needs.prepare_release.outputs.tag }}
@@ -310,7 +310,7 @@ jobs:
       RELEASE_VERSION_WINDOWS: ${{ needs.prepare_release.outputs.version_windows }}
       RELEASE_OWNER: ${{ github.repository_owner }}
       RELEASE_REPO: ${{ needs.prepare_release.outputs.repo_name }}
-      MACOS_BUNDLE_ID: com.markmello.app
+      MACOS_BUNDLE_ID: com.softmark.app
 
     steps:
       - name: Check out repository
@@ -368,7 +368,7 @@ jobs:
           set -euo pipefail
 
           app_bundle="${{ steps.app_bundle.outputs.path }}"
-          executable="$app_bundle/Contents/MacOS/MarkMello"
+          executable="$app_bundle/Contents/MacOS/Softmark"
           sample_file="$GITHUB_WORKSPACE/sample.md"
           diagnostics_dir="$GITHUB_WORKSPACE/artifacts/${{ matrix.runtime_id }}/smoke-diagnostics"
           diagnostic_reports_dir="$HOME/Library/Logs/DiagnosticReports"
@@ -389,7 +389,7 @@ jobs:
             plutil -lint "$app_bundle/Contents/Info.plist" \
               > "$diagnostics_dir/plutil.txt" 2>&1
             file "$executable" > "$diagnostics_dir/executable-file.txt" 2>&1
-            otool -L "$executable" > "$diagnostics_dir/otool-MarkMello.txt" 2>&1 || true
+            otool -L "$executable" > "$diagnostics_dir/otool-Softmark.txt" 2>&1 || true
           }
 
           copy_crash_reports() {
@@ -399,7 +399,7 @@ jobs:
 
             find "$diagnostic_reports_dir" \
               -maxdepth 1 \
-              -name 'MarkMello_*.crash' \
+              -name 'Softmark_*.crash' \
               -print \
               -exec cp {} "$diagnostics_dir/" ';' 2>/dev/null || true
           }
@@ -407,9 +407,9 @@ jobs:
           write_system_log() {
             log show \
               --last 5m \
-              --predicate 'process == "MarkMello"' \
+              --predicate 'process == "Softmark"' \
               --style syslog \
-              > "$diagnostics_dir/system-log-MarkMello.txt" 2>&1 || true
+              > "$diagnostics_dir/system-log-Softmark.txt" 2>&1 || true
           }
 
           run_with_watchdog() {
@@ -420,7 +420,7 @@ jobs:
             rm -f "$timeout_marker"
             find "$diagnostic_reports_dir" \
               -maxdepth 1 \
-              -name 'MarkMello_*.crash' \
+              -name 'Softmark_*.crash' \
               -delete 2>/dev/null || true
 
             MARKMELLO_SMOKE_EXIT_AFTER_OPEN_MS=1500 "$executable" "$sample_file" \
@@ -431,7 +431,7 @@ jobs:
             (
               sleep "$timeout_seconds"
               if kill -0 "$app_pid" 2>/dev/null; then
-                echo "MarkMello smoke launch did not exit within ${timeout_seconds}s." \
+                echo "Softmark smoke launch did not exit within ${timeout_seconds}s." \
                   > "$timeout_marker"
                 kill "$app_pid" 2>/dev/null || true
               fi
@@ -524,7 +524,7 @@ jobs:
       matrix:
         include:
           - runtime_id: linux-x64
-            asset_name: MarkMello-linux-x86_64.AppImage
+            asset_name: Softmark-linux-x86_64.AppImage
 
     env:
       RELEASE_TAG: ${{ needs.prepare_release.outputs.tag }}

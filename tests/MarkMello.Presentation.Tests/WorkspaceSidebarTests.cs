@@ -54,7 +54,7 @@ public sealed class WorkspaceSidebarTests
         await harness.ViewModel.OpenFolderPathAsync(Root);
 
         Assert.Equal(TestPaths.At("docs", "README.md"), harness.ViewModel.CurrentDocumentPath);
-        Assert.Equal("README.md — docs — MarkMello", harness.ViewModel.WindowTitle);
+        Assert.Equal("README.md — docs — Softmark", harness.ViewModel.WindowTitle);
 
         var readmeNode = harness.ViewModel.Workspace!.Roots.Single(node => node.Name == "README.md");
         Assert.True(readmeNode.IsActiveDocument);
@@ -71,7 +71,7 @@ public sealed class WorkspaceSidebarTests
 
         Assert.True(harness.ViewModel.ShowsSidebar);
         Assert.Null(harness.ViewModel.CurrentDocumentPath);
-        Assert.Equal("docs — MarkMello", harness.ViewModel.WindowTitle);
+        Assert.Equal("docs — Softmark", harness.ViewModel.WindowTitle);
     }
 
     /// <summary>
@@ -93,7 +93,7 @@ public sealed class WorkspaceSidebarTests
         Assert.True(workspace.Roots.Single(node => node.Name == "notes.md").IsActiveDocument);
         Assert.False(workspace.Roots.Single(node => node.Name == "README.md").IsActiveDocument);
         Assert.Single(harness.ViewModel.OpenDocuments.Tabs);
-        Assert.Equal("notes.md — docs — MarkMello", harness.ViewModel.WindowTitle);
+        Assert.Equal("notes.md — docs — Softmark", harness.ViewModel.WindowTitle);
     }
 
     [Fact]

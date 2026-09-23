@@ -581,7 +581,7 @@ public partial class ViewerView : UserControl, IFindHost
 
         var mode = DataContext is ShellViewModel vm
             ? vm.ReadingPreferences.DocumentMinimapMode
-            : DocumentMinimapMode.Auto;
+            : ReadingPreferences.Default.DocumentMinimapMode;
 
         return DocumentMinimapBuildPolicy.ShouldShow(
             mode,

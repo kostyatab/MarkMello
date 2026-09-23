@@ -5,9 +5,10 @@ using MarkMello.Presentation.Localization;
 namespace MarkMello.Presentation.ViewModels;
 
 /// <summary>
-/// Окно «О MarkMello» (ADR-0009 Rule 7): имя, версия сборки, лицензия, автор и ссылки
-/// проекта — те же сведения, что в нижней строке карточки «Настройки». Создаётся только
-/// по нажатию пункта меню, на быстрый путь открытия документа не влияет.
+/// Окно «О Softmark» (ADR-0009 Rule 7, ADR-0011): имя, версия сборки, лицензия и ссылка
+/// на репозиторий — как в нижней строке карточки «Настройки», — плюс строка атрибуции
+/// оригинала, которой в карточке нет. Создаётся только по нажатию пункта меню, на
+/// быстрый путь открытия документа не влияет.
 /// </summary>
 public sealed class AboutViewModel : ObservableObject, IDisposable
 {
@@ -15,7 +16,7 @@ public sealed class AboutViewModel : ObservableObject, IDisposable
     [
         nameof(WindowTitle),
         nameof(VersionLine),
-        nameof(WebsiteLabel)
+        nameof(ForkAttribution)
     ];
 
     private readonly ILocalizationService _localization;
@@ -42,15 +43,11 @@ public sealed class AboutViewModel : ObservableObject, IDisposable
 
     public string License { get; } = AppProductInfo.License;
 
-    public string Author { get; } = AppProductInfo.Author;
-
-    public string AuthorUrl { get; } = AppProductInfo.AuthorUrl;
-
-    public string WebsiteLabel => _localization["AboutWebsite"];
-
-    public string WebsiteUrl { get; } = AppProductInfo.WebsiteUrl;
-
-    public string TelegramUrl { get; } = AppProductInfo.TelegramUrl;
+    /// <summary>
+    /// Строка атрибуции по GPLv3: Softmark — форк MarkMello. Единственная видимая строка
+    /// со старым именем (ADR-0011).
+    /// </summary>
+    public string ForkAttribution => _localization["AboutForkAttribution"];
 
     public string GitHubUrl { get; } = AppProductInfo.GitHubUrl;
 

@@ -53,7 +53,7 @@ public static class DependencyInjection
         services.AddSingleton(static _ =>
         {
             var client = new HttpClient();
-            client.DefaultRequestHeaders.UserAgent.ParseAdd("MarkMello/updates");
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("Softmark/updates");
             client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
             client.DefaultRequestHeaders.Add("X-GitHub-Api-Version", "2026-03-10");
             return client;

@@ -59,7 +59,7 @@ public sealed class JsonSettingsStoreTests
 
             Assert.Equal(ReadingPreferences.Default, preferences);
             Assert.Equal(ThemeMode.System, theme);
-            Assert.Equal(DocumentMinimapMode.Auto, preferences.DocumentMinimapMode);
+            Assert.Equal(DocumentMinimapMode.Off, preferences.DocumentMinimapMode);
             Assert.Equal(AppLanguage.System, language);
             Assert.Null(windowPlacement);
         }
@@ -113,7 +113,7 @@ public sealed class JsonSettingsStoreTests
 
 
     [Fact]
-    public async Task LoadUsesAutoMinimapModeWhenLegacySettingsHaveNoMinimapMode()
+    public async Task LoadTurnsTheMinimapOffWhenLegacySettingsHaveNoMinimapMode()
     {
         var rootDirectory = CreateTempDirectory();
         const string json = """
@@ -135,7 +135,7 @@ public sealed class JsonSettingsStoreTests
             var store = new JsonSettingsStore(rootDirectory);
             var preferences = await store.LoadPreferencesAsync();
 
-            Assert.Equal(DocumentMinimapMode.Auto, preferences.DocumentMinimapMode);
+            Assert.Equal(DocumentMinimapMode.Off, preferences.DocumentMinimapMode);
         }
         finally
         {

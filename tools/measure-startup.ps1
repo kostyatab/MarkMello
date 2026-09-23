@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Снимает тайминги старта MarkMello, а с ключом -Folder — ещё и тайминги режима папки.
+    Снимает тайминги старта Softmark, а с ключом -Folder — ещё и тайминги режима папки.
 
 .DESCRIPTION
     Запускает приложение в smoke-режиме (--smoke-exit-after-open), где оно печатает
@@ -19,7 +19,7 @@
     # Продуктовая AOT-сборка (для приёмки этапа)
     dotnet publish .\src\MarkMello.Desktop\MarkMello.Desktop.csproj -m:1 -c Release -r win-x64 `
       --self-contained true -p:PublishAot=true -p:PublishSingleFile=false -o .\publish\m1-win-x64
-    .\tools\measure-startup.ps1 -Exe .\publish\m1-win-x64\MarkMello.exe -Label "AOT"
+    .\tools\measure-startup.ps1 -Exe .\publish\m1-win-x64\Softmark.exe -Label "AOT"
 
 .EXAMPLE
     # Быстрая проверка между этапами
@@ -28,14 +28,14 @@
 
 .EXAMPLE
     # Folder mode поверх обычного старта
-    .\tools\measure-startup.ps1 -Exe .\publish\m1-win-x64\MarkMello.exe -Folder .\docs -Label "AOT + folder"
+    .\tools\measure-startup.ps1 -Exe .\publish\m1-win-x64\Softmark.exe -Folder .\docs -Label "AOT + folder"
 
 .NOTES
     На Windows AOT-публикация требует vswhere.exe в PATH:
     $env:PATH = "C:\Program Files (x86)\Microsoft Visual Studio\Installer;" + $env:PATH
 #>
 param(
-    [string]$Exe = ".\src\MarkMello.Desktop\bin\Release\net10.0\MarkMello.exe",
+    [string]$Exe = ".\src\MarkMello.Desktop\bin\Release\net10.0\Softmark.exe",
     [string]$Document = ".\sample.md",
     # Путь папки: включает замер folder mode (открытие папки и раскрытие первого каталога).
     [string]$Folder = "",

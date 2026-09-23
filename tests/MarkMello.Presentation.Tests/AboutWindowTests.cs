@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Markup.Xaml;
@@ -15,7 +16,7 @@ using MarkMello.Presentation.Views;
 namespace MarkMello.Presentation.Tests;
 
 /// <summary>
-/// Окно «О MarkMello» (ADR-0009 Rule 7): что в нём написано, чем оно закрывается и
+/// Окно «О Softmark» (ADR-0009 Rule 7, ADR-0011): что в нём написано, чем оно закрывается и
 /// откуда его открывают — пункт меню ⋯ вне macOS и системное меню на macOS.
 /// </summary>
 [Collection(AvaloniaHeadlessTestGroup.Name)]
@@ -26,25 +27,22 @@ public sealed class AboutWindowTests
     public AboutWindowTests(AvaloniaHeadlessFixture fixture) => _fixture = fixture;
 
     /// <summary>
-    /// Те же сведения, что в нижней строке карточки «Настройки»: версия сборки, лицензия,
-    /// автор и ссылки проекта. Версия — из атрибута сборки, без метаданных после «+».
+    /// Те же сведения, что в нижней строке карточки «Настройки»: имя, версия сборки,
+    /// лицензия и ссылка на репозиторий форка, плюс атрибуция оригинала по GPLv3. Версия —
+    /// из атрибута сборки, без метаданных после «+».
     /// </summary>
     [Fact]
-    public void AboutShowsVersionLicenseAuthorAndProjectLinks()
+    public void AboutShowsVersionLicenseAttributionAndRepositoryLink()
     {
         var viewModel = new AboutViewModel(new LocalizationService(AppLanguage.English));
 
-        Assert.Equal("About MarkMello", viewModel.WindowTitle);
-        Assert.Equal("MarkMello", viewModel.ProductName);
+        Assert.Equal("About Softmark", viewModel.WindowTitle);
+        Assert.Equal("Softmark", viewModel.ProductName);
         Assert.StartsWith("Version ", viewModel.VersionLine, StringComparison.Ordinal);
         Assert.DoesNotContain("+", viewModel.VersionLine, StringComparison.Ordinal);
         Assert.Equal("GPLv3", viewModel.License);
-        Assert.Equal("Andrey Ermolaev", viewModel.Author);
-        Assert.Equal("https://ermolaev.tech", viewModel.AuthorUrl);
-        Assert.Equal("Website", viewModel.WebsiteLabel);
-        Assert.Equal("https://markmello.ru", viewModel.WebsiteUrl);
-        Assert.Equal("https://t.me/mark_mello", viewModel.TelegramUrl);
-        Assert.Equal("https://github.com/dartdavros/MarkMello", viewModel.GitHubUrl);
+        Assert.Equal("Fork of MarkMello © 2026 MarkMello contributors", viewModel.ForkAttribution);
+        Assert.Equal("https://github.com/kostyatab/Softmark", viewModel.GitHubUrl);
     }
 
     /// <summary>Подписи идут за языком приложения — и в уже открытом окне тоже.</summary>
@@ -58,12 +56,12 @@ public sealed class AboutWindowTests
 
         localization.SetLanguage(AppLanguage.Russian);
 
-        Assert.Equal("О MarkMello", viewModel.WindowTitle);
+        Assert.Equal("О Softmark", viewModel.WindowTitle);
         Assert.StartsWith("Версия ", viewModel.VersionLine, StringComparison.Ordinal);
-        Assert.Equal("Сайт", viewModel.WebsiteLabel);
+        Assert.Equal("Форк MarkMello © 2026 MarkMello contributors", viewModel.ForkAttribution);
         Assert.Contains(nameof(AboutViewModel.WindowTitle), changed);
         Assert.Contains(nameof(AboutViewModel.VersionLine), changed);
-        Assert.Contains(nameof(AboutViewModel.WebsiteLabel), changed);
+        Assert.Contains(nameof(AboutViewModel.ForkAttribution), changed);
     }
 
     /// <summary>Отписка от смены языка: закрытое окно подписи больше не пересчитывает.</summary>
@@ -82,8 +80,9 @@ public sealed class AboutWindowTests
     }
 
     /// <summary>
-    /// Окно ОС, а не оверлей: по центру экрана, размер не меняется, фон — с палитры,
-    /// ссылки те же и в том же порядке, что в нижней строке карточки «Настройки».
+    /// Окно ОС, а не оверлей: по центру экрана, размер не меняется, фон — с палитры.
+    /// Ссылка одна — на репозиторий форка, как в нижней строке карточки «Настройки»;
+    /// ни сайта, ни телеграма оригинала. Вордмарк — одно слово «Softmark».
     /// </summary>
     [Theory]
     [InlineData("Light")]
@@ -100,14 +99,16 @@ public sealed class AboutWindowTests
             Assert.Same(Resource(window, "MmBackgroundBrush"), window.Background);
 
             Assert.Equal(
-                ["https://ermolaev.tech", "https://markmello.ru", "https://t.me/mark_mello", "https://github.com/dartdavros/MarkMello"],
+                ["https://github.com/kostyatab/Softmark"],
                 window.GetVisualDescendants().OfType<Button>()
                     .Where(static button => button.Classes.Contains("mm-link"))
                     .Select(static button => button.Tag as string));
 
             var texts = window.GetVisualDescendants().OfType<TextBlock>().Select(static block => block.Text).ToList();
             Assert.Contains("GPLv3", texts);
+            Assert.Contains("Fork of MarkMello © 2026 MarkMello contributors", texts);
             Assert.Contains(texts, static text => text is not null && text.StartsWith("Version ", StringComparison.Ordinal));
+            Assert.Equal("Softmark", WordmarkText(window.GetVisualDescendants().OfType<TextBlock>().Single(static block => block.Name == "AboutWordmark")));
 
             window.Close();
             return Task.CompletedTask;
@@ -159,7 +160,7 @@ public sealed class AboutWindowTests
     }
 
     /// <summary>
-    /// «О MarkMello» в меню ⋯ — только вне macOS: на macOS пункт живёт в системном меню
+    /// «О Softmark» в меню ⋯ — только вне macOS: на macOS пункт живёт в системном меню
     /// приложения (ADR-0009 Rule 4).
     /// </summary>
     [Fact]
@@ -168,7 +169,7 @@ public sealed class AboutWindowTests
         var viewModel = CreateShell(new RecordingWindowLauncher());
 
         Assert.Equal(!OperatingSystem.IsMacOS(), viewModel.ShowsAboutMenuItem);
-        Assert.Equal("About MarkMello", viewModel.AppMenuAbout);
+        Assert.Equal("About Softmark", viewModel.AppMenuAbout);
     }
 
     /// <summary>
@@ -232,6 +233,10 @@ public sealed class AboutWindowTests
         Dispatcher.UIThread.RunJobs();
         return window;
     }
+
+    /// <summary>Текст вордмарка из его Run: пробел между ними разбил бы слово надвое.</summary>
+    internal static string WordmarkText(TextBlock wordmark)
+        => string.Concat(Assert.IsAssignableFrom<InlineCollection>(wordmark.Inlines).Select(static inline => Assert.IsType<Run>(inline).Text));
 
     private static object LoadTheme(string themeFile)
         => AvaloniaXamlLoader.Load(new Uri("avares://MarkMello.Presentation/Themes/" + themeFile));

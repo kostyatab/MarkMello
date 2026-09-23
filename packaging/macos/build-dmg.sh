@@ -6,7 +6,7 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 app_bundle=""
 runtime_id=""
 output_dir="$script_dir/dist"
-volume_name="MarkMello"
+volume_name="Softmark"
 
 usage() {
   cat <<'EOF'
@@ -76,16 +76,16 @@ mkdir -p "$output_dir"
 output_dir="$(cd "$output_dir" && pwd)"
 app_bundle="$(cd "$app_bundle/.." && pwd)/$(basename "$app_bundle")"
 
-staging_dir="$(mktemp -d "${TMPDIR:-/tmp}/markmello-dmg.XXXXXX")"
+staging_dir="$(mktemp -d "${TMPDIR:-/tmp}/softmark-dmg.XXXXXX")"
 cleanup() {
   rm -rf "$staging_dir"
 }
 trap cleanup EXIT
 
-cp -R "$app_bundle" "$staging_dir/MarkMello.app"
+cp -R "$app_bundle" "$staging_dir/Softmark.app"
 ln -s /Applications "$staging_dir/Applications"
 
-dmg_path="$output_dir/MarkMello-$asset_suffix.dmg"
+dmg_path="$output_dir/Softmark-$asset_suffix.dmg"
 rm -f "$dmg_path"
 
 hdiutil create \

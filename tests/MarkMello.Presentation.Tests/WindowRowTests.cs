@@ -174,7 +174,7 @@ public sealed class WindowRowTests
 
             var row = window.GetControl<Border>("WindowRow");
             Assert.Equal(MainWindow.CalculateWindowRowHeight(OperatingSystem.IsMacOS()), row.Bounds.Height);
-            Assert.Equal("README.md — MarkMello", window.Title);
+            Assert.Equal("README.md — Softmark", window.Title);
             Assert.DoesNotContain(
                 window.GetVisualDescendants().OfType<TextBlock>(),
                 block => block.Text == window.Title);

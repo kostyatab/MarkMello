@@ -1,17 +1,17 @@
 [Desktop Entry]
 Type=Application
-Name=MarkMello
+Name=Softmark
 GenericName=Markdown Viewer
 Comment=Fast viewer-first Markdown reader
-Exec=MarkMello %f
-TryExec=MarkMello
-Icon=markmello
+Exec=Softmark %f
+TryExec=Softmark
+Icon=softmark
 Terminal=false
 StartupNotify=true
-StartupWMClass=MarkMello
+StartupWMClass=Softmark
 Categories=Office;Utility;Viewer;
 Keywords=markdown;viewer;reader;editor;
 MimeType=text/markdown;
-X-AppImage-Name=MarkMello
+X-AppImage-Name=Softmark
 X-AppImage-Version=@VERSION@
 X-AppImage-Arch=@ARCH@

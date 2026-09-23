@@ -7,10 +7,10 @@ publish_dir=""
 runtime_id=""
 version=""
 build_number=""
-bundle_id="com.markmello.app"
+bundle_id="com.softmark.app"
 output_dir="$script_dir/dist"
-app_name="MarkMello"
-icon_path="$script_dir/MarkMello.icns"
+app_name="Softmark"
+icon_path="$script_dir/Softmark.icns"
 template_path="$script_dir/Info.plist"
 
 usage() {

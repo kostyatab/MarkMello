@@ -62,7 +62,6 @@ public partial class ShellViewModel
         nameof(AppSettingsHeader),
         nameof(AppSettingsReadingHintPrefix),
         nameof(AppSettingsReadingHintSuffix),
-        nameof(AppSettingsWebsite),
         nameof(DirtyPromptCancel),
         nameof(DirtyPromptDiscard),
         nameof(DirtyPromptSave),
@@ -220,7 +219,6 @@ public partial class ShellViewModel
     /// </summary>
     public string AppSettingsReadingHintPrefix => _localization["AppSettingsReadingHintPrefix"];
     public string AppSettingsReadingHintSuffix => _localization["AppSettingsReadingHintSuffix"];
-    public string AppSettingsWebsite => _localization["AppSettingsWebsite"];
     public string DirtyPromptCancel => _localization["DirtyPromptCancel"];
     public string DirtyPromptDiscard => _localization["DirtyPromptDiscard"];
     public string DirtyPromptSave => _localization["DirtyPromptSave"];

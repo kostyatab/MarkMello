@@ -269,12 +269,12 @@ public sealed class GitHubReleaseUpdateService : IUpdateService
                 Architecture.X64 => new ReleaseTargetDescriptor(
                     "Windows",
                     "x64",
-                    "MarkMello-setup-win-x64.exe",
+                    "Softmark-setup-win-x64.exe",
                     AppUpdateInstallAction.LaunchInstaller),
                 Architecture.Arm64 => new ReleaseTargetDescriptor(
                     "Windows",
                     "arm64",
-                    "MarkMello-setup-win-arm64.exe",
+                    "Softmark-setup-win-arm64.exe",
                     AppUpdateInstallAction.LaunchInstaller),
                 _ => null
             };
@@ -287,12 +287,12 @@ public sealed class GitHubReleaseUpdateService : IUpdateService
                 Architecture.Arm64 => new ReleaseTargetDescriptor(
                     "macOS",
                     "arm64",
-                    "MarkMello-macos-arm64.dmg",
+                    "Softmark-macos-arm64.dmg",
                     AppUpdateInstallAction.OpenDiskImage),
                 Architecture.X64 => new ReleaseTargetDescriptor(
                     "macOS",
                     "x64",
-                    "MarkMello-macos-x64.dmg",
+                    "Softmark-macos-x64.dmg",
                     AppUpdateInstallAction.OpenDiskImage),
                 _ => null
             };
@@ -305,12 +305,12 @@ public sealed class GitHubReleaseUpdateService : IUpdateService
                 Architecture.X64 => new ReleaseTargetDescriptor(
                     "Linux",
                     "x86_64",
-                    "MarkMello-linux-x86_64.AppImage",
+                    "Softmark-linux-x86_64.AppImage",
                     AppUpdateInstallAction.RevealFile),
                 Architecture.Arm64 => new ReleaseTargetDescriptor(
                     "Linux",
                     "aarch64",
-                    "MarkMello-linux-aarch64.AppImage",
+                    "Softmark-linux-aarch64.AppImage",
                     AppUpdateInstallAction.RevealFile),
                 _ => null
             };
@@ -385,7 +385,7 @@ public sealed class GitHubReleaseUpdateService : IUpdateService
         var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         if (!string.IsNullOrWhiteSpace(userProfile))
         {
-            return Path.Combine(userProfile, "Downloads", "MarkMello");
+            return Path.Combine(userProfile, "Downloads", "Softmark");
         }
 
         return Path.Combine(AppContext.BaseDirectory, "Updates");

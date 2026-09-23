@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Снимает тайминги старта MarkMello на macOS и Linux — аналог measure-startup.ps1.
+"""Снимает тайминги старта Softmark на macOS и Linux — аналог measure-startup.ps1.
 
 Запускает приложение в smoke-режиме (--smoke-exit-after-open), где оно печатает
 снимок IStartupMetrics и выходит само. Считает медиану, минимум и максимум по
@@ -17,7 +17,7 @@ AOT до и после изменения и прогоните в порядк�
 Пример (приёмка по AOT-сборке):
     dotnet publish src/MarkMello.Desktop/MarkMello.Desktop.csproj -m:1 -c Release -r osx-arm64 \\
       --self-contained true -p:PublishAot=true -p:PublishSingleFile=false -o publish/head-osx-arm64
-    tools/measure-startup.py --exe publish/head-osx-arm64/MarkMello --label "AOT head"
+    tools/measure-startup.py --exe publish/head-osx-arm64/Softmark --label "AOT head"
 """
 import argparse
 import os
@@ -33,7 +33,7 @@ FOLDER_STAGES = ["OpenFolder", "ExpandNode"]
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--exe", default="src/MarkMello.Desktop/bin/Release/net10.0/MarkMello")
+    parser.add_argument("--exe", default="src/MarkMello.Desktop/bin/Release/net10.0/Softmark")
     parser.add_argument("--document", default="sample.md")
     parser.add_argument("--folder", default="", help="путь папки: включает замер folder mode")
     parser.add_argument("--label", default="Release (JIT)")

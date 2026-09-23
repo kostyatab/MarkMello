@@ -4,19 +4,19 @@ This folder captures the first release baseline from `ADR-0004`.
 
 ## Release matrix
 
-- `MarkMello-setup-win-x64.exe`
-- `MarkMello-setup-win-arm64.exe`
-- `MarkMello-macos-arm64.dmg`
-- `MarkMello-macos-x64.dmg`
-- `MarkMello-linux-x86_64.AppImage`
+- `Softmark-setup-win-x64.exe`
+- `Softmark-setup-win-arm64.exe`
+- `Softmark-macos-arm64.dmg`
+- `Softmark-macos-x64.dmg`
+- `Softmark-linux-x86_64.AppImage`
 
 ## Windows
 
 - `windows/MarkMello.iss` is the per-user Inno Setup installer.
 - `windows/build-installer.ps1` compiles the installer from a published app folder.
 - `windows/sign-files.ps1` signs published binaries and installers when a PFX certificate is provided.
-- `windows/markmello-installer.ico` is the installer icon generated from the shared master icon.
-- The installer registers MarkMello as an available `.md` handler and adds `Open with MarkMello`-style shell integration without forcing a system-wide default.
+- `windows/softmark-installer.ico` is the installer icon generated from the shared master icon.
+- The installer registers Softmark as an available `.md` handler and adds `Open with Softmark`-style shell integration without forcing a system-wide default.
 - `.github/workflows/release-windows.yml` is the desktop GitHub Releases pipeline for Windows and macOS assets.
 
 GitHub Actions flow:
@@ -31,8 +31,8 @@ Example:
 dotnet publish .\src\MarkMello.Desktop\MarkMello.Desktop.csproj `
   -c Release -r win-x64 --self-contained true `
   -p:PublishSingleFile=false `
-  -p:MarkMelloReleaseOwner=dartdavros `
-  -p:MarkMelloReleaseRepo=MarkMello `
+  -p:MarkMelloReleaseOwner=kostyatab `
+  -p:MarkMelloReleaseRepo=Softmark `
   -o .\publish\win-x64
 
 .\packaging\windows\build-installer.ps1 `
@@ -44,7 +44,7 @@ dotnet publish .\src\MarkMello.Desktop\MarkMello.Desktop.csproj `
 ## macOS
 
 - `macos/Info.plist` is a template for the signed `.app` bundle metadata.
-- `macos/MarkMello.icns` is the bundle icon generated from the shared master icon.
+- `macos/Softmark.icns` is the bundle icon generated from the shared master icon.
 - `macos/build-app-bundle.sh` assembles an unsigned `.app` bundle from a `dotnet publish` folder.
 - `macos/build-dmg.sh` wraps that bundle into an unsigned `.dmg` for GitHub Releases.
 - `macos/stamp-sdk-version.sh` runs after every macOS build and publish of `MarkMello.Desktop`: it stamps the executable as built against the macOS 26 SDK and re-signs it ad-hoc, so macOS 26+ draws the current window chrome instead of the legacy traffic lights it keeps for apps linked against older SDKs.
@@ -55,8 +55,8 @@ dotnet publish .\src\MarkMello.Desktop\MarkMello.Desktop.csproj `
 ## Linux
 
 - `linux/build-appimage.sh` assembles the AppDir from a published app folder and runs `appimagetool`.
-- `linux/markmello.desktop` is the desktop entry baseline for AppImage packaging.
-- `linux/markmello.png` is the launcher icon generated from the shared master icon.
+- `linux/softmark.desktop` is the desktop entry baseline for AppImage packaging.
+- `linux/softmark.png` is the launcher icon generated from the shared master icon.
 - The desktop entry advertises Markdown support through `MimeType=text/markdown;` and includes AppImage-specific metadata keys.
 - The first packaging pass intentionally stays AppImage-first instead of adding distro-specific installers.
 
@@ -66,13 +66,13 @@ dotnet publish .\src\MarkMello.Desktop\MarkMello.Desktop.csproj `
 - The artwork is drawn per platform instead of being resized from one master, because the platforms frame icons differently: macOS keeps wide margins around a squircle, Windows and Linux fill the square almost completely.
 - Sizes of 32px and below get a flat drawing without the highlight and the drop shadow, which turn into mud when scaled down.
 - `packaging/assets/softmark-master-{macos,windows,linux}.png` are the 1024px renders, kept for reference and for store listings.
-- The macOS `.icns` is packed from the iconset afterwards: `iconutil -c icns -o packaging/macos/MarkMello.icns packaging/macos/AppIcon.iconset`.
+- The macOS `.icns` is packed from the iconset afterwards: `iconutil -c icns -o packaging/macos/Softmark.icns packaging/macos/AppIcon.iconset`.
 
 Example:
 
 ```bash
 python3 packaging/draw-softmark-icons.py
-iconutil -c icns -o packaging/macos/MarkMello.icns packaging/macos/AppIcon.iconset
+iconutil -c icns -o packaging/macos/Softmark.icns packaging/macos/AppIcon.iconset
 ```
 
 ## Update source

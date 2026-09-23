@@ -240,7 +240,7 @@ public sealed partial class IconMarkupTests
     /// Исходники берутся из репозитория: тесты запускаются из bin, и путь ищется
     /// подъёмом до MarkMello.sln — одинаково на Windows, macOS и Linux.
     /// </summary>
-    private static string PresentationSourceDirectory()
+    internal static string PresentationSourceDirectory()
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
         {

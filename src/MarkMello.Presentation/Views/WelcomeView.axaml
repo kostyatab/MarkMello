@@ -19,22 +19,15 @@
                 Width="480"
                 Margin="0,24">
 
-      <Image Source="avares://MarkMello.Presentation/Assets/Images/logo.png"
-             Width="104"
-             Height="104"
-             HorizontalAlignment="Center"
-             Margin="0,0,0,-4" />
-
-      <!-- «Mark» + акцентное «Mello», жирный, без курсива -->
-      <TextBlock FontFamily="{DynamicResource MmDocumentSerifFontFamily}"
+      <!-- Знак приложения — сам вордмарк, без картинки: «Soft» + акцентное «mark»
+           Inter SemiBold. Run стоят вплотную: пробел между ними разбил бы слово
+           надвое. -->
+      <TextBlock Name="WelcomeWordmark"
+                 FontFamily="{DynamicResource MmDocumentSansFontFamily}"
                  FontSize="40"
-                 FontWeight="Bold"
+                 FontWeight="SemiBold"
                  HorizontalAlignment="Center"
-                 Foreground="{DynamicResource MmTextBrush}">
-        <Run Text="Mark" />
-        <Run Text="Mello"
-             Foreground="{DynamicResource MmAccentBrush}" />
-      </TextBlock>
+                 Foreground="{DynamicResource MmTextBrush}"><Run Text="Soft" /><Run Text="mark" Foreground="{DynamicResource MmAccentBrush}" /></TextBlock>
 
       <TextBlock Text="{Binding WelcomeTagline}"
                  FontFamily="{DynamicResource MmDocumentSansFontFamily}"

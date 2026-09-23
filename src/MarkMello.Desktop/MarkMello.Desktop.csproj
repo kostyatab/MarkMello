@@ -3,12 +3,12 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <RootNamespace>MarkMello.Desktop</RootNamespace>
-    <AssemblyName>MarkMello</AssemblyName>
+    <AssemblyName>Softmark</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <ApplicationIcon>..\MarkMello.Presentation\Assets\Icons\markmello.ico</ApplicationIcon>
+    <ApplicationIcon>..\MarkMello.Presentation\Assets\Icons\softmark.ico</ApplicationIcon>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
-    <MarkMelloReleaseOwner Condition="'$(MarkMelloReleaseOwner)' == ''">dartdavros</MarkMelloReleaseOwner>
-    <MarkMelloReleaseRepo Condition="'$(MarkMelloReleaseRepo)' == ''">MarkMello</MarkMelloReleaseRepo>
+    <MarkMelloReleaseOwner Condition="'$(MarkMelloReleaseOwner)' == ''">kostyatab</MarkMelloReleaseOwner>
+    <MarkMelloReleaseRepo Condition="'$(MarkMelloReleaseRepo)' == ''">Softmark</MarkMelloReleaseRepo>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(PublishAot)' == 'true'">

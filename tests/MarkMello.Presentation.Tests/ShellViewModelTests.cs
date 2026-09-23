@@ -508,7 +508,7 @@ public sealed class ShellViewModelTests
         Assert.NotNull(harness.ViewModel.EditorSession);
         Assert.Null(harness.ViewModel.EditorSession.CurrentPath);
         Assert.Equal("Untitled.md", harness.ViewModel.FileName);
-        Assert.Equal("Untitled.md — MarkMello", harness.ViewModel.WindowTitle);
+        Assert.Equal("Untitled.md — Softmark", harness.ViewModel.WindowTitle);
         Assert.Contains(StartupStage.EditorActivation, harness.StartupMetrics.Marks);
         Assert.DoesNotContain(StartupStage.ReadableDocument, harness.StartupMetrics.Marks);
     }
@@ -629,7 +629,7 @@ public sealed class ShellViewModelTests
         Assert.False(harness.ViewModel.IsViewer);
         Assert.Null(harness.ViewModel.Document);
         Assert.Null(harness.ViewModel.EditorSession);
-        Assert.Equal("MarkMello", harness.ViewModel.WindowTitle);
+        Assert.Equal("Softmark", harness.ViewModel.WindowTitle);
         Assert.False(harness.ViewModel.CloseActiveTabCommand.CanExecute(null));
     }
 
@@ -654,7 +654,7 @@ public sealed class ShellViewModelTests
         Assert.False(harness.ViewModel.IsDirtyPromptOpen);
         Assert.Null(harness.ViewModel.Document);
         Assert.Null(harness.ViewModel.EditorSession);
-        Assert.Equal("MarkMello", harness.ViewModel.WindowTitle);
+        Assert.Equal("Softmark", harness.ViewModel.WindowTitle);
     }
 
     /// <summary>
@@ -667,7 +667,7 @@ public sealed class ShellViewModelTests
     [InlineData("folder", "Otherwise your changes will be lost when the folder closes.")]
     [InlineData("reload", "Otherwise your changes will be lost on reload.")]
     [InlineData("edit", "Otherwise your changes will be lost when you leave editing.")]
-    [InlineData("window", "Otherwise your changes will be lost when you quit MarkMello.")]
+    [InlineData("window", "Otherwise your changes will be lost when you quit Softmark.")]
     public async Task DirtyPromptNamesTheFileAndSaysWhenTheChangesAreLost(string action, string expectedMessage)
     {
         var root = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", "notes");
@@ -858,7 +858,7 @@ public sealed class ShellViewModelTests
         Assert.False(harness.ViewModel.IsDirtyPromptOpen);
         Assert.Null(harness.ViewModel.Document);
         Assert.Null(harness.ViewModel.EditorSession);
-        Assert.Equal("MarkMello", harness.ViewModel.WindowTitle);
+        Assert.Equal("Softmark", harness.ViewModel.WindowTitle);
     }
 
     [Fact]
@@ -1613,9 +1613,9 @@ public sealed class ShellViewModelTests
             ReleaseVersion: "1.2.3",
             ReleaseTag: "v1.2.3",
             PublishedAt: DateTimeOffset.Parse("2026-04-19T12:00:00Z", CultureInfo.InvariantCulture),
-            ReleasePageUrl: "https://github.com/dartdavros/MarkMello/releases/tag/v1.2.3",
-            AssetName: "MarkMello-setup-win-x64.exe",
-            DownloadUrl: "https://github.com/dartdavros/MarkMello/releases/download/v1.2.3/MarkMello-setup-win-x64.exe",
+            ReleasePageUrl: "https://github.com/kostyatab/Softmark/releases/tag/v1.2.3",
+            AssetName: "Softmark-setup-win-x64.exe",
+            DownloadUrl: "https://github.com/kostyatab/Softmark/releases/download/v1.2.3/Softmark-setup-win-x64.exe",
             PlatformName: "Windows",
             ArchitectureName: "x64",
             InstallAction: AppUpdateInstallAction.LaunchInstaller);

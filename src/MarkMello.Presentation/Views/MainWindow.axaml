@@ -11,7 +11,7 @@
         WindowStartupLocation="CenterScreen"
         MinWidth="640" MinHeight="480"
         Title="{Binding WindowTitle}"
-        Icon="/Assets/Icons/markmello.ico"
+        Icon="/Assets/Icons/softmark.ico"
         Background="{DynamicResource MmBackgroundBrush}"
         DragDrop.AllowDrop="True"
         UseLayoutRounding="True">

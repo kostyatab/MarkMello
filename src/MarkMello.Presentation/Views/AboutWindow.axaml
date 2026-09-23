@@ -7,7 +7,7 @@
         x:Class="MarkMello.Presentation.Views.AboutWindow"
         x:DataType="vm:AboutViewModel"
         Title="{Binding WindowTitle}"
-        Icon="/Assets/Icons/markmello.ico"
+        Icon="/Assets/Icons/softmark.ico"
         Width="360"
         SizeToContent="Height"
         CanResize="False"
@@ -15,28 +15,21 @@
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource MmBackgroundBrush}"
         UseLayoutRounding="True">
-  <!-- «О MarkMello» (ADR-0009 Rule 7): настоящее окно ОС, а не оверлей — на macOS оно
+  <!-- «О Softmark» (ADR-0009 Rule 7): настоящее окно ОС, а не оверлей — на macOS оно
        открывается из системного меню, когда карточки «Настройки» на экране нет.
-       Сведения те же, что в нижней строке карточки «Настройки». -->
+       Сведения те же, что в нижней строке карточки «Настройки», плюс атрибуция
+       оригинала (ADR-0011). -->
   <StackPanel HorizontalAlignment="Center"
               Margin="24,28">
 
-    <Image Source="avares://MarkMello.Presentation/Assets/Images/logo.png"
-           Width="88"
-           Height="88"
-           HorizontalAlignment="Center"
-           Margin="0,0,0,-4" />
-
-    <!-- «Mark» + акцентное «Mello», как на стартовом экране -->
-    <TextBlock FontFamily="{DynamicResource MmDocumentSerifFontFamily}"
+    <!-- «Soft» + акцентное «mark» Inter SemiBold, как на стартовом экране. Run
+         стоят вплотную: пробел между ними разбил бы слово надвое. -->
+    <TextBlock FontFamily="{DynamicResource MmDocumentSansFontFamily}"
                FontSize="28"
-               FontWeight="Bold"
+               FontWeight="SemiBold"
                HorizontalAlignment="Center"
-               Foreground="{DynamicResource MmTextBrush}">
-      <Run Text="Mark" />
-      <Run Text="Mello"
-           Foreground="{DynamicResource MmAccentBrush}" />
-    </TextBlock>
+               Foreground="{DynamicResource MmTextBrush}"
+               Name="AboutWordmark"><Run Text="Soft" /><Run Text="mark" Foreground="{DynamicResource MmAccentBrush}" /></TextBlock>
 
     <TextBlock Name="AboutVersionLine"
                Classes="mm-app-settings-caption"
@@ -52,33 +45,20 @@
                Margin="0,2,0,0"
                Text="{Binding License}" />
 
-    <Button Name="AboutAuthorLink"
+    <TextBlock Name="AboutForkAttribution"
+               Classes="mm-app-settings-caption"
+               HorizontalAlignment="Center"
+               TextAlignment="Center"
+               TextWrapping="Wrap"
+               Margin="0,10,0,0"
+               Text="{Binding ForkAttribution}" />
+
+    <Button Name="AboutGitHubLink"
             Classes="mm-link"
             HorizontalAlignment="Center"
-            Margin="0,10,0,0"
-            Tag="{Binding AuthorUrl}"
+            Margin="0,14,0,0"
+            Tag="{Binding GitHubUrl}"
             Click="OnLinkClick"
-            Content="{Binding Author}" />
-
-    <StackPanel Orientation="Horizontal"
-                HorizontalAlignment="Center"
-                Spacing="12"
-                Margin="0,14,0,0">
-      <Button Name="AboutWebsiteLink"
-              Classes="mm-link"
-              Tag="{Binding WebsiteUrl}"
-              Click="OnLinkClick"
-              Content="{Binding WebsiteLabel}" />
-      <Button Name="AboutTelegramLink"
-              Classes="mm-link"
-              Tag="{Binding TelegramUrl}"
-              Click="OnLinkClick"
-              Content="Telegram" />
-      <Button Name="AboutGitHubLink"
-              Classes="mm-link"
-              Tag="{Binding GitHubUrl}"
-              Click="OnLinkClick"
-              Content="GitHub" />
-    </StackPanel>
+            Content="GitHub" />
   </StackPanel>
 </Window>
