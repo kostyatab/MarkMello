@@ -487,8 +487,9 @@ jobs:
       - name: Generate SHA256 checksum
         shell: bash
         run: |
-          checksum_path="${{ steps.dmg.outputs.path }}.sha256"
-          shasum -a 256 "${{ steps.dmg.outputs.path }}" > "$checksum_path"
+          dmg_path="${{ steps.dmg.outputs.path }}"
+          # В сумму пишем только имя файла, чтобы shasum -c работал рядом со скачанным dmg.
+          (cd "$(dirname "$dmg_path")" && shasum -a 256 "$(basename "$dmg_path")") > "$dmg_path.sha256"
 
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v7
@@ -612,8 +613,9 @@ jobs:
       - name: Generate SHA256 checksum
         shell: bash
         run: |
-          checksum_path="${{ steps.appimage.outputs.path }}.sha256"
-          sha256sum "${{ steps.appimage.outputs.path }}" > "$checksum_path"
+          appimage_path="${{ steps.appimage.outputs.path }}"
+          # В сумму пишем только имя файла, чтобы sha256sum -c работал рядом со скачанным AppImage.
+          (cd "$(dirname "$appimage_path")" && sha256sum "$(basename "$appimage_path")") > "$appimage_path.sha256"
 
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v7
