@@ -483,7 +483,7 @@ public static class WordStatistics
 
 A local image:
 
-![MarkMello cover](../assets/cover.png)
+![Softmark cover](../assets/softmark-markdown-viewer-welcome.jpg)
 
 An image with a broken path:
 
@@ -491,13 +491,13 @@ An image with a broken path:
 
 A remote image:
 
-![MarkMello cover from GitHub](https://raw.githubusercontent.com/kostyatab/MarkMello/develop/assets/cover.png "Loaded over HTTPS")
+![Softmark cover from GitHub](https://raw.githubusercontent.com/kostyatab/Softmark/develop/assets/softmark-markdown-viewer-welcome.jpg "Loaded over HTTPS")
 
 An image embedded as a data URI: ![Small orange square](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAXklEQVR42pXSbQoAEAyH8edYruks7uSTO6BWkpf5q4mtfi2MWlKPHIMYGNANfX0ZbNMN4yQa5kQxLPnTsJd8w7HqGG6tbwbnfkeD/4i74flTi0EZh9kgztww6INtoAGEjtoCnf+5iQAAAABJRU5ErkJggg==) inside a sentence.
 
 An HTML image with a fixed width:
 
-<img src="../assets/cover.png" width="240" alt="MarkMello cover, 240 pixels wide">
+<img src="../assets/softmark-markdown-viewer-welcome.jpg" width="240" alt="Softmark cover, 240 pixels wide">
 
 ## Footnotes and rules
 

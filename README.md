@@ -1,24 +1,60 @@
-![MarkMello](assets/cover.png)
+# Softmark
 
-# MarkMello
+**A fast Markdown viewer for macOS, Windows and Linux.**
 
-[Website](https://markmello.ru) · [Telegram](https://t.me/mark_mello)
+Softmark opens `.md` files straight into a clean reading view: rendered tables,
+Mermaid diagrams and code with syntax highlighting, in a light or dark theme.
+Editing is one shortcut away, but it never gets in the way of reading. It is a
+native desktop app with no browser engine inside, so documents open in a moment.
 
-**MarkMello is an application for quickly opening and reading Markdown files, with an additional editing mode.**
+[Download](../../releases/latest) · [Screenshots](#screenshots) · [Build from source](#build-from-source)
 
-## What MarkMello can do
+![Softmark Markdown viewer on macOS in dark theme: the welcome screen with the Softmark wordmark, buttons to open a file, open a folder or create a document, and a list of recent files and folders](assets/softmark-markdown-viewer-welcome.jpg)
 
-MarkMello allows you to:
+## Features
 
-- quickly open Markdown files in reading mode;
-- adjust the reading experience: theme, font size, line height, and document width;
-- switch to editing mode when needed and make changes to the file.
+- **Reading first.** A file opens in reading mode; the editor stays off until you ask for it.
+- **GitHub Flavored Markdown.** Tables, task lists, footnotes, alerts (`> [!NOTE]`),
+  definition lists, strikethrough, highlight, subscript and superscript, YAML front matter.
+- **Mermaid diagrams.** Flowcharts, sequence, class, ER, Gantt, pie, git graph, mind map
+  and more, rendered offline inside the app.
+- **Syntax highlighting.** Code blocks use the language grammars of Visual Studio Code
+  and have a copy button.
+- **Tabs and folders.** Open several documents in tabs, or open a whole folder of notes
+  with a file panel, file search and basic file operations. In a folder, edits made by
+  other programs show up in the open document on their own.
+- **Reading settings.** Light, dark or system theme; serif, sans or mono font; text size,
+  line height, line width and a document minimap.
+- **Find in document**, word count and reading time.
+- **Editing mode** with the Markdown source and a live preview side by side.
+- **Recent files and folders** on the welcome screen; drop a `.md` file or a folder
+  anywhere on the window to open it.
+- English and Russian interface.
 
-## How it differs from regular Markdown editors
+## How it differs
 
-MarkMello opens the file for reading first.
+Softmark is a Markdown reader that can edit, not an editor that can preview.
 
-Editing is not the primary startup mode: it is enabled manually when you need to make changes.
+- **Typora** makes you read and write in the same WYSIWYG surface. Softmark keeps
+  reading and editing apart: you read a clean document and switch to the source
+  only when you mean to change it.
+- **Obsidian** is a knowledge base: vaults, links between notes, plugins. Softmark
+  has none of that. Double-click a `.md` file anywhere on disk and it opens for
+  reading, with no vault to set up first.
+- **MacDown** is a macOS-only editor with a preview pane. Softmark runs on macOS,
+  Windows and Linux and opens a file for reading first.
+
+Typora and Obsidian are built on Electron, and MacDown renders its preview in a web
+view. Softmark is compiled to native code and draws the document itself, including
+Mermaid diagrams, without a browser engine.
+
+## Screenshots
+
+![A Markdown document with a table and a task list open in Softmark's light theme, with the file panel on the left](assets/softmark-markdown-viewer-light-theme.png)
+
+![The same Markdown document in Softmark's dark theme](assets/softmark-markdown-viewer-dark-theme.png)
+
+![A Mermaid flowchart and a Python code block with syntax highlighting rendered in Softmark](assets/softmark-mermaid-diagram-and-code.png)
 
 ## Installation
 
@@ -52,7 +88,7 @@ The AppImage needs FUSE to mount itself. Distributions that ship only FUSE 3 nee
 
 ## Temporary unsigned builds
 
-Current public MarkMello builds are temporarily distributed without a developer signature. Because of that, Windows or macOS may show a warning on first launch.
+Current public Softmark builds are temporarily distributed without a developer signature. Because of that, Windows or macOS may show a warning on first launch.
 
 This is a temporary distribution pipeline limitation. Developer signing and the normal notarization/signing chain will be added in the future.
 
@@ -88,7 +124,7 @@ open /Applications/Softmark.app
 
 ## Build from source
 
-.NET SDK 9 is required.
+.NET SDK 10 is required.
 
 ```bash
 dotnet restore ./MarkMello.sln
@@ -137,9 +173,11 @@ The project is distributed under the GPL-3.0 license.
 
 See [LICENSE](LICENSE).
 
+Softmark is a fork of [MarkMello](https://github.com/dartdavros/MarkMello) by the MarkMello contributors.
+
 ## Acknowledgements
 
-Diagram support in MarkMello is built on open-source projects:
+Diagram support in Softmark is built on open-source projects:
 
 - [Naiad](https://github.com/Papyrine/Naiad) — a .NET library that renders Mermaid diagrams to SVG in-process, without a browser or external runtime. MIT License.
 - [Mermaid](https://github.com/mermaid-js/mermaid) — diagram syntax and specification.
@@ -148,5 +186,7 @@ Syntax highlighting in code blocks is built on:
 
 - [TextMateSharp](https://github.com/danipen/TextMateSharp) — a .NET port of the TextMate grammar engine; its grammar package bundles the language grammars of [Visual Studio Code](https://github.com/microsoft/vscode). MIT License.
 - [Onigwrap](https://github.com/aikawayataro/Onigwrap) — a .NET wrapper for the [Oniguruma](https://github.com/kkos/oniguruma) regular expression library. MIT License; Oniguruma is under the BSD 2-Clause License.
+
+The background of the cover image is a [photo by Ansgar Scheffold](https://unsplash.com/photos/z_f2JrBRbOg) on Unsplash, used under the [Unsplash License](https://unsplash.com/license).
 
 Interface icons come from [Lucide](https://lucide.dev) — ISC License (icons inherited from Feather are MIT); the full notice is in [LUCIDE_LICENSE.txt](src/MarkMello.Presentation/Themes/LUCIDE_LICENSE.txt).
