@@ -234,6 +234,8 @@ public partial class ShellViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(TreeContextMenuOverlayContent))]
     [NotifyPropertyChangedFor(nameof(IsTabsOverflowMenuOpen))]
     [NotifyPropertyChangedFor(nameof(TabsOverflowMenuOverlayContent))]
+    [NotifyPropertyChangedFor(nameof(IsNewTabMenuOpen))]
+    [NotifyPropertyChangedFor(nameof(NewTabMenuOverlayContent))]
     private ShellOverlayKind _shellOverlay = ShellOverlayKind.None;
 
     /// <summary>
@@ -394,13 +396,17 @@ public partial class ShellViewModel : ObservableObject
     /// <summary>Список скрытых вкладок «ещё N» — карточка под своей кнопкой в строке окна.</summary>
     public bool IsTabsOverflowMenuOpen => ShellOverlay == ShellOverlayKind.TabsOverflowMenu;
 
+    /// <summary>Меню «+» в строке окна: открыть файл или создать документ в новой вкладке.</summary>
+    public bool IsNewTabMenuOpen => ShellOverlay == ShellOverlayKind.NewTabMenu;
+
     public bool HasOpenOverlay => IsSettingsOpen
         || IsAppMenuOpen
         || IsAppSettingsOpen
         || IsFolderMenuOpen
         || IsCreateMenuOpen
         || IsTreeContextMenuOpen
-        || IsTabsOverflowMenuOpen;
+        || IsTabsOverflowMenuOpen
+        || IsNewTabMenuOpen;
 
     public object? AppMenuOverlayContent => IsAppMenuOpen ? this : null;
 
@@ -412,6 +418,8 @@ public partial class ShellViewModel : ObservableObject
     public object? TreeContextMenuOverlayContent => IsTreeContextMenuOpen && TreeContextNode is not null ? this : null;
 
     public object? TabsOverflowMenuOverlayContent => IsTabsOverflowMenuOpen ? this : null;
+
+    public object? NewTabMenuOverlayContent => IsNewTabMenuOpen ? this : null;
 
     /// <summary>Карточка «Настройки» строится по первому открытию, а не на старте (ADR-0009 Rule 12).</summary>
     public object? AppSettingsContent => IsAppSettingsOpen ? this : null;
@@ -1252,6 +1260,27 @@ public partial class ShellViewModel : ObservableObject
         ShellOverlay = IsTabsOverflowMenuOpen
             ? ShellOverlayKind.None
             : ShellOverlayKind.TabsOverflowMenu;
+    }
+
+    /// <summary>
+    /// «+» у вкладок открывает не черновик, а меню «Открыть файл… / Новый документ»:
+    /// открыть ещё документ нужно чаще, чем создать (ADR-0009 Rule 3). Под открытым
+    /// диалогом меню не открывается — ни один его пункт там всё равно не сработает.
+    /// </summary>
+    [RelayCommand]
+    private void ToggleNewTabMenu()
+    {
+        if (!IsNewTabMenuOpen && IsModalDialogOpen)
+        {
+            return;
+        }
+
+        MarkSecondaryFeaturesReady();
+
+        IsFindBarOpen = false;
+        ShellOverlay = IsNewTabMenuOpen
+            ? ShellOverlayKind.None
+            : ShellOverlayKind.NewTabMenu;
     }
 
     /// <summary>
@@ -2369,7 +2398,8 @@ public partial class ShellViewModel : ObservableObject
             or ShellOverlayKind.FolderMenu
             or ShellOverlayKind.CreateMenu
             or ShellOverlayKind.TreeContextMenu
-            or ShellOverlayKind.TabsOverflowMenu)
+            or ShellOverlayKind.TabsOverflowMenu
+            or ShellOverlayKind.NewTabMenu)
         {
             ShellOverlay = ShellOverlayKind.None;
         }

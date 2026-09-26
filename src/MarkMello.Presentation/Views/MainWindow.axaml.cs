@@ -42,11 +42,11 @@ public partial class MainWindow : Window, IMenuCardHost
     /// <summary>Класс области, за пустое место которой тянется окно: строка окна и шапка сайдбара.</summary>
     internal const string WindowDragClass = "mm-window-drag";
 
-    /// <summary>Класс кнопки, раскрывающей меню карточкой: сайдбара или «ещё N».</summary>
+    /// <summary>Класс кнопки, раскрывающей меню карточкой: сайдбара, «ещё N» или «+» у вкладок.</summary>
     internal const string SidebarMenuTriggerClass = "mm-menu-trigger";
 
     private static readonly string[] SidebarMenuPanelNames =
-        ["FolderMenuPanel", "CreateMenuPanel", "TreeContextMenuPanel", "TabsOverflowMenuPanel"];
+        ["FolderMenuPanel", "CreateMenuPanel", "TreeContextMenuPanel", "TabsOverflowMenuPanel", "NewTabMenuPanel"];
 
     private readonly ShellViewModel _viewModel = default!;
     private double _windowButtonsWidth;
@@ -293,12 +293,13 @@ public partial class MainWindow : Window, IMenuCardHost
         }
     }
 
-    /// <summary>Открыта карточка в слое меню — сайдбара или «ещё N» у вкладок.</summary>
+    /// <summary>Открыта карточка в слое меню — сайдбара, «ещё N» или «+» у вкладок.</summary>
     private bool HasOpenSidebarMenu
         => _viewModel.IsFolderMenuOpen
             || _viewModel.IsCreateMenuOpen
             || _viewModel.IsTreeContextMenuOpen
-            || _viewModel.IsTabsOverflowMenuOpen;
+            || _viewModel.IsTabsOverflowMenuOpen
+            || _viewModel.IsNewTabMenuOpen;
 
     private MenuCardView? OpenSidebarMenuCard()
         => _sidebarMenuPanels

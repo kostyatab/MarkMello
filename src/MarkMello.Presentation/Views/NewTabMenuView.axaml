@@ -1,0 +1,39 @@
+<views:MenuCardView xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                    xmlns:vm="using:MarkMello.Presentation.ViewModels"
+                    xmlns:views="using:MarkMello.Presentation.Views"
+                    mc:Ignorable="d"
+                    x:Class="MarkMello.Presentation.Views.NewTabMenuView"
+                    ClipToBounds="False"
+                    x:DataType="vm:ShellViewModel">
+  <!-- Меню «+» у вкладок (ADR-0009 Rule 3, 4): те же пункты и подписи клавиш, что в ⋯,
+       только открыть файл стоит первым — это нужно чаще, чем новый документ -->
+  <Border Classes="mm-settings-panel mm-popover-left mm-sidebar-menu-panel">
+    <StackPanel>
+      <Button Name="NewTabMenuOpenFile"
+              Classes="mm-list-item mm-menu-command"
+              Command="{Binding OpenFileCommand}">
+        <Grid ColumnDefinitions="*,Auto"
+              ColumnSpacing="12">
+          <TextBlock Text="{Binding AppMenuOpenFile}" />
+          <TextBlock Grid.Column="1"
+                     Classes="mm-menu-shortcut"
+                     Text="{Binding OpenFileShortcut}" />
+        </Grid>
+      </Button>
+      <Button Name="NewTabMenuNewDocument"
+              Classes="mm-list-item mm-menu-command"
+              Command="{Binding CreateNewDocumentCommand}">
+        <Grid ColumnDefinitions="*,Auto"
+              ColumnSpacing="12">
+          <TextBlock Text="{Binding AppMenuNewDocument}" />
+          <TextBlock Grid.Column="1"
+                     Classes="mm-menu-shortcut"
+                     Text="{Binding NewDocumentShortcut}" />
+        </Grid>
+      </Button>
+    </StackPanel>
+  </Border>
+</views:MenuCardView>

@@ -24,7 +24,7 @@ public sealed partial class OpenDocumentsViewModel : ObservableObject
     public const double TabSpacing = 6;
 
     /// <summary>«+» после вкладок — кнопка строки окна 30 px.</summary>
-    private const double NewDocumentButtonWidth = 30;
+    private const double NewTabButtonWidth = 30;
 
     /// <summary>
     /// Место под плашку «ещё N» с шевроном. Её ширина зависит от числа и языка,
@@ -254,7 +254,7 @@ public sealed partial class OpenDocumentsViewModel : ObservableObject
         }
 
         // После вкладок всегда стоит «+».
-        var space = AvailableWidth - TabSpacing - NewDocumentButtonWidth;
+        var space = AvailableWidth - TabSpacing - NewTabButtonWidth;
 
         // Пока помещаются все вкладки хотя бы по 120, они делят место поровну.
         if (Tabs.Count == 1 || RowWidth(Tabs.Count, MinimumTabWidth) <= space)

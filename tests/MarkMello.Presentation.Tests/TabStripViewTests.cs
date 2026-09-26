@@ -364,11 +364,11 @@ public sealed class TabStripViewTests
     }
 
     /// <summary>
-    /// «+» стоит сразу после вкладок и делает то же, что ⌘N; в папке без вкладок
-    /// в строке остаётся только он.
+    /// «+» стоит сразу после вкладок и раскрывает меню, а не создаёт документ сам;
+    /// тултипа у него нет. В папке без вкладок в строке остаётся только он.
     /// </summary>
     [Fact]
-    public Task NewDocumentButtonFollowsTheTabs()
+    public Task NewTabButtonFollowsTheTabs()
     {
         return _fixture.RunAsync(async () =>
         {
@@ -377,11 +377,12 @@ public sealed class TabStripViewTests
             await viewModel.OpenPathAsync(First);
             var window = Show(viewModel, ThemeVariant.Light);
 
-            var plus = window.GetVisualDescendants().OfType<Button>().Single(button => button.Name == "NewDocumentButton");
+            var plus = window.GetVisualDescendants().OfType<Button>().Single(button => button.Name == "NewTabButton");
             var lastTab = Tabs(window).Last();
 
-            Assert.Same(viewModel.CreateNewDocumentCommand, plus.Command);
-            Assert.Equal("New document (Ctrl+N)", ToolTip.GetTip(plus));
+            Assert.Null(plus.Command);
+            Assert.Contains("mm-menu-trigger", plus.Classes);
+            Assert.Null(ToolTip.GetTip(plus));
             Assert.Equal(new Size(30, 30), plus.Bounds.Size);
             Assert.Equal(
                 lastTab.TranslatePoint(new Point(lastTab.Bounds.Width, 0), window)!.Value.X + OpenDocumentsViewModel.TabSpacing,
@@ -423,7 +424,7 @@ public sealed class TabStripViewTests
             var window = Show(viewModel, ThemeVariant.Light, width: 700);
             var strip = window.GetVisualDescendants().OfType<TabStripView>().Single();
             var overflow = window.GetVisualDescendants().OfType<Button>().Single(button => button.Name == "TabsOverflowButton");
-            var plus = window.GetVisualDescendants().OfType<Button>().Single(button => button.Name == "NewDocumentButton");
+            var plus = window.GetVisualDescendants().OfType<Button>().Single(button => button.Name == "NewTabButton");
 
             Assert.True(viewModel.OpenDocuments.HasOverflow);
             Assert.True(overflow.IsEffectivelyVisible);

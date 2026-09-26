@@ -155,7 +155,7 @@ public sealed class DocumentTabsShellTests
     /// в папке без открытых вкладок она держит одну «+», с документом — вкладки и «+».
     /// </summary>
     [Fact]
-    public async Task NewDocumentButtonFollowsTheShellState()
+    public async Task NewTabButtonFollowsTheShellState()
     {
         var harness = CreateHarness();
 
@@ -184,7 +184,7 @@ public sealed class DocumentTabsShellTests
     /// Закрытая папка без вкладок возвращает стартовый экран — и строка снова пустая.
     /// </summary>
     [Fact]
-    public async Task ClosingAnEmptyFolderHidesTheNewDocumentButton()
+    public async Task ClosingAnEmptyFolderHidesTheNewTabButton()
     {
         var harness = CreateHarness();
         await harness.ViewModel.OpenFolderPathAsync(Root);

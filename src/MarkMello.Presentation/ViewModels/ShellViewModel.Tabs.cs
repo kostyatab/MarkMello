@@ -460,6 +460,14 @@ public partial class ShellViewModel
     {
         OnPropertyChanged(nameof(ShowsTabStrip));
         OnPropertyChanged(nameof(TabStripContent));
+
+        // Последнюю вкладку закрыли ⌘W или закрылась папка — строка с «+» ушла,
+        // а его меню висело бы без кнопки: закрывается само, как «ещё N».
+        if (!ShowsTabStrip && IsNewTabMenuOpen)
+        {
+            ShellOverlay = ShellOverlayKind.None;
+        }
+
         OnPropertyChanged(nameof(IsEmptyDocumentSurface));
         UpdateTabCommandStates();
 

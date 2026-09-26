@@ -117,12 +117,34 @@ public partial class TabStripView : UserControl
     }
 
     /// <summary>
-    /// Мышью фокус не берут ни вкладка, ни «ещё N»: фокус остаётся в документе. Кнопка
-    /// «ещё N» пропадает, когда её меню закрывает ✕ последней скрытой вкладки, — и
-    /// фокусу, вернувшемуся из меню на неё, было бы некуда встать.
+    /// «+» раскрывает меню «Открыть файл… / Новый документ» так же, как «ещё N»:
+    /// карточкой в слое меню окна, от левого края кнопки.
+    /// </summary>
+    private void OnNewTabButtonClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not ShellViewModel viewModel)
+        {
+            return;
+        }
+
+        if (TopLevel.GetTopLevel(this) is IMenuCardHost host)
+        {
+            host.AnchorMenuCard(NewTabButton);
+        }
+
+        viewModel.ToggleNewTabMenuCommand.Execute(null);
+    }
+
+    /// <summary>
+    /// Мышью фокус не берут ни вкладка, ни кнопки меню «ещё N» и «+»: фокус остаётся
+    /// в документе и возвращается в него, когда меню закрывается. Кнопка «ещё N» к тому
+    /// же пропадает, когда её меню закрывает ✕ последней скрытой вкладки, — и фокусу,
+    /// вернувшемуся из меню на неё, было бы некуда встать.
     /// </summary>
     private bool KeepsFocusOffOnClick(Control control)
-        => IsTab(control) || ReferenceEquals(control, TabsOverflowButton);
+        => IsTab(control)
+            || ReferenceEquals(control, TabsOverflowButton)
+            || ReferenceEquals(control, NewTabButton);
 
     private static bool IsTab(Control control) => control is Border && control.Classes.Contains(TabClass);
 }

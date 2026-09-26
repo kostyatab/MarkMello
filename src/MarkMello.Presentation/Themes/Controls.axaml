@@ -180,8 +180,9 @@
     <Setter Property="Background" Value="{DynamicResource MmTabActiveBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
   </Style>
-  <!-- Карточка открыта (:checked) — заливка держится и под курсором, поэтому ниже -->
-  <Style Selector="ToggleButton.mm-icon-button:checked /template/ ContentPresenter">
+  <!-- Карточка открыта (:checked, а у кнопки меню-карточки — класс open) — заливка
+       держится и под курсором, поэтому ниже -->
+  <Style Selector="ToggleButton.mm-icon-button:checked /template/ ContentPresenter, Button.mm-icon-button.open /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource MmTabActiveBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
   </Style>

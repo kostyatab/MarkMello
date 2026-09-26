@@ -9,5 +9,6 @@ public enum ShellOverlayKind
     FolderMenu,
     CreateMenu,
     TreeContextMenu,
-    TabsOverflowMenu
+    TabsOverflowMenu,
+    NewTabMenu
 }

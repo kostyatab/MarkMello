@@ -273,7 +273,7 @@ public sealed class TabsOverflowMenuCardTests
 
             // Фокус до меню — на «+»: мышь фокус кнопке «ещё N» не отдаёт, поэтому после
             // ✕ последней скрытой вкладки он возвращается сюда, а не на пропавшую кнопку.
-            var plus = Trigger(window, "NewDocumentButton");
+            var plus = Trigger(window, "NewTabButton");
             Assert.True(plus.Focus());
             Click(window, OverflowButton(window));
             Assert.False(OverflowButton(window).IsFocused);

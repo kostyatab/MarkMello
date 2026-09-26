@@ -509,6 +509,20 @@
             </DataTemplate>
           </ContentControl.ContentTemplate>
         </ContentControl>
+
+        <!-- «+» у вкладок прижат влево: карточка от левого края кнопки, у правого края
+             окна сдвигается внутрь -->
+        <ContentControl Name="NewTabMenuPanel"
+                        HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        ClipToBounds="False"
+                        Content="{Binding NewTabMenuOverlayContent}">
+          <ContentControl.ContentTemplate>
+            <DataTemplate x:DataType="vm:ShellViewModel">
+              <views:NewTabMenuView />
+            </DataTemplate>
+          </ContentControl.ContentTemplate>
+        </ContentControl>
       </Panel>
 
       <!-- Слой перетаскивания — на всё окно, вместе с сайдбаром и строкой: файл можно

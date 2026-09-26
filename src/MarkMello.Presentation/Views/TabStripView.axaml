@@ -10,7 +10,7 @@
 
   <!-- Здесь только вид самой полосы и правила, где вкладка управляет своими частями:
        роли кнопок (крестик, «ещё N») живут в Themes/Controls.axaml, список «ещё N» —
-       в TabsOverflowMenuView.
+       в TabsOverflowMenuView, меню «+» — в NewTabMenuView.
        Полоса создаётся с первой вкладкой или папкой, до этого эти стили не разбираются. -->
   <UserControl.Styles>
     <!-- ======================= Полоса вкладок ======================= -->
@@ -192,11 +192,12 @@
         </StackPanel>
       </Button>
 
-      <!-- «+» — новый документ, то же, что ⌘N; без меню -->
-      <Button Name="NewDocumentButton"
-              Classes="mm-icon-button mm-row-button"
-              Command="{Binding CreateNewDocumentCommand}"
-              ToolTip.Tip="{Binding NewDocumentTooltip}">
+      <!-- «+» — меню «Открыть файл… / Новый документ» карточкой в слое меню окна,
+           как «ещё N»; тултипа нет: меню само подписывает оба действия -->
+      <Button Name="NewTabButton"
+              Classes="mm-icon-button mm-row-button mm-menu-trigger"
+              Classes.open="{Binding IsNewTabMenuOpen}"
+              Click="OnNewTabButtonClick">
         <views:LucideIcon Data="{DynamicResource LucidePlusGeometry}"
                           Width="14"
                           Height="14" />
