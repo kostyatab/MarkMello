@@ -24,7 +24,7 @@ native desktop app with no browser engine inside, so documents open in a moment.
   with a file panel, file search and basic file operations. In a folder, edits made by
   other programs show up in the open document on their own.
 - **Reading settings.** Light, dark or system theme; serif, sans or mono font; text size,
-  line height, line width and a document minimap.
+  line height and line width.
 - **Find in document**, word count and reading time.
 - **Editing mode** with the Markdown source and a live preview side by side.
 - **Recent files and folders** on the welcome screen; drop a `.md` file or a folder

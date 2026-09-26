@@ -12,7 +12,7 @@ namespace MarkMello.Presentation.Tests;
 /// <summary>
 /// Блок кода с подсветкой во view (ADR-0010 §3, §4, §7): цвета — из темы и
 /// меняются вместе с ней, текст блока для выделения, копирования и поиска тот
-/// же, докраска не сбрасывает выделение, миникарта остаётся без цветов.
+/// же, докраска не сбрасывает выделение.
 /// </summary>
 [Collection(AvaloniaHeadlessTestGroup.Name)]
 public sealed class CodeBlockHighlightingViewTests
@@ -107,22 +107,6 @@ public sealed class CodeBlockHighlightingViewTests
             Assert.Equal(selected, view.SelectedText);
             Assert.Contains(view.GetVisualDescendants().OfType<MarkdownSelectionTextFragment>(), fragment => ReferenceEquals(fragment, introFragment));
             Assert.True(CodeFragment(view).StyledText.HasSyntax);
-        }, CancellationToken.None);
-    }
-
-    [Fact]
-    public Task MiniatureDrawsCodeWithoutSyntaxColors()
-    {
-        return _fixture.Session.Dispatch(() =>
-        {
-            var (window, view) = Show(ThemeVariant.Light, Highlighted());
-            var fragment = CodeFragment(view);
-
-            var miniature = CollectRuns(context => fragment.RenderMiniature(context));
-
-            var text = Brush(window, "MmTextBrush");
-            Assert.NotEmpty(miniature);
-            Assert.All(miniature, run => Assert.Equal(text, Color(run.Foreground)));
         }, CancellationToken.None);
     }
 

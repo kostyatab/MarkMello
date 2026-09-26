@@ -92,10 +92,6 @@ public partial class ShellViewModel
         nameof(WindowBorderLabel),
         nameof(WindowBorderOff),
         nameof(WindowBorderOn),
-        nameof(ReadingMinimapAuto),
-        nameof(ReadingMinimapLabel),
-        nameof(ReadingMinimapOff),
-        nameof(ReadingMinimapOn),
         nameof(ReadingMoreSettingsHint),
         nameof(ReadingMoreSettingsLink),
         nameof(ReadingSettingsTooltip),
@@ -268,10 +264,6 @@ public partial class ShellViewModel
     public string WindowBorderLabel => _localization["WindowBorderLabel"];
     public string WindowBorderOff => _localization["WindowBorderOff"];
     public string WindowBorderOn => _localization["WindowBorderOn"];
-    public string ReadingMinimapAuto => _localization["ReadingMinimapAuto"];
-    public string ReadingMinimapLabel => _localization["ReadingMinimapLabel"];
-    public string ReadingMinimapOff => _localization["ReadingMinimapOff"];
-    public string ReadingMinimapOn => _localization["ReadingMinimapOn"];
     public string ReadingMoreSettingsHint => _localization["ReadingMoreSettingsHint"];
     public string ReadingMoreSettingsLink => _localization["ReadingMoreSettingsLink"];
     public string ReadingSettingsTooltip => _localization["ReadingSettingsTooltip"];

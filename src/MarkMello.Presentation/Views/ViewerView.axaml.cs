@@ -3,11 +3,8 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
-using MarkMello.Domain;
 using MarkMello.Presentation.ViewModels;
 using MarkMello.Presentation.Views.Markdown;
-using MarkMello.Presentation.Views.Markdown.Minimap;
-using System.ComponentModel;
 
 namespace MarkMello.Presentation.Views;
 
@@ -17,17 +14,10 @@ public partial class ViewerView : UserControl, IFindHost
     private const double KeyboardPageOverlap = 48.0;
     private ScrollViewer? _scroll;
     private MarkdownDocumentView? _documentView;
-    private ContentControl? _minimapHost;
-    private DocumentMinimapView? _minimap;
-    private int _minimapBuildGeneration;
-    private bool _isMinimapBuildQueued;
     private bool _hasRenderedDocument;
 
     // Идёт пересборка после докраски кода (ADR-0010 §4), а не новый документ.
     private bool _isRecolorRender;
-    private Size _lastMinimapExtent;
-    private Size _lastMinimapViewport;
-    private ShellViewModel? _viewModel;
 
     public ViewerView()
     {
@@ -52,12 +42,6 @@ public partial class ViewerView : UserControl, IFindHost
 
     public void ClearFind() => _documentView?.ApplySearchQuery(null);
 
-    protected override void OnDataContextChanged(EventArgs e)
-    {
-        base.OnDataContextChanged(e);
-        AttachViewModel(DataContext as ShellViewModel);
-    }
-
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
@@ -70,12 +54,6 @@ public partial class ViewerView : UserControl, IFindHost
 
         AddHandler(KeyDownEvent, OnViewerKeyDown, RoutingStrategies.Tunnel);
 
-        _minimapHost = this.FindControl<ContentControl>("MinimapHost");
-        if (_minimapHost is not null)
-        {
-            _minimapHost.IsHitTestVisible = false;
-        }
-
         _documentView = this.FindControl<MarkdownDocumentView>("DocumentView");
         if (_documentView is not null)
         {
@@ -84,27 +62,12 @@ public partial class ViewerView : UserControl, IFindHost
             _documentView.MarkdownFileLinkRequested += OnMarkdownFileLinkRequested;
             _documentView.SearchStateChanged += OnDocumentSearchStateChanged;
         }
-
-        SizeChanged += OnViewerSizeChanged;
-        ActualThemeVariantChanged += OnViewerAppearanceChanged;
-        ResourcesChanged += OnViewerResourcesChanged;
-        AttachViewModel(DataContext as ShellViewModel);
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
-        SizeChanged -= OnViewerSizeChanged;
-        ActualThemeVariantChanged -= OnViewerAppearanceChanged;
-        ResourcesChanged -= OnViewerResourcesChanged;
-        AttachViewModel(null);
-        _minimapBuildGeneration++;
-        _isMinimapBuildQueued = false;
-        RemoveMinimap();
         _hasRenderedDocument = false;
         _isRecolorRender = false;
-        _lastMinimapExtent = default;
-        _lastMinimapViewport = default;
-        _minimapHost = null;
 
         if (_scroll is not null)
         {
@@ -226,11 +189,9 @@ public partial class ViewerView : UserControl, IFindHost
     {
         if (_isRecolorRender)
         {
-            // Докраска кода: тот же документ, другие только цвета. Фокус,
-            // прокрутка к совпадению поиска и миникарта остаются как были —
-            // миникарта лишь обновляет снимок уже без мигания.
+            // Докраска кода: тот же документ, другие только цвета. Фокус
+            // и прокрутка к совпадению поиска остаются как были.
             _isRecolorRender = false;
-            QueueMinimapBuild();
             return;
         }
 
@@ -243,7 +204,6 @@ public partial class ViewerView : UserControl, IFindHost
 
         _hasRenderedDocument = true;
         FocusDocumentViewAsync();
-        QueueMinimapBuild();
 
         // Keep the active search match in view after a document re-render.
         if (_documentView?.MatchIndex >= 0)
@@ -307,10 +267,6 @@ public partial class ViewerView : UserControl, IFindHost
         }
 
         _hasRenderedDocument = false;
-        _lastMinimapExtent = default;
-        _lastMinimapViewport = default;
-        _minimapBuildGeneration++;
-        RemoveMinimap();
     }
 
     private async void OnMarkdownFileLinkRequested(object? sender, MarkdownFileLinkRequestedEventArgs e)
@@ -340,254 +296,5 @@ public partial class ViewerView : UserControl, IFindHost
             // вьюер уже показывает другой документ и спрашивать его поздно.
             vm.ReportScrollOffset(current);
         }
-
-        if (_hasRenderedDocument && HasMinimapLayoutMetricsChanged())
-        {
-            QueueMinimapBuild();
-        }
-
-        UpdateMinimapScrollState();
-        UpdateMinimapVisibility();
-    }
-
-    private void OnViewerSizeChanged(object? sender, SizeChangedEventArgs e)
-    {
-        if (!_hasRenderedDocument)
-        {
-            return;
-        }
-
-        QueueMinimapBuild();
-    }
-
-    private void OnViewerAppearanceChanged(object? sender, EventArgs e)
-    {
-        if (!_hasRenderedDocument)
-        {
-            return;
-        }
-
-        QueueMinimapBuild();
-    }
-
-    private void OnViewerResourcesChanged(object? sender, ResourcesChangedEventArgs e)
-    {
-        if (!_hasRenderedDocument)
-        {
-            return;
-        }
-
-        QueueMinimapBuild();
-    }
-
-    private void AttachViewModel(ShellViewModel? viewModel)
-    {
-        if (ReferenceEquals(_viewModel, viewModel))
-        {
-            return;
-        }
-
-        if (_viewModel is not null)
-        {
-            _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
-        }
-
-        _viewModel = viewModel;
-
-        if (_viewModel is not null)
-        {
-            _viewModel.PropertyChanged += OnViewModelPropertyChanged;
-        }
-    }
-
-    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName != nameof(ShellViewModel.ReadingPreferences))
-        {
-            return;
-        }
-
-        if (!_hasRenderedDocument)
-        {
-            return;
-        }
-
-        if (!ShouldShowMinimap())
-        {
-            RemoveMinimap();
-            return;
-        }
-
-        QueueMinimapBuild();
-    }
-
-    private void QueueMinimapBuild()
-    {
-        _minimapBuildGeneration++;
-        if (_isMinimapBuildQueued)
-        {
-            return;
-        }
-
-        _isMinimapBuildQueued = true;
-        Dispatcher.UIThread.Post(
-            () =>
-            {
-                _isMinimapBuildQueued = false;
-                BuildMinimapIfCurrent(_minimapBuildGeneration);
-            },
-            DispatcherPriority.Background);
-    }
-
-    private void BuildMinimapIfCurrent(int generation)
-    {
-        if (generation != _minimapBuildGeneration || !_hasRenderedDocument || _documentView is null || _scroll is null || _minimapHost is null)
-        {
-            return;
-        }
-
-        _lastMinimapExtent = _scroll.Extent;
-        _lastMinimapViewport = _scroll.Viewport;
-
-        if (!ShouldShowMinimap())
-        {
-            RemoveMinimap();
-            return;
-        }
-
-        var snapshot = _documentView.CreateMiniatureSnapshot();
-        if (!DocumentMinimapBuildPolicy.AllowsDetailedMiniature(snapshot))
-        {
-            RemoveMinimap();
-            return;
-        }
-
-        var minimap = EnsureMinimap();
-        minimap.SetSource(_documentView, snapshot);
-        UpdateMinimapScrollState();
-        UpdateMinimapVisibility();
-    }
-
-    private DocumentMinimapView EnsureMinimap()
-    {
-        if (_minimap is not null)
-        {
-            return _minimap;
-        }
-
-        var minimap = new DocumentMinimapView();
-        minimap.ScrollRequested += OnMinimapScrollRequested;
-        _minimap = minimap;
-
-        if (_minimapHost is not null)
-        {
-            _minimapHost.Content = minimap;
-            _minimapHost.IsHitTestVisible = true;
-        }
-
-        return minimap;
-    }
-
-    private void RemoveMinimap()
-    {
-        if (_minimap is not null)
-        {
-            _minimap.ScrollRequested -= OnMinimapScrollRequested;
-            _minimap.ClearSource();
-            _minimap = null;
-        }
-
-        if (_minimapHost is not null)
-        {
-            _minimapHost.Content = null;
-            _minimapHost.IsHitTestVisible = false;
-        }
-
-        ReserveMinimapSpaceForWideTables(visible: false);
-    }
-
-    private void OnMinimapScrollRequested(object? sender, DocumentMinimapScrollRequestedEventArgs e)
-    {
-        if (_scroll is null)
-        {
-            return;
-        }
-
-        var targetOffset = Math.Clamp(e.OffsetY, 0, _scroll.ScrollBarMaximum.Y);
-        _scroll.Offset = new Vector(_scroll.Offset.X, targetOffset);
-    }
-
-    private void UpdateMinimapScrollState()
-    {
-        if (_scroll is null || _minimap is null)
-        {
-            return;
-        }
-
-        _minimap.ScrollOffset = _scroll.Offset.Y;
-        _minimap.ScrollMaximum = _scroll.ScrollBarMaximum.Y;
-        _minimap.ViewportHeight = _scroll.Viewport.Height;
-    }
-
-    private void UpdateMinimapVisibility()
-    {
-        if (_minimapHost is null || _minimap is null)
-        {
-            return;
-        }
-
-        var visible = ShouldShowMinimap();
-        _minimapHost.IsVisible = visible;
-        _minimapHost.IsHitTestVisible = visible;
-        ReserveMinimapSpaceForWideTables(visible);
-    }
-
-    /// <summary>
-    /// Wide tables extend into the page margins; they stop short of the minimap
-    /// so they do not run underneath it.
-    /// </summary>
-    private void ReserveMinimapSpaceForWideTables(bool visible)
-    {
-        if (_scroll is null || _minimapHost is null)
-        {
-            return;
-        }
-
-        MarkdownTableHost.SetPageEndReserve(
-            _scroll,
-            visible ? _minimapHost.Width + _minimapHost.Margin.Right : 0);
-    }
-
-    private bool HasMinimapLayoutMetricsChanged()
-    {
-        if (_scroll is null)
-        {
-            return false;
-        }
-
-        return DocumentMinimapBuildPolicy.HasLayoutMetricsChanged(
-            _lastMinimapExtent,
-            _lastMinimapViewport,
-            _scroll.Extent,
-            _scroll.Viewport);
-    }
-
-    private bool ShouldShowMinimap()
-    {
-        if (_scroll is null)
-        {
-            return false;
-        }
-
-        var mode = DataContext is ShellViewModel vm
-            ? vm.ReadingPreferences.DocumentMinimapMode
-            : ReadingPreferences.Default.DocumentMinimapMode;
-
-        return DocumentMinimapBuildPolicy.ShouldShow(
-            mode,
-            Bounds.Width,
-            _scroll.Extent,
-            _scroll.Viewport,
-            _scroll.ScrollBarMaximum.Y);
     }
 }

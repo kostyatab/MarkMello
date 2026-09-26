@@ -17,8 +17,7 @@ namespace MarkMello.Presentation.Views.Markdown;
 /// В document-wide selection (ADR-0001) чекбокс — фрагмент текста
 /// <see cref="MarkdownDocumentTextMap.GetTaskCheckboxText"/>: подсвечивается при
 /// выделении и в поиске и попадает в буфер обмена вместе с пунктом. Иконку рисует
-/// сам фрагмент через <see cref="LucideIcon.Draw"/>, а не дочерним контролом, —
-/// миникарта рисует фрагменты их собственным <c>Render</c>.
+/// сам фрагмент через <see cref="LucideIcon.Draw"/>, а не дочерним контролом.
 /// </para>
 /// </remarks>
 internal sealed class MarkdownTaskCheckboxFragment : MarkdownDocumentSelectionFragmentBase

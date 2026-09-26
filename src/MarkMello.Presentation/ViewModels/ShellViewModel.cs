@@ -74,7 +74,6 @@ public partial class ShellViewModel : ObservableObject
     private readonly string _aboutVersion;
     private readonly string _aboutLicense = AppProductInfo.License;
     private AppUpdatePackage? _availableUpdatePackage;
-    private ReadingPreferences _documentReadingPreferences = GetDocumentRenderingPreferences(ReadingPreferences.Default);
     private WindowBorderMode _windowBorderMode = WindowBorderMode.Auto;
     private bool _isWindowBorderLoaded;
 
@@ -451,8 +450,6 @@ public partial class ShellViewModel : ObservableObject
             return _localization.Format("FindResultCount", FindMatchIndex + 1, FindMatchCount);
         }
     }
-
-    public ReadingPreferences DocumentReadingPreferences => _documentReadingPreferences;
 
     /// <summary>Карандаш — только при чтении: в правке на его месте «Готово».</summary>
     public bool ShowsEditToggle => IsViewer && Document is not null && !IsEditMode;
@@ -842,65 +839,6 @@ public partial class ShellViewModel : ObservableObject
         PersistTheme(mode);
     }
 
-    public DocumentMinimapMode SelectedDocumentMinimapMode
-    {
-        get => ReadingPreferences.DocumentMinimapMode;
-        set
-        {
-            if (ReadingPreferences.DocumentMinimapMode == value)
-            {
-                return;
-            }
-
-            ApplyReadingPreferences(ReadingPreferences with { DocumentMinimapMode = value });
-        }
-    }
-
-    public bool IsDocumentMinimapAutoSelected
-    {
-        get => ReadingPreferences.DocumentMinimapMode == DocumentMinimapMode.Auto;
-        set
-        {
-            if (!value)
-            {
-                OnPropertyChanged(nameof(IsDocumentMinimapAutoSelected));
-                return;
-            }
-
-            SelectedDocumentMinimapMode = DocumentMinimapMode.Auto;
-        }
-    }
-
-    public bool IsDocumentMinimapOnSelected
-    {
-        get => ReadingPreferences.DocumentMinimapMode == DocumentMinimapMode.On;
-        set
-        {
-            if (!value)
-            {
-                OnPropertyChanged(nameof(IsDocumentMinimapOnSelected));
-                return;
-            }
-
-            SelectedDocumentMinimapMode = DocumentMinimapMode.On;
-        }
-    }
-
-    public bool IsDocumentMinimapOffSelected
-    {
-        get => ReadingPreferences.DocumentMinimapMode == DocumentMinimapMode.Off;
-        set
-        {
-            if (!value)
-            {
-                OnPropertyChanged(nameof(IsDocumentMinimapOffSelected));
-                return;
-            }
-
-            SelectedDocumentMinimapMode = DocumentMinimapMode.Off;
-        }
-    }
-
     public int WordCount => EditorSession?.WordCount ?? CountWords(Document?.Content);
 
     /// <summary>
@@ -933,7 +871,7 @@ public partial class ShellViewModel : ObservableObject
 
     private async Task InitializeCoreAsync()
     {
-        ReadingPreferences = await _settings.LoadPreferencesAsync().ConfigureAwait(true);
+        ReadingPreferences = ReadingPreferences.Normalize(await _settings.LoadPreferencesAsync().ConfigureAwait(true));
 
         var savedLanguage = await _settings.LoadLanguageAsync().ConfigureAwait(true);
         ApplyLanguageSelection(savedLanguage, persist: false);
@@ -1635,8 +1573,8 @@ public partial class ShellViewModel : ObservableObject
     /// <summary>
     /// Документ только что сменился на его же подсвеченную версию, а не на
     /// другой документ (ADR-0010 §4). View спрашивает это один раз, в начале
-    /// пересборки: докраска меняет только цвета, поэтому миникарту не нужно
-    /// убирать, а фокус и прокрутку к совпадению поиска — трогать.
+    /// пересборки: докраска меняет только цвета, поэтому фокус и прокрутку к
+    /// совпадению поиска трогать не нужно.
     /// </summary>
     public bool ConsumeRecolor(RenderedMarkdownDocument? document)
     {
@@ -1779,15 +1717,7 @@ public partial class ShellViewModel : ObservableObject
 
     partial void OnReadingPreferencesChanged(ReadingPreferences value)
     {
-        var documentRenderingPreferences = GetDocumentRenderingPreferences(value);
-        var documentRenderingPreferencesChanged = documentRenderingPreferences != _documentReadingPreferences;
-        _documentReadingPreferences = documentRenderingPreferences;
-
-        if (documentRenderingPreferencesChanged)
-        {
-            EditorSession?.UpdateReadingPreferences(value);
-            OnPropertyChanged(nameof(DocumentReadingPreferences));
-        }
+        EditorSession?.UpdateReadingPreferences(value);
 
         OnPropertyChanged(nameof(SelectedFontFamilyMode));
         OnPropertyChanged(nameof(FontSizeSetting));
@@ -1802,10 +1732,6 @@ public partial class ShellViewModel : ObservableObject
         OnPropertyChanged(nameof(IsNarrowWidthSelected));
         OnPropertyChanged(nameof(IsMediumWidthSelected));
         OnPropertyChanged(nameof(IsWideWidthSelected));
-        OnPropertyChanged(nameof(SelectedDocumentMinimapMode));
-        OnPropertyChanged(nameof(IsDocumentMinimapAutoSelected));
-        OnPropertyChanged(nameof(IsDocumentMinimapOnSelected));
-        OnPropertyChanged(nameof(IsDocumentMinimapOffSelected));
         UpdateTextSizeCommandStates();
     }
 
@@ -2255,12 +2181,6 @@ public partial class ShellViewModel : ObservableObject
                 // прерывать чтение — выбор уже применён к окну.
             }
         });
-    }
-
-    private static ReadingPreferences GetDocumentRenderingPreferences(ReadingPreferences preferences)
-    {
-        var normalized = ReadingPreferences.Normalize(preferences);
-        return normalized with { DocumentMinimapMode = ReadingPreferences.Default.DocumentMinimapMode };
     }
 
     private void ApplyReadingPreferences(ReadingPreferences preferences)

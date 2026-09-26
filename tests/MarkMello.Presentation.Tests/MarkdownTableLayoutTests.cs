@@ -350,13 +350,13 @@ public sealed class MarkdownTableLayoutTests
             var (window, page) = ShowOnPage(view);
             var (scrollViewer, _) = Table(view);
 
-            const double minimap = 150;
-            MarkdownTableHost.SetPageEndReserve(page, minimap);
+            const double reserve = 150;
+            MarkdownTableHost.SetPageEndReserve(page, reserve);
             window.UpdateLayout();
             window.UpdateLayout();
 
             Assert.Equal(
-                page.Viewport.Width - MarkdownTableHost.PageEdgeInset - minimap,
+                page.Viewport.Width - MarkdownTableHost.PageEdgeInset - reserve,
                 Right(scrollViewer, page),
                 Tolerance);
 

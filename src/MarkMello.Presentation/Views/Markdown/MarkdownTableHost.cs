@@ -39,8 +39,8 @@ internal sealed class MarkdownTableHost : Decorator
     public const double EdgeFadeWidth = 40;
 
     /// <summary>
-    /// Сколько места справа на странице занято оверлеем (миникартой): таблица до
-    /// него не доходит. Наследуется, ставится на контейнер документа.
+    /// Сколько места справа на странице занято оверлеем у её правого края: таблица
+    /// до него не доходит. Наследуется, ставится на контейнер документа.
     /// </summary>
     public static readonly AttachedProperty<double> PageEndReserveProperty =
         AvaloniaProperty.RegisterAttached<MarkdownTableHost, Control, double>("PageEndReserve", inherits: true);

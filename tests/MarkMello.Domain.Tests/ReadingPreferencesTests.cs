@@ -10,14 +10,13 @@ public sealed class ReadingPreferencesTests
         var normalized = ReadingPreferences.Normalize(null);
 
         Assert.Equal(ReadingPreferences.Default, normalized);
-        Assert.Equal(DocumentMinimapMode.Off, normalized.DocumentMinimapMode);
     }
 
     [Fact]
-    public void DefaultsAreSans14WithLineHeight16AndNoMinimap()
+    public void DefaultsAreSans14WithLineHeight16()
     {
         Assert.Equal(
-            new ReadingPreferences(FontFamilyMode.Sans, 14, 1.6, 820, DocumentMinimapMode.Off),
+            new ReadingPreferences(FontFamilyMode.Sans, 14, 1.6, 820),
             ReadingPreferences.Default);
         Assert.Equal(12, ReadingPreferences.MinFontSize);
         Assert.Equal(24, ReadingPreferences.MaxFontSize);
@@ -30,8 +29,7 @@ public sealed class ReadingPreferencesTests
             FontFamily: (FontFamilyMode)42,
             FontSize: 200,
             LineHeight: 0.2,
-            ContentWidth: 517,
-            DocumentMinimapMode: (DocumentMinimapMode)42);
+            ContentWidth: 517);
 
         var normalized = ReadingPreferences.Normalize(candidate);
 
@@ -39,7 +37,6 @@ public sealed class ReadingPreferencesTests
         Assert.Equal(ReadingPreferences.MaxFontSize, normalized.FontSize);
         Assert.Equal(ReadingPreferences.MinLineHeight, normalized.LineHeight);
         Assert.Equal(ReadingPreferences.MinContentWidth, normalized.ContentWidth);
-        Assert.Equal(DocumentMinimapMode.Off, normalized.DocumentMinimapMode);
     }
 
     [Theory]
@@ -53,18 +50,6 @@ public sealed class ReadingPreferencesTests
         var normalized = ReadingPreferences.Normalize(candidate);
 
         Assert.Equal(expectedWidth, normalized.ContentWidth);
-    }
-    [Theory]
-    [InlineData(DocumentMinimapMode.Auto)]
-    [InlineData(DocumentMinimapMode.On)]
-    [InlineData(DocumentMinimapMode.Off)]
-    public void NormalizePreservesSupportedDocumentMinimapModes(DocumentMinimapMode mode)
-    {
-        var candidate = ReadingPreferences.Default with { DocumentMinimapMode = mode };
-
-        var normalized = ReadingPreferences.Normalize(candidate);
-
-        Assert.Equal(mode, normalized.DocumentMinimapMode);
     }
 
 }

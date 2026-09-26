@@ -158,31 +158,6 @@
             </Border>
           </StackPanel>
 
-          <StackPanel Spacing="6">
-            <TextBlock Classes="mm-card-label"
-                       Text="{Binding ReadingMinimapLabel}" />
-            <Border Classes="mm-card-segments">
-              <Grid ColumnDefinitions="*,*,*"
-                    ColumnSpacing="2">
-                <ToggleButton Grid.Column="0"
-                              Classes="mm-card-segment"
-                              IsChecked="{Binding IsDocumentMinimapAutoSelected}">
-                  <TextBlock Text="{Binding ReadingMinimapAuto}" />
-                </ToggleButton>
-                <ToggleButton Grid.Column="1"
-                              Classes="mm-card-segment"
-                              IsChecked="{Binding IsDocumentMinimapOnSelected}">
-                  <TextBlock Text="{Binding ReadingMinimapOn}" />
-                </ToggleButton>
-                <ToggleButton Grid.Column="2"
-                              Classes="mm-card-segment"
-                              IsChecked="{Binding IsDocumentMinimapOffSelected}">
-                  <TextBlock Text="{Binding ReadingMinimapOff}" />
-                </ToggleButton>
-              </Grid>
-            </Border>
-          </StackPanel>
-
           <!--
             Строка ведёт в окно «Настройки» (ADR-0009 Rule 5). Зазор перед ссылкой
             4, а не 8 из макета: с плашкой «⌘,» русской подсказке в Inter иначе

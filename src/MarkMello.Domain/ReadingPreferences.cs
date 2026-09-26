@@ -7,14 +7,11 @@ namespace MarkMello.Domain;
 /// <param name="FontSize">Базовый размер шрифта в пикселях.</param>
 /// <param name="LineHeight">Межстрочный интервал (множитель к размеру шрифта).</param>
 /// <param name="ContentWidth">Максимальная полезная ширина текста документа в пикселях.</param>
-/// <param name="DocumentMinimapMode">Режим отображения миникарты документа. По умолчанию выключена:
-/// чистый лист документа без боковой панели, миникарту включают в настройках вида.</param>
 public sealed record ReadingPreferences(
     FontFamilyMode FontFamily,
     int FontSize,
     double LineHeight,
-    int ContentWidth,
-    DocumentMinimapMode DocumentMinimapMode = DocumentMinimapMode.Off)
+    int ContentWidth)
 {
     public const int MinFontSize = 12;
     public const int MaxFontSize = 24;
@@ -39,8 +36,7 @@ public sealed record ReadingPreferences(
         FontFamily: FontFamilyMode.Sans,
         FontSize: 14,
         LineHeight: 1.6,
-        ContentWidth: MediumContentWidth,
-        DocumentMinimapMode: DocumentMinimapMode.Off);
+        ContentWidth: MediumContentWidth);
 
     /// <summary>
     /// Нормализует пользовательские настройки до безопасного и предсказуемого диапазона.
@@ -60,11 +56,8 @@ public sealed record ReadingPreferences(
         var fontSize = Math.Clamp(preferences.FontSize, MinFontSize, MaxFontSize);
         var lineHeight = NormalizeLineHeight(preferences.LineHeight);
         var contentWidth = NormalizeContentWidth(preferences.ContentWidth);
-        var documentMinimapMode = Enum.IsDefined(preferences.DocumentMinimapMode)
-            ? preferences.DocumentMinimapMode
-            : Default.DocumentMinimapMode;
 
-        return new ReadingPreferences(fontFamily, fontSize, lineHeight, contentWidth, documentMinimapMode);
+        return new ReadingPreferences(fontFamily, fontSize, lineHeight, contentWidth);
     }
 
     public ReadingPreferences Normalize() => Normalize(this);

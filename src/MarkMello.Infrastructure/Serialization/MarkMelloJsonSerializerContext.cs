@@ -26,7 +26,6 @@ namespace MarkMello.Infrastructure.Serialization;
 [JsonSerializable(typeof(ThemeMode))]
 [JsonSerializable(typeof(AppLanguage))]
 [JsonSerializable(typeof(FontFamilyMode))]
-[JsonSerializable(typeof(DocumentMinimapMode))]
 [JsonSerializable(typeof(WindowBorderMode))]
 [JsonSerializable(typeof(GitHubReleaseResponse))]
 [JsonSerializable(typeof(GitHubReleaseAssetResponse))]
