@@ -143,10 +143,11 @@
 
       <!-- Ширину держит колонка, а не контент: GridSplitter двигает именно колонку,
            и фиксированная ширина сайдбара оставляла бы рядом с ним пустую полосу.
-           Диапазон 220-340 из макета, он же в WorkspaceSidebarWidth. -->
+           Диапазон 220-340 из макета, он же в WorkspaceSidebarWidth. Колонка разделителя
+           шириной 0: он лежит поверх границы сайдбара и второй линии рядом не рисует. -->
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="Auto" MinWidth="0" MaxWidth="340" />
-        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="0" />
         <ColumnDefinition Width="*" />
       </Grid.ColumnDefinitions>
 
@@ -164,10 +165,14 @@
       </ContentControl>
 
       <GridSplitter Grid.Column="1"
-                    Classes="mm-editor-splitter"
+                    Name="SidebarSplitter"
+                    Classes="mm-sidebar-splitter"
+                    ZIndex="1"
                     IsVisible="{Binding ShowsSidebar}"
+                    DragStarted="OnSidebarSplitterDragStarted"
                     DragCompleted="OnSidebarSplitterDragCompleted"
-                    ResizeDirection="Columns" />
+                    ResizeDirection="Columns"
+                    ResizeBehavior="PreviousAndNext" />
 
       <Grid Grid.Column="2"
             RowDefinitions="Auto,Auto,*">

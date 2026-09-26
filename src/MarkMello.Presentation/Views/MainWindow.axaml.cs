@@ -880,8 +880,16 @@ public partial class MainWindow : Window, IMenuCardHost
         }
     }
 
+    /// <summary>
+    /// Акцент держится всё перетаскивание: у края диапазона курсор уходит с разделителя,
+    /// и одного :pointerover не хватает.
+    /// </summary>
+    private void OnSidebarSplitterDragStarted(object? sender, VectorEventArgs e)
+        => SidebarSplitter.Classes.Set("dragging", true);
+
     private async void OnSidebarSplitterDragCompleted(object? sender, VectorEventArgs e)
     {
+        SidebarSplitter.Classes.Set("dragging", false);
         try
         {
             if (SidebarLayout is { ColumnDefinitions: { Count: > 0 } columns })

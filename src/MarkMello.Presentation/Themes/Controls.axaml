@@ -1183,6 +1183,34 @@
     <Setter Property="Background" Value="{DynamicResource MmAccentBrush}" />
   </Style>
 
+  <!-- Разделитель сайдбара своей линии не рисует: он лежит в колонке шириной 0 поверх
+       правой границы сайдбара, и в покое видна только она. Отрицательные поля
+       раздвигают зону захвата до 9 px с центром на пикселе границы (последнем
+       пикселе сайдбара), там же при наведении и перетаскивании загорается акцент. -->
+  <Style Selector="GridSplitter.mm-sidebar-splitter">
+    <Setter Property="Width" Value="9" />
+    <Setter Property="Margin" Value="-5,0,-4,0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Cursor" Value="SizeWestEast" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid Background="Transparent">
+          <Border Width="1"
+                  HorizontalAlignment="Center"
+                  Background="Transparent" />
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="GridSplitter.mm-sidebar-splitter:pointerover /template/ Border">
+    <Setter Property="Background" Value="{DynamicResource MmAccentBrush}" />
+  </Style>
+  <Style Selector="GridSplitter.mm-sidebar-splitter.dragging /template/ Border">
+    <Setter Property="Background" Value="{DynamicResource MmAccentBrush}" />
+  </Style>
+
   <!-- Общая рамка модальных диалогов (ADR-0009 Rule 10). Скрим накрывает всё окно —
        сайдбар, вкладки и строку — и забирает клики; верхние 44 px, место строки окна,
        тянут окно так же, как сама строка. Tab ходит по кругу внутри карточки. -->
