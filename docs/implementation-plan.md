@@ -212,7 +212,7 @@
 - новый draft не должен притворяться уже существующим файлом на диске
 - `Close file` возвращает пользователя в `Welcome`, а dirty-state resolution переиспользует уже существующий save/discard/cancel flow
 - reading settings и app settings остаются разделены и визуально, и концептуально
-- update check не участвует в startup fast path и выполняется только по явному действию пользователя
+- update check не участвует в startup fast path: до показа первого окна сети нет, фоновая проверка — одна, через 30 с после открытия первого окна, ручная — из меню приложения (ADR-0004, «Update Model»)
 - language switch добавляется только после выделения локализуемого shell/resource слоя
 - platform polish и packaging не должны встраивать тяжёлую или сетевую логику в путь `open file -> read`
 

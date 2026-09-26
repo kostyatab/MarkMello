@@ -142,6 +142,14 @@
   <!-- text-quote -->
   <StreamGeometry x:Key="LucideTextQuoteGeometry">M17 5H3 M21 12H8 M21 19H8 M3 12v7</StreamGeometry>
 
+  <!-- ======================= Обновление приложения ======================= -->
+
+  <!-- arrow-down-to-line -->
+  <StreamGeometry x:Key="LucideArrowDownToLineGeometry">M12 17V3 M6 11l6 6 6-6 M19 21H5</StreamGeometry>
+
+  <!-- circle-check -->
+  <StreamGeometry x:Key="LucideCircleCheckGeometry">M2 12A10 10 0 1 0 22 12A10 10 0 1 0 2 12Z M9 12l2 2 4-4</StreamGeometry>
+
   <!-- ======================= Блок кода ======================= -->
 
   <!-- copy -->

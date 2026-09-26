@@ -46,10 +46,11 @@ public sealed class AppMenuAndSettingsWindowTests
             viewModel.ToggleAppMenuCommand.Execute(null);
             Render(window);
 
-            // «О MarkMello» и разделитель над ним — только вне macOS: там пункт в системном меню.
+            // «Проверить обновления…», «О MarkMello» и разделитель над ними — только вне macOS:
+            // там оба пункта в системном меню.
             string[] expectedItems = OperatingSystem.IsMacOS()
                 ? ["MenuNewDocument", "MenuOpenFile", "MenuOpenFolder", "MenuSave", "MenuSaveAs", "MenuReload", "MenuCloseTab", "MenuSettings"]
-                : ["MenuNewDocument", "MenuOpenFile", "MenuOpenFolder", "MenuSave", "MenuSaveAs", "MenuReload", "MenuCloseTab", "MenuSettings", "MenuAbout"];
+                : ["MenuNewDocument", "MenuOpenFile", "MenuOpenFolder", "MenuSave", "MenuSaveAs", "MenuReload", "MenuCloseTab", "MenuSettings", "MenuCheckForUpdates", "MenuAbout"];
 
             Assert.Equal(expectedItems, VisibleMenuItems(window).Select(static button => button.Name));
             Assert.Equal(
@@ -131,6 +132,51 @@ public sealed class AppMenuAndSettingsWindowTests
         });
     }
 
+    /// <summary>
+    /// «Проверить обновления…» — одна просьба к <c>IWindowLauncher</c> показать окно обновления
+    /// с новой проверкой; окно и единственный его экземпляр — забота запуска окон. Подпись
+    /// идёт за языком приложения.
+    /// </summary>
+    [Fact]
+    public void CheckForUpdatesAsksTheLauncherForTheUpdateWindowWithACheck()
+    {
+        var launcher = new RecordingWindowLauncher();
+        var localization = new LocalizationService(AppLanguage.English);
+        var viewModel = CreateViewModel(launcher: launcher, localization: localization);
+
+        viewModel.CheckForUpdatesCommand.Execute(null);
+
+        Assert.Equal([true], launcher.UpdateRequests);
+        Assert.Equal("Check for Updates…", viewModel.AppMenuCheckForUpdates);
+        localization.SetLanguage(AppLanguage.Russian);
+        Assert.Equal("Проверить обновления…", viewModel.AppMenuCheckForUpdates);
+    }
+
+    /// <summary>Вне macOS пункт в меню ⋯ стоит над «О Softmark» и запускает ту же команду.</summary>
+    [FactSkippedOnMacOs("На macOS пункт живёт в системном меню приложения, а не в меню ⋯.")]
+    public Task CheckForUpdatesMenuItemSitsAboveAboutAndOpensTheUpdateWindow()
+    {
+        return _fixture.RunAsync(() =>
+        {
+            var launcher = new RecordingWindowLauncher();
+            var viewModel = CreateViewModel(launcher: launcher);
+            var window = Show(viewModel);
+
+            viewModel.ToggleAppMenuCommand.Execute(null);
+            Render(window);
+
+            var names = VisibleMenuItems(window).Select(static button => button.Name).ToList();
+            Assert.Equal(names.IndexOf("MenuAbout") - 1, names.IndexOf("MenuCheckForUpdates"));
+
+            Click(window, MenuItem(window, "MenuCheckForUpdates"));
+
+            Assert.Equal([true], launcher.UpdateRequests);
+            Assert.False(viewModel.IsAppMenuOpen);
+            window.Hide();
+            return Task.CompletedTask;
+        });
+    }
+
     /// <summary>⌘, (Ctrl+,) открывает окно на стартовом экране, Esc закрывает.</summary>
     [Theory]
     [InlineData(RawInputModifiers.Meta)]
@@ -159,8 +205,9 @@ public sealed class AppMenuAndSettingsWindowTests
     }
 
     /// <summary>
-    /// Одна страница по A-AppSettings: подсказка про Aa, язык, рамка окна, блок обновлений
-    /// с одной кнопкой и строка версии со ссылками — в обеих темах на токенах палитры.
+    /// Одна страница по A-AppSettings: подсказка про Aa, язык, рамка окна и строка версии со
+    /// ссылками — в обеих темах на токенах палитры. Раздела «Обновления» нет: проверка живёт
+    /// в меню приложения и окне обновления (ADR-0004, «Update Model»).
     /// </summary>
     [Theory]
     [InlineData("Light")]
@@ -180,15 +227,11 @@ public sealed class AppMenuAndSettingsWindowTests
             Assert.Contains("Settings", texts);
             Assert.Contains("Language", texts);
             Assert.Contains("Window border", texts);
-            Assert.Contains("UPDATES", texts);
-            Assert.Contains("Manual checks", texts);
+            Assert.DoesNotContain("UPDATES", texts);
             Assert.Contains(texts, static text => text is not null && text.StartsWith("Softmark ", StringComparison.Ordinal) && text.EndsWith("· GPLv3", StringComparison.Ordinal));
             Assert.Null(dialog.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault());
 
-            var update = dialog.GetVisualDescendants().OfType<Button>().Single(static button => button.Name == "UpdateActionButton");
-            Assert.Equal("Check now", update.Content);
-            Assert.Contains("mm-action-secondary", update.Classes);
-            Assert.Same(Resource(window, "MmTabBrush"), dialog.GetVisualDescendants().OfType<Border>().Single(static border => border.Classes.Contains("mm-app-settings-update")).Background);
+            Assert.DoesNotContain(dialog.GetVisualDescendants().OfType<Button>(), static button => button.Name == "UpdateActionButton");
 
             Assert.Equal(
                 ["https://github.com/kostyatab/Softmark"],
@@ -272,7 +315,10 @@ public sealed class AppMenuAndSettingsWindowTests
         return viewModel;
     }
 
-    private static ShellViewModel CreateViewModel(FakeWorkspaceFileSystem? fileSystem = null)
+    private static ShellViewModel CreateViewModel(
+        FakeWorkspaceFileSystem? fileSystem = null,
+        RecordingWindowLauncher? launcher = null,
+        LocalizationService? localization = null)
     {
         var loader = new StubDocumentLoader();
         loader.Sources[Readme] = new MarkdownSource(Readme, "README.md", "# readme");
@@ -284,18 +330,18 @@ public sealed class AppMenuAndSettingsWindowTests
             new SaveDocumentUseCase(new RecordingDocumentSaver()),
             new StubFilePicker(),
             new StubCommandLineActivation(),
-            new LocalizationService(AppLanguage.English),
+            localization ?? new LocalizationService(AppLanguage.English),
             new InMemorySettingsStore(),
             new RecordingThemeService(),
             new RecordingStartupMetrics(),
             new RenderMarkdownDocumentUseCase(new TestMarkdownRenderer(), new FakeDiagramRenderService()),
-            new StubUpdateService(),
+            TestUpdates.CreateViewModel(),
             new OpenFolderUseCase(fileSystem),
             new ExpandFolderNodeUseCase(fileSystem),
             new SearchWorkspaceFilesUseCase(fileSystem),
             new WorkspaceFileOperationsUseCase(fileSystem, platform),
             platform,
             static () => new FakeWorkspaceWatcher(),
-            new RecordingWindowLauncher());
+            launcher ?? new RecordingWindowLauncher());
     }
 }

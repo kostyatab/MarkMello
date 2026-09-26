@@ -1,0 +1,184 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:MarkMello.Presentation.ViewModels"
+        xmlns:views="using:MarkMello.Presentation.Views"
+        mc:Ignorable="d"
+        x:Class="MarkMello.Presentation.Views.UpdateWindow"
+        x:DataType="vm:UpdateViewModel"
+        Title="{Binding WindowTitle}"
+        Icon="/Assets/Icons/softmark.ico"
+        Width="400"
+        SizeToContent="Height"
+        CanResize="False"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource MmBackgroundBrush}"
+        UseLayoutRounding="True">
+  <!-- Окно обновления (ADR-0004, «Update Model»): окно ОС, как «О Softmark», — на macOS
+       его открывает системное меню, когда карточек на экране нет. Одно на все состояния:
+       значок приложения с отметкой состояния, заголовок, пояснение и одна-две кнопки. -->
+  <Window.Styles>
+    <!-- Отметка состояния на углу значка: кружок 24 px, выступает на 4 px -->
+    <Style Selector="Border.mm-update-badge">
+      <Setter Property="Width" Value="24" />
+      <Setter Property="Height" Value="24" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="Margin" Value="0,0,-4,-4" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Bottom" />
+      <Setter Property="Background" Value="{DynamicResource MmBackgroundBrush}" />
+    </Style>
+    <!-- Новая версия: залитый акцентом кружок, отбитый от значка кольцом фона 2 px -->
+    <Style Selector="Border.mm-update-badge.mm-update-badge-filled">
+      <Setter Property="Width" Value="28" />
+      <Setter Property="Height" Value="28" />
+      <Setter Property="CornerRadius" Value="14" />
+      <Setter Property="Margin" Value="0,0,-6,-6" />
+      <Setter Property="Background" Value="{DynamicResource MmAccentBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource MmBackgroundBrush}" />
+      <Setter Property="BorderThickness" Value="2" />
+    </Style>
+    <Style Selector="TextBlock.mm-update-title">
+      <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
+      <Setter Property="FontSize" Value="16" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{DynamicResource MmTextBrush}" />
+      <Setter Property="TextAlignment" Value="Center" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.mm-update-message">
+      <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="LineHeight" Value="19.5" />
+      <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
+      <Setter Property="TextAlignment" Value="Center" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <!-- Полоса загрузки: 6 px, дорожка — заливка наведения, ход — акцент -->
+    <Style Selector="ProgressBar.mm-update-progress">
+      <Setter Property="Height" Value="6" />
+      <Setter Property="MinHeight" Value="6" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="Minimum" Value="0" />
+      <Setter Property="Maximum" Value="100" />
+      <Setter Property="Background" Value="{DynamicResource MmSurfaceHoverBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
+    </Style>
+  </Window.Styles>
+
+  <StackPanel Margin="32,20,32,24">
+
+    <Panel Width="64"
+           Height="64"
+           HorizontalAlignment="Center">
+      <Image Name="UpdateAppIcon"
+             Source="/Assets/Icons/softmark.ico"
+             Width="64"
+             Height="64"
+             RenderOptions.BitmapInterpolationMode="HighQuality" />
+
+      <Border Name="UpdateCheckingBadge"
+              Classes="mm-update-badge"
+              IsVisible="{Binding ShowsCheckingRing}">
+        <views:ProgressRing Name="UpdateCheckingRing"
+                            Width="16"
+                            Height="16"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            IsVisible="{Binding ShowsCheckingRing}"
+                            Foreground="{DynamicResource MmAccentBrush}" />
+      </Border>
+
+      <!-- Стрелка 13 px светлым по акценту — обводка 2.4, как на холсте: при обычных 1.75
+           в кружке 24 px она читается как волосок. -->
+      <Border Name="UpdateAvailableBadge"
+              Classes="mm-update-badge mm-update-badge-filled"
+              IsVisible="{Binding ShowsAvailableBadge}">
+        <views:LucideIcon Data="{DynamicResource LucideArrowDownToLineGeometry}"
+                          Width="13"
+                          Height="13"
+                          StrokeThickness="2.4"
+                          Foreground="{DynamicResource MmElevatedBackgroundBrush}" />
+      </Border>
+
+      <!-- Зелёный «готово» — намеренно цвет GitHub alert [!TIP]: своего токена успеха в
+           палитре нет (ADR-0009 §9), а этот — тот же зелёный, выверенный в обеих темах.
+           Поменяется палитра алертов — поменяется и отметка. -->
+      <Border Name="UpdateSuccessBadge"
+              Classes="mm-update-badge"
+              IsVisible="{Binding ShowsSuccessBadge}">
+        <views:LucideIcon Data="{DynamicResource LucideCircleCheckGeometry}"
+                          Width="22"
+                          Height="22"
+                          Foreground="{DynamicResource MmAlertTipBrush}" />
+      </Border>
+
+      <Border Name="UpdateAlertBadge"
+              Classes="mm-update-badge"
+              IsVisible="{Binding ShowsAlertBadge}">
+        <views:LucideIcon Data="{DynamicResource LucideCircleAlertGeometry}"
+                          Width="22"
+                          Height="22"
+                          Foreground="{DynamicResource MmAccentBrush}" />
+      </Border>
+
+      <Border Name="UpdateInfoBadge"
+              Classes="mm-update-badge"
+              IsVisible="{Binding ShowsInfoBadge}">
+        <views:LucideIcon Data="{DynamicResource LucideInfoGeometry}"
+                          Width="22"
+                          Height="22"
+                          Foreground="{DynamicResource MmTextSoftBrush}" />
+      </Border>
+    </Panel>
+
+    <TextBlock Name="UpdateTitle"
+               Classes="mm-update-title"
+               Margin="0,14,0,0"
+               Text="{Binding Title}" />
+
+    <ProgressBar Name="UpdateProgress"
+                 Classes="mm-update-progress"
+                 Margin="0,18,0,0"
+                 IsVisible="{Binding ShowsProgress}"
+                 IsIndeterminate="{Binding IsProgressIndeterminate}"
+                 Value="{Binding ProgressValue}" />
+
+    <TextBlock Name="UpdateMessage"
+               Classes="mm-update-message"
+               Margin="0,6,0,0"
+               Text="{Binding Message}" />
+
+    <!-- «Что нового» — страница релиза в браузере системы, только по клику (ADR-0004) -->
+    <Button Name="UpdateWhatsNewLink"
+            Classes="mm-link"
+            FontSize="13"
+            HorizontalAlignment="Center"
+            Margin="0,8,0,0"
+            IsVisible="{Binding ShowsWhatsNew}"
+            Tag="{Binding WhatsNewUrl}"
+            Click="OnLinkClick"
+            Content="{Binding WhatsNewLabel}" />
+
+    <StackPanel Orientation="Horizontal"
+                Spacing="8"
+                HorizontalAlignment="Center"
+                Margin="0,20,0,0">
+      <Button Name="UpdateSecondaryAction"
+              Classes="mm-action-secondary"
+              IsVisible="{Binding ShowsSecondaryAction}"
+              Content="{Binding SecondaryActionLabel}"
+              Command="{Binding SecondaryActionCommand}" />
+      <Button Name="UpdatePrimaryAction"
+              Classes="mm-action-primary"
+              IsDefault="True"
+              IsVisible="{Binding ShowsPrimaryAction}"
+              Content="{Binding PrimaryActionLabel}"
+              Command="{Binding PrimaryActionCommand}" />
+    </StackPanel>
+  </StackPanel>
+</Window>

@@ -1310,12 +1310,6 @@
     <Setter Property="Foreground" Value="{DynamicResource MmTextSoftBrush}" />
   </Style>
 
-  <Style Selector="Border.mm-app-settings-update">
-    <Setter Property="Padding" Value="14,12,12,12" />
-    <Setter Property="CornerRadius" Value="10" />
-    <Setter Property="Background" Value="{DynamicResource MmTabBrush}" />
-  </Style>
-
   <Style Selector="Border.mm-app-settings-footer">
     <Setter Property="Margin" Value="0,18,0,0" />
     <Setter Property="Padding" Value="0,14,0,0" />
@@ -1644,6 +1638,25 @@
   </Style>
   <Style Selector="TextBlock.mm-md-image-missing-path, TextBlock.mm-md-diagram-error-message">
     <Setter Property="Foreground" Value="{DynamicResource MmTextFaintBrush}" />
+  </Style>
+
+  <!--
+    Кольцо прогресса (Views/ProgressRing): без доли четверть круга крутится — оборот
+    за 0,9 с, как у системных индикаторов. Поворот анимируется у RotateTransform, который
+    каждое кольцо заводит себе само: общий из сеттера стиля делили бы все кольца сразу.
+  -->
+  <Style Selector="views|ProgressRing:indeterminate">
+    <Style.Animations>
+      <Animation Duration="0:0:0.9"
+                 IterationCount="Infinite">
+        <KeyFrame Cue="0%">
+          <Setter Property="RotateTransform.Angle" Value="0" />
+        </KeyFrame>
+        <KeyFrame Cue="100%">
+          <Setter Property="RotateTransform.Angle" Value="360" />
+        </KeyFrame>
+      </Animation>
+    </Style.Animations>
   </Style>
 
 </Styles>

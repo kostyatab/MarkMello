@@ -444,6 +444,10 @@ public partial class MainWindow : Window, IMenuCardHost
     private async void OnWindowOpened(object? sender, EventArgs e)
     {
         ApplyPendingWindowsStartupMaximize();
+        // Отсчёт фоновой проверки обновлений начинается с первого показанного окна, а не
+        // на старте: до этого в сеть не ходит ничего. Повторные вызовы из других окон
+        // ничего не добавляют — проверка одна на запуск (ADR-0004, «Update Model»).
+        _viewModel.Updates.StartBackgroundCheck();
         await _startupInitializationTask.ConfigureAwait(true);
         await CompleteStartupSmokeTestAsync().ConfigureAwait(true);
     }

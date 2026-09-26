@@ -46,6 +46,11 @@ public static class DependencyInjection
         services.AddTransient<MainWindow>();
         services.AddSingleton<IWindowLauncher, WindowLauncher>();
 
+        // Обновление — одно на приложение (ADR-0004, «Update Model»): все окна видят одно
+        // состояние, загрузка идёт один раз. Создаётся вместе с первым окном без ввода-вывода.
+        services.AddSingleton<UpdateCoordinator>();
+        services.AddSingleton<UpdateViewModel>();
+
         return services;
     }
 }

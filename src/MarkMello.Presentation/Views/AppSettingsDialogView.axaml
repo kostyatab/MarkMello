@@ -132,34 +132,6 @@
         </Grid>
       </Border>
 
-      <TextBlock Classes="mm-app-settings-section"
-                 Text="{Binding UpdatesSectionTitle}" />
-
-      <!-- Все состояния обновлений — один шаблон: заголовок, пояснение, одна кнопка -->
-      <Border Classes="mm-app-settings-update">
-        <Grid ColumnDefinitions="*,Auto"
-              ColumnSpacing="14">
-          <StackPanel Spacing="4"
-                      VerticalAlignment="Center">
-            <TextBlock Classes="mm-app-settings-label"
-                       TextWrapping="Wrap"
-                       Text="{Binding UpdateStatusTitle}" />
-            <TextBlock Classes="mm-app-settings-caption"
-                       TextWrapping="Wrap"
-                       Text="{Binding UpdateStatusMessage}" />
-          </StackPanel>
-          <Button Name="UpdateActionButton"
-                  Grid.Column="1"
-                  VerticalAlignment="Center"
-                  Classes="mm-action-small"
-                  Classes.mm-action-primary="{Binding IsUpdateActionPrimary}"
-                  Classes.mm-action-secondary="{Binding !IsUpdateActionPrimary}"
-                  Classes.mm-action-raised="{Binding !IsUpdateActionPrimary}"
-                  Content="{Binding UpdateActionLabel}"
-                  Command="{Binding UpdateActionCommand}" />
-        </Grid>
-      </Border>
-
       <Border Classes="mm-app-settings-footer">
         <Grid ColumnDefinitions="*,Auto"
               ColumnSpacing="12">

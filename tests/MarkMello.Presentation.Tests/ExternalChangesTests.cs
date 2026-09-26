@@ -341,7 +341,7 @@ public sealed class ExternalChangesTests
             new RecordingThemeService(),
             new RecordingStartupMetrics(),
             new RenderMarkdownDocumentUseCase(new TestMarkdownRenderer(), new FakeDiagramRenderService()),
-            new StubUpdateService(),
+            TestUpdates.CreateViewModel(),
             new OpenFolderUseCase(fileSystem),
             new ExpandFolderNodeUseCase(fileSystem),
             new SearchWorkspaceFilesUseCase(fileSystem),

@@ -18,5 +18,9 @@ public abstract record UpdateCheckResult
 
     public sealed record UpdateAvailable(AppUpdatePackage Package) : UpdateCheckResult;
 
-    public sealed record Failed(string Message) : UpdateCheckResult;
+    /// <param name="IsConnectionProblem">
+    /// Не дошли до GitHub: нет сети, таймаут. Иначе GitHub ответил, но не тем — лимит
+    /// запросов, нет файла для платформы, битый ответ, — и совет «проверьте интернет» неверен.
+    /// </param>
+    public sealed record Failed(string Message, bool IsConnectionProblem = false) : UpdateCheckResult;
 }

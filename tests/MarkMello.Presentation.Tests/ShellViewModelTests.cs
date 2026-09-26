@@ -950,107 +950,6 @@ public sealed class ShellViewModelTests
     }
 
     [Fact]
-    public async Task CheckForUpdatesCommandWhenUpdateAvailableShowsDownloadAction()
-    {
-        var harness = CreateHarness();
-        var package = CreateUpdatePackage();
-        harness.UpdateService.NextCheckResult = new UpdateCheckResult.UpdateAvailable(package);
-
-        await harness.ViewModel.CheckForUpdatesCommand.ExecuteAsync(null);
-
-        Assert.Equal("Update 1.2.3 available", harness.ViewModel.UpdateStatusTitle);
-        Assert.Contains(package.AssetName, harness.ViewModel.UpdateStatusMessage, StringComparison.Ordinal);
-        Assert.True(harness.ViewModel.CanDownloadAvailableUpdate);
-        Assert.False(harness.ViewModel.CanOpenDownloadedUpdate);
-        Assert.Equal("Download", harness.ViewModel.UpdateActionLabel);
-        Assert.Same(harness.ViewModel.DownloadUpdateCommand, harness.ViewModel.UpdateActionCommand);
-        Assert.True(harness.ViewModel.IsUpdateActionPrimary);
-    }
-
-    /// <summary>
-    /// Блок обновлений — одна кнопка следующего шага. До проверки и после неудачной
-    /// проверки это «Проверить» (повтор), после неудачного скачивания — снова «Скачать».
-    /// </summary>
-    [Fact]
-    public async Task UpdateActionIsTheNextStepAndRetriesAfterFailures()
-    {
-        var harness = CreateHarness();
-        var viewModel = harness.ViewModel;
-
-        Assert.Equal("Manual checks", viewModel.UpdateStatusTitle);
-        Assert.Equal("Check now", viewModel.UpdateActionLabel);
-        Assert.Same(viewModel.CheckForUpdatesCommand, viewModel.UpdateActionCommand);
-        Assert.False(viewModel.IsUpdateActionPrimary);
-
-        // Окно «Настройки» само в сеть не ходит — только по «Проверить» (ADR-0003 §5).
-        viewModel.ToggleAppSettingsCommand.Execute(null);
-        Assert.True(viewModel.IsAppSettingsOpen);
-        Assert.Equal(0, harness.UpdateService.CheckCount);
-
-        harness.UpdateService.NextCheckResult = new UpdateCheckResult.Failed("offline");
-        await viewModel.CheckForUpdatesCommand.ExecuteAsync(null);
-
-        Assert.Equal(1, harness.UpdateService.CheckCount);
-        Assert.Equal("offline", viewModel.UpdateStatusMessage);
-        Assert.Equal("Check now", viewModel.UpdateActionLabel);
-        Assert.Same(viewModel.CheckForUpdatesCommand, viewModel.UpdateActionCommand);
-        Assert.True(viewModel.UpdateActionCommand.CanExecute(null));
-
-        harness.UpdateService.NextCheckResult = new UpdateCheckResult.UpdateAvailable(CreateUpdatePackage());
-        harness.UpdateService.NextDownloadResult = new UpdateDownloadResult.Failed("disk full");
-        await viewModel.CheckForUpdatesCommand.ExecuteAsync(null);
-        await viewModel.DownloadUpdateCommand.ExecuteAsync(null);
-
-        Assert.Equal("disk full", viewModel.UpdateStatusMessage);
-        Assert.Equal("Download", viewModel.UpdateActionLabel);
-        Assert.Same(viewModel.DownloadUpdateCommand, viewModel.UpdateActionCommand);
-        Assert.True(viewModel.UpdateActionCommand.CanExecute(null));
-    }
-
-    [Fact]
-    public async Task DownloadUpdateCommandWhenSuccessfulShowsNativeAction()
-    {
-        var harness = CreateHarness();
-        var package = CreateUpdatePackage();
-        var downloadedPath = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", package.AssetName);
-        harness.UpdateService.NextCheckResult = new UpdateCheckResult.UpdateAvailable(package);
-        harness.UpdateService.NextDownloadResult = new UpdateDownloadResult.Success(package, downloadedPath);
-
-        await harness.ViewModel.CheckForUpdatesCommand.ExecuteAsync(null);
-        await harness.ViewModel.DownloadUpdateCommand.ExecuteAsync(null);
-
-        Assert.Equal("Update ready", harness.ViewModel.UpdateStatusTitle);
-        Assert.Contains(package.AssetName, harness.ViewModel.UpdateStatusMessage, StringComparison.Ordinal);
-        Assert.False(harness.ViewModel.CanDownloadAvailableUpdate);
-        Assert.True(harness.ViewModel.CanOpenDownloadedUpdate);
-        Assert.Equal("Launch installer", harness.ViewModel.UpdateActionLabel);
-        Assert.Same(harness.ViewModel.OpenDownloadedUpdateCommand, harness.ViewModel.UpdateActionCommand);
-        Assert.True(harness.ViewModel.IsUpdateActionPrimary);
-        Assert.Equal(downloadedPath, harness.ViewModel.DownloadedUpdatePath);
-    }
-
-    [Fact]
-    public async Task OpenDownloadedUpdateCommandWhenSuccessfulUpdatesStatus()
-    {
-        var harness = CreateHarness();
-        var package = CreateUpdatePackage();
-        var downloadedPath = Path.Combine(Path.GetTempPath(), "MarkMello.Tests", package.AssetName);
-        harness.UpdateService.NextCheckResult = new UpdateCheckResult.UpdateAvailable(package);
-        harness.UpdateService.NextDownloadResult = new UpdateDownloadResult.Success(package, downloadedPath);
-        harness.UpdateService.NextPrepareResult =
-            new UpdatePrepareResult.Success("Installer launched. Follow the native upgrade flow.");
-
-        await harness.ViewModel.CheckForUpdatesCommand.ExecuteAsync(null);
-        await harness.ViewModel.DownloadUpdateCommand.ExecuteAsync(null);
-        await harness.ViewModel.OpenDownloadedUpdateCommand.ExecuteAsync(null);
-
-        Assert.Equal("Native update flow started", harness.ViewModel.UpdateStatusTitle);
-        Assert.Equal(
-            "Installer launched. Follow the native upgrade flow.",
-            harness.ViewModel.UpdateStatusMessage);
-    }
-
-    [Fact]
     public async Task InitializeAsyncLoadsSavedLanguageAndLocalizesShellLabels()
     {
         var harness = CreateHarness();
@@ -1060,8 +959,7 @@ public sealed class ShellViewModelTests
 
         Assert.True(harness.ViewModel.IsRussianLanguageSelected);
         Assert.Equal("Переключить режим редактирования (Ctrl+E)", harness.ViewModel.EditToggleTooltip);
-        Assert.Equal("Проверить", harness.ViewModel.UpdateActionLabel);
-        Assert.Equal("Проверка вручную", harness.ViewModel.UpdateStatusTitle);
+        Assert.Equal("Проверить обновления…", harness.ViewModel.AppMenuCheckForUpdates);
     }
 
     [Fact]
@@ -1073,7 +971,7 @@ public sealed class ShellViewModelTests
 
         Assert.Equal(AppLanguage.Russian, harness.Settings.Language);
         Assert.True(harness.ViewModel.IsRussianLanguageSelected);
-        Assert.Equal("Проверить", harness.ViewModel.UpdateActionLabel);
+        Assert.Equal("Проверить обновления…", harness.ViewModel.AppMenuCheckForUpdates);
         Assert.Equal("0 слов · 1 мин", harness.ViewModel.ReadingStatusLabel);
     }
 
@@ -1111,15 +1009,14 @@ public sealed class ShellViewModelTests
 
         Assert.Contains(nameof(ShellViewModel.WelcomeTagline), names);
         Assert.Contains(nameof(ShellViewModel.AppMenuSettings), names);
-        Assert.Contains(nameof(ShellViewModel.UpdateActionLabel), names);
+        Assert.Contains(nameof(ShellViewModel.AppMenuCheckForUpdates), names);
         Assert.Contains(nameof(ShellViewModel.LanguageOptions), names);
         Assert.Contains(nameof(ShellViewModel.SelectedLanguageOption), names);
         Assert.DoesNotContain("Item", names);
         Assert.DoesNotContain("Item[]", names);
         Assert.Equal("Тихое место для чтения Markdown.", harness.ViewModel.WelcomeTagline);
         Assert.Equal("Настройки…", harness.ViewModel.AppMenuSettings);
-        Assert.Equal("ОБНОВЛЕНИЯ", harness.ViewModel.UpdatesSectionTitle);
-        Assert.Equal("Проверить", harness.ViewModel.UpdateActionLabel);
+        Assert.Equal("Проверить обновления…", harness.ViewModel.AppMenuCheckForUpdates);
     }
 
     [Fact]
@@ -1607,19 +1504,6 @@ public sealed class ShellViewModelTests
     private static MarkdownSource CreateSource(string path, string content)
         => new(path, Path.GetFileName(path), content);
 
-    private static AppUpdatePackage CreateUpdatePackage()
-        => new(
-            CurrentVersion: "1.0.0",
-            ReleaseVersion: "1.2.3",
-            ReleaseTag: "v1.2.3",
-            PublishedAt: DateTimeOffset.Parse("2026-04-19T12:00:00Z", CultureInfo.InvariantCulture),
-            ReleasePageUrl: "https://github.com/kostyatab/Softmark/releases/tag/v1.2.3",
-            AssetName: "Softmark-setup-win-x64.exe",
-            DownloadUrl: "https://github.com/kostyatab/Softmark/releases/download/v1.2.3/Softmark-setup-win-x64.exe",
-            PlatformName: "Windows",
-            ArchitectureName: "x64",
-            InstallAction: AppUpdateInstallAction.LaunchInstaller);
-
     private static TestHarness CreateHarness(
         FakeWorkspaceFileSystem? workspaceFileSystem = null,
         string platformName = "Windows",
@@ -1648,7 +1532,7 @@ public sealed class ShellViewModelTests
             themeService,
             startupMetrics,
             new RenderMarkdownDocumentUseCase(markdownRenderer ?? new TestMarkdownRenderer(), new FakeDiagramRenderService()),
-            updateService,
+            TestUpdates.CreateViewModel(updateService),
             new OpenFolderUseCase(fileSystem),
             new ExpandFolderNodeUseCase(fileSystem),
             new SearchWorkspaceFilesUseCase(fileSystem),

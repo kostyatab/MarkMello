@@ -66,6 +66,9 @@ public partial class App : global::Avalonia.Application
             // «Недавние» пишутся с паузой; на выходе запись идёт сразу и выход её дожидается.
             var services = Services;
             desktop.Exit += (_, _) => services.GetService<RecentItemsUseCase>()?.FlushBeforeExit(TimeSpan.FromSeconds(1));
+
+            // Выход молча отменяет проверку и загрузку обновления; недокачанный файл удаляется.
+            desktop.Exit += (_, _) => services.GetService<UpdateCoordinator>()?.Dispose();
         }
 
         WireFileActivationFromAvalonia();
@@ -74,10 +77,11 @@ public partial class App : global::Avalonia.Application
     }
 
     /// <summary>
-    /// Системное меню приложения macOS (ADR-0009 Rule 4). Пока в нём один свой пункт —
-    /// «О MarkMello»; без него Avalonia ставит туда своё «About Avalonia». Services, Hide,
-    /// Show All и Quit остаются от Avalonia. Меню из одного пункта без сервисов: быстрый
-    /// путь открытия документа не дорожает, окно About создаётся только по нажатию.
+    /// Системное меню приложения macOS (ADR-0009 Rule 4). Свои пункты — «О MarkMello» и под
+    /// ним «Проверить обновления…» (ADR-0004, «Update Model»); без них Avalonia ставит туда
+    /// своё «About Avalonia». Services, Hide, Show All и Quit остаются от Avalonia. Два пункта
+    /// без сервисов: быстрый путь открытия документа не дорожает, окна About и обновления
+    /// создаются только по нажатию.
     ///
     /// Ставится именно в <see cref="Initialize"/>: экспортёр меню Avalonia читает
     /// <c>NativeMenu</c> один раз, в <c>AfterSetup</c> сразу после этого метода, и если
@@ -94,10 +98,17 @@ public partial class App : global::Avalonia.Application
         var about = new NativeMenuItem(localization["AppMenuAbout"]);
         about.Click += (_, _) => Services?.GetService<IWindowLauncher>()?.ShowAbout();
 
-        // Подпись идёт за языком приложения; системные пункты переводит сама Avalonia.
-        localization.PropertyChanged += (_, _) => about.Header = localization["AppMenuAbout"];
+        var checkForUpdates = new NativeMenuItem(localization["AppMenuCheckForUpdates"]);
+        checkForUpdates.Click += (_, _) => Services?.GetService<IWindowLauncher>()?.ShowUpdates(startCheck: true);
 
-        NativeMenu.SetMenu(this, new NativeMenu { Items = { about } });
+        // Подписи идут за языком приложения; системные пункты переводит сама Avalonia.
+        localization.PropertyChanged += (_, _) =>
+        {
+            about.Header = localization["AppMenuAbout"];
+            checkForUpdates.Header = localization["AppMenuCheckForUpdates"];
+        };
+
+        NativeMenu.SetMenu(this, new NativeMenu { Items = { about, checkForUpdates } });
     }
 
     /// <summary>

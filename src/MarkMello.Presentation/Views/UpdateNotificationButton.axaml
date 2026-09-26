@@ -1,0 +1,138 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MarkMello.Presentation.ViewModels"
+             xmlns:views="using:MarkMello.Presentation.Views"
+             mc:Ignorable="d"
+             x:Class="MarkMello.Presentation.Views.UpdateNotificationButton"
+             x:DataType="vm:UpdateViewModel"
+             Width="30"
+             Height="30"
+             VerticalAlignment="Center"
+             ClipToBounds="False">
+  <!-- Кнопка обновления в строке окна (ADR-0004, «Update Model»): квадрат 30×30, радиус 8,
+       залитый акцентом. В раскладке всегда 30 px: надпись выезжает влево поверх полосы
+       вкладок, и ничего в строке не сдвигается. Отрицательный левый отступ даёт плашке
+       место расти, а прижатие вправо держит её правый край на месте. -->
+  <UserControl.Styles>
+    <!-- Подложка цвета строки вокруг раскрытой плашки: отбивает её от вкладок под ней.
+         В покое без фона — и не ловит мышь над вкладками. -->
+    <Style Selector="Border.mm-update-halo">
+      <Setter Property="Padding" Value="4" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="Background" Value="{x:Null}" />
+    </Style>
+    <Style Selector="Border.mm-update-halo.mm-expanded">
+      <Setter Property="Background" Value="{DynamicResource MmBackgroundBrush}" />
+    </Style>
+
+    <Style Selector="Button.mm-update-button">
+      <Setter Property="Height" Value="30" />
+      <Setter Property="MinHeight" Value="30" />
+      <Setter Property="MinWidth" Value="30" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="FontFamily" Value="{DynamicResource MmDocumentSansFontFamily}" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Background" Value="{DynamicResource MmAccentBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource MmElevatedBackgroundBrush}" />
+      <Setter Property="FocusAdorner">
+        <FocusAdornerTemplate>
+          <Border Margin="-4"
+                  BorderThickness="2"
+                  CornerRadius="12"
+                  BorderBrush="{DynamicResource MmAccentBrush}"
+                  AdornerLayer.IsClipEnabled="False" />
+        </FocusAdornerTemplate>
+      </Setter>
+    </Style>
+    <!-- Заливка держится во всех состояниях, как у «Готово»: иначе Fluent перекрашивает
+         её под курсором. Наведение и нажатие чуть приглушают кнопку целиком. -->
+    <Style Selector="Button.mm-update-button:pointerover /template/ ContentPresenter, Button.mm-update-button:pressed /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource MmAccentBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource MmElevatedBackgroundBrush}" />
+    </Style>
+    <!-- Загрузка: мягкая акцентная плашка, кольцо и надпись — акцентом -->
+    <Style Selector="Button.mm-update-button.mm-downloading">
+      <Setter Property="Background" Value="{DynamicResource MmAccentSoftBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
+    </Style>
+    <Style Selector="Button.mm-update-button.mm-downloading:pointerover /template/ ContentPresenter, Button.mm-update-button.mm-downloading:pressed /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource MmAccentSoftBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
+    </Style>
+    <Style Selector="Button.mm-update-button:pressed">
+      <Setter Property="Opacity" Value="0.88" />
+    </Style>
+
+    <Style Selector="TextBlock.mm-update-label">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,0,12,0" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Name="UpdateHalo"
+          Classes="mm-update-halo"
+          HorizontalAlignment="Right"
+          Margin="-274,-4,-4,-4">
+    <Button Name="UpdateButton"
+            Classes="mm-update-button"
+            Classes.mm-downloading="{Binding IsButtonDownloading}"
+            AutomationProperties.Name="{Binding ButtonAutomationName}"
+            Command="{Binding ButtonCommand}">
+      <StackPanel Orientation="Horizontal">
+        <!-- Обводка толще обычных 1.75 — как на холсте варианта D: светлая линия на
+             залитом акцентом квадрате при 1.75 истончается и теряется. Галочке — ещё
+             чуть толще: у неё одна короткая линия против трёх у стрелки. -->
+        <Panel Width="30"
+               Height="30">
+          <views:LucideIcon Name="UpdateArrowIcon"
+                            Data="{DynamicResource LucideArrowDownToLineGeometry}"
+                            Width="14"
+                            Height="14"
+                            StrokeThickness="2.2"
+                            IsVisible="{Binding ShowsButtonArrow}" />
+          <views:ProgressRing Name="UpdateProgressRing"
+                              Width="16"
+                              Height="16"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"
+                              IsVisible="{Binding IsButtonDownloading}"
+                              Value="{Binding ButtonProgress}" />
+          <views:LucideIcon Name="UpdateCheckIcon"
+                            Data="{DynamicResource LucideCheckGeometry}"
+                            Width="14"
+                            Height="14"
+                            StrokeThickness="2.4"
+                            IsVisible="{Binding ShowsButtonCheck}" />
+        </Panel>
+        <!-- Ширину надписи ведёт code-behind: 0 в покое, по тексту при наведении и фокусе
+             с клавиатуры, с переходом 150 мс. Обрезка прячет текст, пока плашка растёт. -->
+        <Border Name="UpdateLabelHost"
+                Width="0"
+                ClipToBounds="True">
+          <Border.Transitions>
+            <Transitions>
+              <DoubleTransition Property="Width"
+                                Duration="0:0:0.15">
+                <DoubleTransition.Easing>
+                  <CubicEaseOut />
+                </DoubleTransition.Easing>
+              </DoubleTransition>
+            </Transitions>
+          </Border.Transitions>
+          <TextBlock Name="UpdateLabel"
+                     Classes="mm-update-label"
+                     HorizontalAlignment="Left"
+                     Text="{Binding ButtonLabel}" />
+        </Border>
+      </StackPanel>
+    </Button>
+  </Border>
+</UserControl>

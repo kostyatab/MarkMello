@@ -13,17 +13,26 @@ public sealed class GitHubReleaseUpdateService : IUpdateService
     private const string ReleaseOwnerMetadataKey = "MarkMelloReleaseOwner";
     private const string ReleaseRepoMetadataKey = "MarkMelloReleaseRepo";
 
+    /// <summary>Размер куска при копировании: ход загрузки сообщается после каждого.</summary>
+    private const int CopyBufferSize = 81920;
+
     private readonly HttpClient _httpClient;
     private readonly string _releaseOwner;
     private readonly string _releaseRepo;
     private readonly string _currentVersion;
     private readonly ReleaseTargetDescriptor? _target;
+    private readonly string? _downloadDirectory;
 
-    public GitHubReleaseUpdateService(HttpClient httpClient, Assembly? assembly = null)
+    /// <param name="downloadDirectory">
+    /// Куда класть скачанное; по умолчанию — <c>~/Downloads/Softmark</c>. Тесты передают
+    /// свою временную папку, чтобы не писать в «Загрузки» пользователя.
+    /// </param>
+    public GitHubReleaseUpdateService(HttpClient httpClient, Assembly? assembly = null, string? downloadDirectory = null)
     {
         ArgumentNullException.ThrowIfNull(httpClient);
 
         _httpClient = httpClient;
+        _downloadDirectory = downloadDirectory;
 
         assembly ??= Assembly.GetEntryAssembly() ?? typeof(GitHubReleaseUpdateService).Assembly;
         (_releaseOwner, _releaseRepo) = ResolveReleaseSource(assembly);
@@ -111,30 +120,33 @@ public sealed class GitHubReleaseUpdateService : IUpdateService
                     ArchitectureName: _target.ArchitectureName,
                     InstallAction: _target.InstallAction));
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             throw;
         }
         catch (Exception ex)
         {
             return new UpdateCheckResult.Failed(
-                $"Couldn't check GitHub Releases: {ex.Message}");
+                $"Couldn't check GitHub Releases: {ex.Message}",
+                IsConnectionProblem(ex));
         }
     }
 
     public async Task<UpdateDownloadResult> DownloadUpdateAsync(
         AppUpdatePackage package,
+        IProgress<UpdateDownloadProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(package);
 
+        string? temporaryPath = null;
         try
         {
-            var downloadDirectory = ResolveDownloadDirectory();
+            var downloadDirectory = _downloadDirectory ?? ResolveDownloadDirectory();
             Directory.CreateDirectory(downloadDirectory);
 
             var destinationPath = Path.Combine(downloadDirectory, package.AssetName);
-            var temporaryPath = destinationPath + ".download";
+            temporaryPath = destinationPath + ".download";
 
             if (File.Exists(temporaryPath))
             {
@@ -153,12 +165,14 @@ public sealed class GitHubReleaseUpdateService : IUpdateService
                     $"GitHub download returned {(int)response.StatusCode} {response.ReasonPhrase}.");
             }
 
+            var totalBytes = response.Content.Headers.ContentLength;
             await using (var sourceStream = await response.Content
                                .ReadAsStreamAsync(cancellationToken)
                                .ConfigureAwait(false))
             await using (var destinationStream = File.Create(temporaryPath))
             {
-                await sourceStream.CopyToAsync(destinationStream, cancellationToken).ConfigureAwait(false);
+                await CopyWithProgressAsync(sourceStream, destinationStream, totalBytes, progress, cancellationToken)
+                    .ConfigureAwait(false);
             }
 
             if (File.Exists(destinationPath))
@@ -167,18 +181,77 @@ public sealed class GitHubReleaseUpdateService : IUpdateService
             }
 
             File.Move(temporaryPath, destinationPath);
+            temporaryPath = null;
             TryApplyLinuxExecutableBit(destinationPath, package.InstallAction);
 
             return new UpdateDownloadResult.Success(package, destinationPath);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            TryDeleteTemporaryFile(temporaryPath);
             throw;
         }
         catch (Exception ex)
         {
+            TryDeleteTemporaryFile(temporaryPath);
             return new UpdateDownloadResult.Failed(
-                $"Couldn't download the update: {ex.Message}");
+                $"Couldn't download the update: {ex.Message}",
+                IsConnectionProblem(ex));
+        }
+    }
+
+    /// <summary>
+    /// До GitHub не дошли или связь оборвалась: сеть, TLS, таймаут <c>HttpClient</c> (он
+    /// приходит отменой без отмены нашего токена). Ответ с ошибкой, битый JSON или сбой
+    /// записи на диск — другое: совет «проверьте интернет» там неверен.
+    /// </summary>
+    internal static bool IsConnectionProblem(Exception exception)
+        => exception is HttpRequestException or HttpIOException or TimeoutException or OperationCanceledException;
+
+    /// <summary>
+    /// Копирование вручную, а не <c>CopyToAsync</c>: после каждого куска сообщаем, сколько
+    /// уже получено, — окно и кнопка показывают проценты.
+    /// </summary>
+    private static async Task CopyWithProgressAsync(
+        Stream source,
+        Stream destination,
+        long? totalBytes,
+        IProgress<UpdateDownloadProgress>? progress,
+        CancellationToken cancellationToken)
+    {
+        var buffer = new byte[CopyBufferSize];
+        long received = 0;
+        progress?.Report(new UpdateDownloadProgress(received, totalBytes));
+
+        int read;
+        while ((read = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
+        {
+            await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
+            received += read;
+            progress?.Report(new UpdateDownloadProgress(received, totalBytes));
+        }
+    }
+
+    /// <summary>
+    /// Недокачанный файл не остаётся в «Загрузках»: ни после отмены, ни после обрыва.
+    /// Удаление — по возможности: если файл занят, ошибка загрузки важнее.
+    /// </summary>
+    private static void TryDeleteTemporaryFile(string? temporaryPath)
+    {
+        if (temporaryPath is null)
+        {
+            return;
+        }
+
+        try
+        {
+            File.Delete(temporaryPath);
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
         }
     }
 
@@ -196,7 +269,7 @@ public sealed class GitHubReleaseUpdateService : IUpdateService
             if (string.IsNullOrWhiteSpace(downloadedFilePath) || !File.Exists(downloadedFilePath))
             {
                 return Task.FromResult<UpdatePrepareResult>(
-                    new UpdatePrepareResult.Failed("The downloaded update file could not be found."));
+                    new UpdatePrepareResult.FileNotFound(downloadedFilePath));
             }
 
             switch (package.InstallAction)

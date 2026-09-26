@@ -4,6 +4,8 @@
 
 Accepted. Partially superseded by [ADR-0011](adr_0011_fork_identity_and_release_source.md) (2026-09-23): the release matrix and the default release source (`kostyatab/Softmark`) are defined there. The rest of this decision stays in force.
 
+Revised in place 2026-09-26 (MM-74): the Update Model now has one delayed background check per run, a manual check from the application menu, a separate update window and an update button in the window row. The manual-only rule is replaced; ADR-0003 §5 is superseded by this revision.
+
 ## Date
 
 2026-04-19
@@ -114,23 +116,52 @@ Additional Linux artifacts may be added later without changing the core update m
 
 ## Update Model
 
-The application update feature will follow one shared discovery flow and three platform-native installation endings.
+The application update feature follows one shared discovery flow and three platform-native installation endings. The state of an update is one per application run: every window shows the same state, and a download runs once.
 
-Shared discovery flow:
+### Discovery
 
-1. User opens `Settings -> Updates`.
-2. The app checks the latest suitable release from GitHub Releases.
-3. The app compares the current version with the latest published version.
-4. If no newer version exists, the app shows that the current version is up to date.
-5. If a newer version exists, the app offers download of the correct asset for the current platform and architecture.
+- **Background check.** One check per run, 30 seconds after the first window has opened, shared by all windows. It cannot be turned off. Nothing goes to the network before the first window is shown, and the check is cancelled when the application exits. The background check only ever reports a newer version: when one is found, an update button appears in the window row, and no window opens. Up to date, no network, an unconfigured release source or a platform outside the release matrix stay silent.
+- **Manual check.** "Check for Updates…" in the application menu: on macOS in the system "Softmark" menu under "About Softmark", on Windows and Linux in the ⋯ menu above "About Softmark". The item is always visible. It opens the update window at once in the "Checking…" state with "Cancel", and the window then shows the result. While a download is running or after it has finished, the item shows that state without checking again. The update window reflects only the user's own actions: a background finding never switches it, even while it shows "You're up to date" — only the row button appears, and clicking it brings that version into the window. The answer of a manual check takes precedence over what was known before it: "up to date" or "not available" removes the button, while a cancelled check or one that did not reach GitHub learned nothing and keeps a previously found version on the button.
 
-Platform-specific completion:
+Both checks use the same steps:
+
+1. The app requests the latest release from GitHub Releases.
+2. The app compares the current version with the latest published version.
+3. If a newer version exists, the app picks the asset for the current platform and architecture.
+
+### Update window
+
+A native, non-modal window like "About Softmark", with a single instance. States:
+
+- Checking (a spinning ring, "Cancel");
+- Version X available ("Later" / "Download", a "What's new" link to the release page in the external browser);
+- Downloading X (a progress bar with percentages when the size is known, "Cancel");
+- Downloaded (the platform action — "Open DMG" / "Run Installer" / "Show AppImage" — plus "Show in Finder" / "Show in Explorer" on macOS and Windows);
+- You're up to date ("OK");
+- Updates aren't available for this build (the release source is not configured, or the platform is outside the release matrix);
+- Couldn't check / Couldn't download ("Close" / "Try Again").
+
+"Later" closes the window; the update button stays until the end of the run, also after a failed download. Closing the window does not stop a download. "Check your internet connection" is said only when GitHub could not be reached; an error response, a missing asset or a failed write get their own text.
+
+### Update button in the window row
+
+A 30×30 square with radius 8 in the accent colour, left of the search button, visible while an update is available, downloading or downloaded. On hover or keyboard focus a label slides out to the left over the tab strip within 150 ms; the row layout does not change.
+
+- Available: arrow icon, label "Update"; a click opens the update window.
+- Downloading: a 16 px progress ring instead of the arrow (spinning when the size is unknown), label "Downloading · N %"; a click opens the update window.
+- Downloaded: check icon, label "Install"; a click runs the platform action. If it does not start, the update window opens and says why; if the downloaded file is gone, the update becomes available again and can be downloaded anew.
+
+### Download
+
+- The asset is downloaded to `~/Downloads/Softmark` with progress reporting.
+- Cancelling the download removes the partial `.download` file and returns to "Version X available". Exiting the application silently cancels a running download and removes the partial file.
+- The downloaded file is not remembered between runs.
+
+### Platform-specific completion
 
 - Windows: download installer and offer to launch it.
 - macOS: download DMG and offer to open it.
 - Linux: download AppImage and offer to reveal it in the file system.
-
-The app should not perform background network checks on startup. Update checks are manual and user-initiated.
 
 ## Rationale
 
@@ -162,7 +193,7 @@ This approach keeps the product aligned with its desktop-reader identity while a
 ### Accepted Tradeoffs
 
 - We prefer platform-native install behavior over a fake single installer story.
-- We prefer manual update checks over background update infrastructure.
+- We accept one delayed background check per run (30 seconds after the first window opens) over manual-only checks; there is no background update infrastructure, repeated checks during a run, skipped versions or an opt-out switch.
 - We prefer direct GitHub-hosted assets over a separate update backend in the first release.
 - We accept that file association support means "registered and available" rather than "forcibly default" on platforms that protect that choice.
 
@@ -183,7 +214,7 @@ The expected implementation order is:
 
 1. Windows packaging baseline with Inno Setup.
 2. GitHub Release publication format and asset naming.
-3. Manual in-app update check against GitHub Releases.
+3. In-app update check against GitHub Releases (manual first; the delayed background check, the update window and the row button were added in MM-74).
 4. Windows download-and-launch installer flow.
 5. macOS signing, notarization, and DMG distribution.
 6. Linux AppImage packaging and download flow.

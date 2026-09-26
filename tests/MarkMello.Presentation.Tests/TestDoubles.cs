@@ -4,6 +4,9 @@ using MarkMello.Domain;
 using MarkMello.Domain.Diagnostics;
 using MarkMello.Domain.Workspace;
 using MarkMello.Presentation.Editing;
+using MarkMello.Presentation.Localization;
+using MarkMello.Presentation.Services;
+using MarkMello.Presentation.ViewModels;
 
 namespace MarkMello.Presentation.Tests;
 
@@ -335,32 +338,73 @@ internal sealed class StubUpdateService : IUpdateService
     public UpdatePrepareResult NextPrepareResult { get; set; }
         = new UpdatePrepareResult.Failed("No native handoff configured for this test.");
 
+    /// <summary>Проверка висит, пока тест не завершит её сам, — чтобы застать «Проверяем…».</summary>
+    public TaskCompletionSource<UpdateCheckResult>? PendingCheck { get; set; }
+
+    /// <summary>Загрузка висит, пока тест не завершит её сам, — чтобы застать ход загрузки.</summary>
+    public TaskCompletionSource<UpdateDownloadResult>? PendingDownload { get; set; }
+
     /// <summary>Сколько раз приложение сходило за обновлениями — то есть в сеть.</summary>
     public int CheckCount { get; private set; }
+
+    public int DownloadCount { get; private set; }
+
+    public int PrepareCount { get; private set; }
+
+    /// <summary>Куда последняя загрузка сообщает свой ход.</summary>
+    public IProgress<UpdateDownloadProgress>? LastProgress { get; private set; }
+
+    public CancellationToken LastDownloadToken { get; private set; }
 
     public Task<UpdateCheckResult> CheckForUpdatesAsync(CancellationToken cancellationToken = default)
     {
         CheckCount++;
-        return Task.FromResult(NextCheckResult);
+        return PendingCheck is { } pending
+            ? pending.Task.WaitAsync(cancellationToken)
+            : Task.FromResult(NextCheckResult);
     }
 
     public Task<UpdateDownloadResult> DownloadUpdateAsync(
         AppUpdatePackage package,
+        IProgress<UpdateDownloadProgress>? progress = null,
         CancellationToken cancellationToken = default)
-        => Task.FromResult(NextDownloadResult);
+    {
+        DownloadCount++;
+        LastProgress = progress;
+        LastDownloadToken = cancellationToken;
+        return PendingDownload is { } pending
+            ? pending.Task.WaitAsync(cancellationToken)
+            : Task.FromResult(NextDownloadResult);
+    }
 
     public Task<UpdatePrepareResult> PrepareDownloadedUpdateAsync(
         AppUpdatePackage package,
         string downloadedFilePath,
         CancellationToken cancellationToken = default)
-        => Task.FromResult(NextPrepareResult);
+    {
+        PrepareCount++;
+        return Task.FromResult(NextPrepareResult);
+    }
+}
+
+/// <summary>Общее обновление для shell в тестах: заглушка сервиса, английский, запуск окон без окон.</summary>
+internal static class TestUpdates
+{
+    public static UpdateViewModel CreateViewModel(
+        IUpdateService? service = null,
+        IWindowLauncher? launcher = null,
+        ILocalizationService? localization = null)
+        => new(
+            new UpdateCoordinator(service ?? new StubUpdateService(), new FakePlatformServices()),
+            localization ?? new LocalizationService(AppLanguage.English),
+            launcher ?? new RecordingWindowLauncher());
 }
 
 /// <summary>
 /// Запуск окон в тестах: реальные окна не создаём, но фиксируем, что вторая папка
 /// ушла именно в новое окно, а не подменила дерево в текущем.
 /// </summary>
-internal sealed class RecordingWindowLauncher : MarkMello.Presentation.Services.IWindowLauncher
+internal sealed class RecordingWindowLauncher : IWindowLauncher
 {
     public List<string> NewWindowFolders { get; } = [];
 
@@ -388,4 +432,9 @@ internal sealed class RecordingWindowLauncher : MarkMello.Presentation.Services.
     public void OpenFolderInNewWindow(string folderPath) => NewWindowFolders.Add(folderPath);
 
     public void ShowAbout() => AboutRequests++;
+
+    /// <summary>Просьбы показать окно обновления: true — с новой проверкой.</summary>
+    public List<bool> UpdateRequests { get; } = [];
+
+    public void ShowUpdates(bool startCheck) => UpdateRequests.Add(startCheck);
 }

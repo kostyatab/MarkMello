@@ -4,7 +4,7 @@
 
 Accepted
 
-Частично заменено [ADR-0009](adr_0009_shell_redesign.md) — Shell redesign (2026-09-19): §3 (меню приложения) и §4 в части «UI-перехода»; recent files из §1 и кнопка `Create MD` из §2 уточнены там же.
+Частично заменено [ADR-0009](adr_0009_shell_redesign.md) — Shell redesign (2026-09-19): §3 (меню приложения) и §4 в части «UI-перехода»; recent files из §1 и кнопка `Create MD` из §2 уточнены там же. §5 заменён [ADR-0004](adr_0004_cross_platform_distribution_and_updates.md) (2026-09-26, MM-74).
 
 ## Date
 
@@ -132,6 +132,8 @@ UI-переход:
 - сохраняется simple fast path
 - продукт не вводит скрытый network tax в startup
 - delivery model остаётся совместимым с будущим packaging решением
+
+> **Заменено [ADR-0004](adr_0004_cross_platform_distribution_and_updates.md), «Update Model» (2026-09-26, MM-74).** Кроме ручной проверки есть одна фоновая — через 30 с после открытия первого окна; до показа первого окна сетевых вызовов по-прежнему нет. Ручная проверка — пункт «Проверить обновления…» в меню приложения, а не раздел настроек.
 
 ### 6. Language switch follows localization foundation, not ad-hoc branching
 

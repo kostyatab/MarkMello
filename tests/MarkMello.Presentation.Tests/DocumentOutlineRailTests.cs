@@ -492,7 +492,7 @@ public sealed class DocumentOutlineRailTests
             new RecordingThemeService(),
             new RecordingStartupMetrics(),
             new RenderMarkdownDocumentUseCase(new MarkdigMarkdownDocumentRenderer(), new FakeDiagramRenderService()),
-            new StubUpdateService(),
+            TestUpdates.CreateViewModel(),
             new OpenFolderUseCase(fileSystem),
             new ExpandFolderNodeUseCase(fileSystem),
             new SearchWorkspaceFilesUseCase(fileSystem),

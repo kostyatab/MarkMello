@@ -1,7 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MarkMello.Application.Abstractions;
-using MarkMello.Application.Updates;
 using MarkMello.Application.UseCases;
 using MarkMello.Domain;
 using MarkMello.Domain.Diagnostics;
@@ -42,7 +41,6 @@ public partial class ShellViewModel : ObservableObject
     /// дерева, потому что нужна и без открытой папки; в тестах подменяется.
     /// </summary>
     private readonly Func<string, bool> _fileExists;
-    private readonly IUpdateService _updateService;
     private readonly IImageSourceResolver? _imageSourceResolver;
     private readonly Func<IEditorPreviewScheduler>? _previewSchedulerFactory;
     private readonly HighlightCodeBlocksUseCase? _highlightCodeBlocks;
@@ -73,13 +71,18 @@ public partial class ShellViewModel : ObservableObject
     private readonly bool _showsAboutMenuItem = !OperatingSystem.IsMacOS();
     private readonly string _aboutVersion;
     private readonly string _aboutLicense = AppProductInfo.License;
-    private AppUpdatePackage? _availableUpdatePackage;
     private WindowBorderMode _windowBorderMode = WindowBorderMode.Auto;
     private bool _isWindowBorderLoaded;
     private bool _isDocumentOutlineEnabled = true;
     private bool _isDocumentOutlineLoaded;
 
     public event EventHandler? CloseRequested;
+
+    /// <summary>
+    /// Обновление приложения — одно на все окна (ADR-0004, «Update Model»): кнопка в строке
+    /// окна привязана к нему, а не к своему состоянию.
+    /// </summary>
+    public UpdateViewModel Updates { get; }
 
     public ShellViewModel(
         OpenDocumentUseCase openDocument,
@@ -91,7 +94,7 @@ public partial class ShellViewModel : ObservableObject
         IThemeService themeService,
         IStartupMetrics startupMetrics,
         RenderMarkdownDocumentUseCase renderMarkdown,
-        IUpdateService updateService,
+        UpdateViewModel updates,
         OpenFolderUseCase openFolder,
         ExpandFolderNodeUseCase expandFolderNode,
         SearchWorkspaceFilesUseCase searchWorkspaceFiles,
@@ -114,7 +117,7 @@ public partial class ShellViewModel : ObservableObject
         _themeService = themeService;
         _startupMetrics = startupMetrics;
         _renderMarkdown = renderMarkdown;
-        _updateService = updateService;
+        Updates = updates;
         _openFolder = openFolder;
         _expandFolderNode = expandFolderNode;
         _searchWorkspaceFiles = searchWorkspaceFiles;
@@ -131,7 +134,6 @@ public partial class ShellViewModel : ObservableObject
         InitializeOpenDocuments();
         _localization.PropertyChanged += OnLocalizationChanged;
         _commandLine.FileActivated += OnFileActivated;
-        RefreshUpdateStatusTexts();
     }
 
     /// <summary>
@@ -339,21 +341,6 @@ public partial class ShellViewModel : ObservableObject
     /// </summary>
     public bool ShowsLoadErrorRetry => ErrorKind is LoadErrorKind.NotFound or LoadErrorKind.AccessDenied or LoadErrorKind.ReadFailure;
 
-    [ObservableProperty]
-    private bool _isCheckingForUpdates;
-
-    [ObservableProperty]
-    private bool _isDownloadingUpdate;
-
-    [ObservableProperty]
-    private string _updateStatusTitle = string.Empty;
-
-    [ObservableProperty]
-    private string _updateStatusMessage = string.Empty;
-
-    [ObservableProperty]
-    private string? _downloadedUpdatePath;
-
     public object ActiveDocumentContent => IsEditMode && EditorSession is not null ? EditorSession : this;
 
     public string FileName => EditorSession?.FileName ?? Document?.FileName ?? string.Empty;
@@ -499,63 +486,6 @@ public partial class ShellViewModel : ObservableObject
     /// переключаются, а второй диалог не встаёт поверх первого (ADR-0009 Rule 10).
     /// </summary>
     public bool IsModalDialogOpen => IsDirtyPromptOpen || IsDeletePromptOpen || IsRecentRemovePromptOpen;
-
-    public bool CanCheckForUpdates => !IsCheckingForUpdates && !IsDownloadingUpdate;
-
-    public bool CanDownloadAvailableUpdate
-        => _availableUpdatePackage is not null
-           && string.IsNullOrWhiteSpace(DownloadedUpdatePath)
-           && !IsCheckingForUpdates
-           && !IsDownloadingUpdate;
-
-    public bool CanOpenDownloadedUpdate
-        => _availableUpdatePackage is not null
-           && !string.IsNullOrWhiteSpace(DownloadedUpdatePath)
-           && !IsCheckingForUpdates
-           && !IsDownloadingUpdate;
-
-    /// <summary>
-    /// Блок «Обновления» окна «Настройки» — один шаблон на все состояния: заголовок,
-    /// пояснение и одна кнопка справа. Кнопка — следующий шаг: проверить, скачать,
-    /// открыть скачанное. Пока идёт проверка или скачивание, она гаснет с подписью
-    /// процесса; после ошибки проверки «Проверить» служит повтором, после ошибки
-    /// скачивания — «Скачать». В сеть ходит только по нажатию (ADR-0003 §5).
-    /// </summary>
-    public string UpdateActionLabel => GetUpdateAction() switch
-    {
-        UpdateAction.Checking => _localization["UpdateChecking"],
-        UpdateAction.Downloading => _localization["UpdateDownloading"],
-        UpdateAction.OpenDownloaded => _availableUpdatePackage?.InstallAction switch
-        {
-            AppUpdateInstallAction.LaunchInstaller => _localization["UpdateLaunchInstaller"],
-            AppUpdateInstallAction.OpenDiskImage => _localization["UpdateOpenDmg"],
-            AppUpdateInstallAction.RevealFile => _localization["UpdateRevealAppImage"],
-            _ => _localization["UpdateOpenDownloaded"]
-        },
-        UpdateAction.Download => _localization["UpdateDownload"],
-        _ => _localization["UpdateCheckNow"]
-    };
-
-    public ICommand UpdateActionCommand => GetUpdateAction() switch
-    {
-        UpdateAction.Downloading or UpdateAction.Download => DownloadUpdateCommand,
-        UpdateAction.OpenDownloaded => OpenDownloadedUpdateCommand,
-        _ => CheckForUpdatesCommand
-    };
-
-    /// <summary>Основная кнопка — когда есть что скачать или открыть; проверка — обычная.</summary>
-    public bool IsUpdateActionPrimary => GetUpdateAction() is UpdateAction.Download or UpdateAction.OpenDownloaded;
-
-    private UpdateAction GetUpdateAction()
-        => IsCheckingForUpdates
-            ? UpdateAction.Checking
-            : IsDownloadingUpdate
-                ? UpdateAction.Downloading
-                : CanOpenDownloadedUpdate
-                    ? UpdateAction.OpenDownloaded
-                    : CanDownloadAvailableUpdate
-                        ? UpdateAction.Download
-                        : UpdateAction.Check;
 
     public FontFamilyMode SelectedFontFamilyMode
     {
@@ -1335,6 +1265,18 @@ public partial class ShellViewModel : ObservableObject
     }
 
     /// <summary>
+    /// «Проверить обновления…» (ADR-0004, «Update Model»): окно обновления открывается сразу,
+    /// в состоянии «Проверяем…». Пока идёт загрузка или файл скачан, окно показывает это
+    /// состояние без новой проверки — решает <see cref="UpdateCoordinator"/>.
+    /// </summary>
+    [RelayCommand]
+    private void CheckForUpdates()
+    {
+        MarkSecondaryFeaturesReady();
+        _windowLauncher.ShowUpdates(startCheck: true);
+    }
+
+    /// <summary>
     /// ⌘, (Ctrl+, на Windows и Linux) открывает окно «Настройки» везде, включая стартовый
     /// экран и правку (ADR-0009 Rule 7); повторное нажатие его закрывает.
     /// </summary>
@@ -1354,119 +1296,6 @@ public partial class ShellViewModel : ObservableObject
     private void CloseOverlay()
     {
         CloseOverlayCore();
-    }
-
-    [RelayCommand(CanExecute = nameof(CanCheckForUpdates))]
-    private async Task CheckForUpdatesAsync()
-    {
-        IsCheckingForUpdates = true;
-        IsDownloadingUpdate = false;
-        _availableUpdatePackage = null;
-        DownloadedUpdatePath = null;
-        SetUpdateStatus(new UpdateStatusSnapshot.CheckingState());
-        UpdateCommandStates();
-
-        try
-        {
-            var result = await _updateService.CheckForUpdatesAsync().ConfigureAwait(true);
-            switch (result)
-            {
-                case UpdateCheckResult.SourceNotConfigured:
-                    SetUpdateStatus(new UpdateStatusSnapshot.SourceNotConfiguredState());
-                    break;
-
-                case UpdateCheckResult.UnsupportedPlatform unsupportedPlatform:
-                    SetUpdateStatus(new UpdateStatusSnapshot.UnsupportedPlatformState(
-                        unsupportedPlatform.PlatformName,
-                        unsupportedPlatform.ArchitectureName));
-                    break;
-
-                case UpdateCheckResult.UpToDate upToDate:
-                    SetUpdateStatus(new UpdateStatusSnapshot.UpToDateState(
-                        upToDate.CurrentVersion,
-                        upToDate.LatestVersion));
-                    break;
-
-                case UpdateCheckResult.UpdateAvailable updateAvailable:
-                    _availableUpdatePackage = updateAvailable.Package;
-                    SetUpdateStatus(new UpdateStatusSnapshot.UpdateAvailableState(updateAvailable.Package));
-                    break;
-
-                case UpdateCheckResult.Failed failed:
-                    SetUpdateStatus(new UpdateStatusSnapshot.CheckFailedState(failed.Message));
-                    break;
-            }
-        }
-        finally
-        {
-            IsCheckingForUpdates = false;
-            UpdateCommandStates();
-        }
-    }
-
-    [RelayCommand(CanExecute = nameof(CanDownloadAvailableUpdate))]
-    private async Task DownloadUpdateAsync()
-    {
-        if (_availableUpdatePackage is null)
-        {
-            return;
-        }
-
-        IsDownloadingUpdate = true;
-        SetUpdateStatus(new UpdateStatusSnapshot.DownloadingState(_availableUpdatePackage));
-        UpdateCommandStates();
-
-        try
-        {
-            var result = await _updateService
-                .DownloadUpdateAsync(_availableUpdatePackage)
-                .ConfigureAwait(true);
-
-            switch (result)
-            {
-                case UpdateDownloadResult.Success success:
-                    _availableUpdatePackage = success.Package;
-                    DownloadedUpdatePath = success.DownloadedFilePath;
-                    SetUpdateStatus(new UpdateStatusSnapshot.DownloadReadyState(success.Package, success.DownloadedFilePath));
-                    break;
-
-                case UpdateDownloadResult.Failed failed:
-                    DownloadedUpdatePath = null;
-                    SetUpdateStatus(new UpdateStatusSnapshot.DownloadFailedState(failed.Message));
-                    break;
-            }
-        }
-        finally
-        {
-            IsDownloadingUpdate = false;
-            UpdateCommandStates();
-        }
-    }
-
-    [RelayCommand(CanExecute = nameof(CanOpenDownloadedUpdate))]
-    private async Task OpenDownloadedUpdateAsync()
-    {
-        if (_availableUpdatePackage is null || string.IsNullOrWhiteSpace(DownloadedUpdatePath))
-        {
-            return;
-        }
-
-        var result = await _updateService
-            .PrepareDownloadedUpdateAsync(_availableUpdatePackage, DownloadedUpdatePath)
-            .ConfigureAwait(true);
-
-        switch (result)
-        {
-            case UpdatePrepareResult.Success:
-                SetUpdateStatus(new UpdateStatusSnapshot.NativeFlowStartedState(_availableUpdatePackage));
-                break;
-
-            case UpdatePrepareResult.Failed failed:
-                SetUpdateStatus(new UpdateStatusSnapshot.OpenDownloadedFailedState(failed.Message));
-                break;
-        }
-
-        UpdateCommandStates();
     }
 
     /// <summary>
@@ -2351,17 +2180,7 @@ public partial class ShellViewModel : ObservableObject
         ToggleEditModeCommand.NotifyCanExecuteChanged();
         SaveCommand.NotifyCanExecuteChanged();
         SaveAsCommand.NotifyCanExecuteChanged();
-        CheckForUpdatesCommand.NotifyCanExecuteChanged();
-        DownloadUpdateCommand.NotifyCanExecuteChanged();
-        OpenDownloadedUpdateCommand.NotifyCanExecuteChanged();
         UpdateTextSizeCommandStates();
-
-        OnPropertyChanged(nameof(CanCheckForUpdates));
-        OnPropertyChanged(nameof(CanDownloadAvailableUpdate));
-        OnPropertyChanged(nameof(CanOpenDownloadedUpdate));
-        OnPropertyChanged(nameof(UpdateActionLabel));
-        OnPropertyChanged(nameof(UpdateActionCommand));
-        OnPropertyChanged(nameof(IsUpdateActionPrimary));
     }
 
     private void CloseOverlayCore()
@@ -2454,15 +2273,6 @@ public partial class ShellViewModel : ObservableObject
         {
             return null;
         }
-    }
-
-    private enum UpdateAction
-    {
-        Check,
-        Checking,
-        Download,
-        Downloading,
-        OpenDownloaded
     }
 
     private enum PendingDirtyActionKind

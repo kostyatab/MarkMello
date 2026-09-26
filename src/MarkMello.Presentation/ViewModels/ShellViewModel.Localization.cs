@@ -1,7 +1,6 @@
 using Avalonia.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using MarkMello.Application.Updates;
 using MarkMello.Application.UseCases;
 using MarkMello.Domain;
 using MarkMello.Presentation.Localization;
@@ -14,7 +13,6 @@ public partial class ShellViewModel
     private PendingDirtyActionKind? _dirtyPromptKind;
     private SaveDocumentResult? _dirtyPromptErrorResult;
     private OpenDocumentResult? _loadErrorResult;
-    private UpdateStatusSnapshot _updateStatus = UpdateStatusSnapshot.Default;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSystemLanguageSelected))]
@@ -47,6 +45,7 @@ public partial class ShellViewModel
 
     private static readonly string[] LocalizedBindingPropertyNames =
     [
+        nameof(AppMenuCheckForUpdates),
         nameof(AppMenuAbout),
         nameof(AppMenuCloseFolderLabel),
         nameof(AppMenuCloseTab),
@@ -114,7 +113,6 @@ public partial class ShellViewModel
         nameof(TitleBarMaximize),
         nameof(TitleBarMinimize),
         nameof(TitleBarRestore),
-        nameof(UpdatesSectionTitle),
         nameof(WelcomeNewDocument),
         nameof(RecentTitle),
         nameof(RecentClear),
@@ -203,6 +201,8 @@ public partial class ShellViewModel
     public string AppMenuFilesPanel => _localization["AppMenuFilesPanel"];
     public string AppMenuCloseTab => _localization["AppMenuCloseTab"];
     public string AppMenuSettings => _localization["AppMenuSettings"];
+    public string AppMenuCheckForUpdates => _localization["AppMenuCheckForUpdates"];
+
     public string AppMenuAbout => _localization["AppMenuAbout"];
 
     /// <summary>
@@ -291,8 +291,6 @@ public partial class ShellViewModel
     public string TitleBarMinimize => _localization["TitleBarMinimize"];
     public string TitleBarRestore => _localization["TitleBarRestore"];
 
-    /// <summary>Подзаголовок блока обновлений в окне «Настройки» — капителью, как на холсте.</summary>
-    public string UpdatesSectionTitle => _localization["UpdatesLabel"].ToUpper(_localization.Culture);
     public string WelcomeNewDocument => _localization["WelcomeNewDocument"];
     public string RecentTitle => _localization["RecentTitle"];
     public string RecentClear => _localization["RecentClear"];
@@ -436,7 +434,6 @@ public partial class ShellViewModel
         EditorSession?.RefreshLocalizedProperties();
 
         OnPropertyChanged(nameof(FindResultLabel));
-        OnPropertyChanged(nameof(UpdateActionLabel));
         OnPropertyChanged(nameof(IsSystemLanguageSelected));
         OnPropertyChanged(nameof(IsEnglishLanguageSelected));
         OnPropertyChanged(nameof(IsRussianLanguageSelected));
@@ -448,7 +445,6 @@ public partial class ShellViewModel
 
         RefreshDirtyPromptTexts();
         RefreshLoadErrorTexts();
-        RefreshUpdateStatusTexts();
     }
 
     private void NotifyLocalizedBindingPropertiesChanged()
@@ -613,61 +609,6 @@ public partial class ShellViewModel
         ErrorPath = string.Empty;
     }
 
-    private void SetUpdateStatus(UpdateStatusSnapshot status)
-    {
-        _updateStatus = status;
-        RefreshUpdateStatusTexts();
-    }
-
-    private void RefreshUpdateStatusTexts()
-    {
-        UpdateStatusTitle = _updateStatus switch
-        {
-            UpdateStatusSnapshot.DefaultState => _localization["UpdateDefaultTitle"],
-            UpdateStatusSnapshot.CheckingState => _localization["UpdateCheckingTitle"],
-            UpdateStatusSnapshot.SourceNotConfiguredState => _localization["UpdateUnavailableTitle"],
-            UpdateStatusSnapshot.UnsupportedPlatformState => _localization["UpdateUnsupportedPlatformTitle"],
-            UpdateStatusSnapshot.UpToDateState => _localization["UpdateUpToDateTitle"],
-            UpdateStatusSnapshot.UpdateAvailableState available => _localization.Format("UpdateAvailableTitle", available.Package.ReleaseVersion),
-            UpdateStatusSnapshot.CheckFailedState => _localization["UpdateCheckFailedTitle"],
-            UpdateStatusSnapshot.DownloadingState downloading => _localization.Format("UpdateDownloadTitle", downloading.Package.ReleaseVersion),
-            UpdateStatusSnapshot.DownloadReadyState => _localization["UpdateReadyTitle"],
-            UpdateStatusSnapshot.DownloadFailedState => _localization["UpdateDownloadFailedTitle"],
-            UpdateStatusSnapshot.NativeFlowStartedState => _localization["UpdateNativeFlowStartedTitle"],
-            UpdateStatusSnapshot.OpenDownloadedFailedState => _localization["UpdateOpenDownloadedFailedTitle"],
-            _ => _localization["UpdateDefaultTitle"]
-        };
-
-        UpdateStatusMessage = _updateStatus switch
-        {
-            UpdateStatusSnapshot.DefaultState => _localization["UpdateDefaultMessage"],
-            UpdateStatusSnapshot.CheckingState => _localization["UpdateCheckingMessage"],
-            UpdateStatusSnapshot.SourceNotConfiguredState => _localization["UpdateUnavailableMessage"],
-            UpdateStatusSnapshot.UnsupportedPlatformState unsupported => _localization.Format(
-                "UpdateUnsupportedPlatformMessage",
-                unsupported.PlatformName,
-                unsupported.ArchitectureName),
-            UpdateStatusSnapshot.UpToDateState upToDate => _localization.Format(
-                "UpdateUpToDateMessage",
-                upToDate.CurrentVersion,
-                upToDate.LatestVersion),
-            UpdateStatusSnapshot.UpdateAvailableState available => _localization.Format(
-                "UpdateAvailableMessage",
-                available.Package.AssetName,
-                available.Package.PlatformName,
-                available.Package.ArchitectureName),
-            UpdateStatusSnapshot.CheckFailedState failed => failed.Details,
-            UpdateStatusSnapshot.DownloadingState downloading => _localization.Format(
-                "UpdateDownloadMessage",
-                downloading.Package.AssetName),
-            UpdateStatusSnapshot.DownloadReadyState ready => GetUpdateReadyMessage(ready.Package, ready.DownloadedFilePath),
-            UpdateStatusSnapshot.DownloadFailedState failed => failed.Details,
-            UpdateStatusSnapshot.NativeFlowStartedState started => GetNativeFlowStartedMessage(started.Package),
-            UpdateStatusSnapshot.OpenDownloadedFailedState failed => failed.Details,
-            _ => _localization["UpdateDefaultMessage"]
-        };
-    }
-
     private void UpdateDraftFileName()
     {
         if (EditorSession is null || !string.IsNullOrWhiteSpace(EditorSession.CurrentPath))
@@ -692,28 +633,6 @@ public partial class ShellViewModel
             _ => _localization["SaveGenericFailure"]
         };
 
-    private string GetUpdateReadyMessage(AppUpdatePackage package, string downloadedFilePath)
-    {
-        var downloadedFileName = Path.GetFileName(downloadedFilePath);
-
-        return package.InstallAction switch
-        {
-            AppUpdateInstallAction.LaunchInstaller => _localization.Format("UpdateReadyLaunchInstaller", downloadedFileName),
-            AppUpdateInstallAction.OpenDiskImage => _localization.Format("UpdateReadyOpenDmg", downloadedFileName),
-            AppUpdateInstallAction.RevealFile => _localization.Format("UpdateReadyRevealAppImage", downloadedFileName),
-            _ => _localization.Format("UpdateReadyGeneric", downloadedFileName)
-        };
-    }
-
-    private string GetNativeFlowStartedMessage(AppUpdatePackage package)
-        => package.InstallAction switch
-        {
-            AppUpdateInstallAction.LaunchInstaller => _localization["UpdateNativeFlowStartedLaunchInstaller"],
-            AppUpdateInstallAction.OpenDiskImage => _localization["UpdateNativeFlowStartedOpenDmg"],
-            AppUpdateInstallAction.RevealFile => _localization["UpdateNativeFlowStartedRevealAppImage"],
-            _ => _localization["UpdateOpenDownloaded"]
-        };
-
     private string NormalizeSuggestedFileName(string? fileName)
     {
         if (string.IsNullOrWhiteSpace(fileName))
@@ -734,34 +653,6 @@ public partial class ShellViewModel
             _ => AppLanguage.System
         };
 
-    private abstract record UpdateStatusSnapshot
-    {
-        public static readonly UpdateStatusSnapshot Default = new DefaultState();
-
-        public sealed record DefaultState : UpdateStatusSnapshot;
-
-        public sealed record CheckingState : UpdateStatusSnapshot;
-
-        public sealed record SourceNotConfiguredState : UpdateStatusSnapshot;
-
-        public sealed record UnsupportedPlatformState(string PlatformName, string ArchitectureName) : UpdateStatusSnapshot;
-
-        public sealed record UpToDateState(string CurrentVersion, string LatestVersion) : UpdateStatusSnapshot;
-
-        public sealed record UpdateAvailableState(AppUpdatePackage Package) : UpdateStatusSnapshot;
-
-        public sealed record CheckFailedState(string Details) : UpdateStatusSnapshot;
-
-        public sealed record DownloadingState(AppUpdatePackage Package) : UpdateStatusSnapshot;
-
-        public sealed record DownloadReadyState(AppUpdatePackage Package, string DownloadedFilePath) : UpdateStatusSnapshot;
-
-        public sealed record DownloadFailedState(string Details) : UpdateStatusSnapshot;
-
-        public sealed record NativeFlowStartedState(AppUpdatePackage Package) : UpdateStatusSnapshot;
-
-        public sealed record OpenDownloadedFailedState(string Details) : UpdateStatusSnapshot;
-    }
 }
 
 public sealed record LanguageSelectionItem(AppLanguage Language, string Label)

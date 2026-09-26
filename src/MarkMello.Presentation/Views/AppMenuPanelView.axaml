@@ -123,10 +123,20 @@
                      Text="{Binding SettingsShortcut}" />
         </Grid>
       </Button>
-      <!-- На macOS «О MarkMello» живёт в системном меню приложения: здесь нет ни пункта,
-           ни разделителя над ним — иначе меню кончалось бы пустой чертой -->
+      <!-- На macOS «Проверить обновления…» и «О MarkMello» живут в системном меню
+           приложения: здесь нет ни пунктов, ни разделителя над ними — иначе меню кончалось
+           бы пустой чертой -->
       <Border Classes="mm-menu-separator"
               IsVisible="{Binding ShowsAboutMenuItem}" />
+      <Button Name="MenuCheckForUpdates"
+              Classes="mm-list-item mm-menu-command"
+              IsVisible="{Binding ShowsAboutMenuItem}"
+              Command="{Binding CheckForUpdatesCommand}">
+        <Grid ColumnDefinitions="*,Auto"
+              ColumnSpacing="12">
+          <TextBlock Text="{Binding AppMenuCheckForUpdates}" />
+        </Grid>
+      </Button>
       <Button Name="MenuAbout"
               Classes="mm-list-item mm-menu-command"
               IsVisible="{Binding ShowsAboutMenuItem}"

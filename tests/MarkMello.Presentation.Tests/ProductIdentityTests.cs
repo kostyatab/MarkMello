@@ -48,7 +48,7 @@ public sealed class ProductIdentityTests
     [InlineData(AppLanguage.English, "AppMenuAbout", "About Softmark")]
     [InlineData(AppLanguage.Russian, "AboutWindowTitle", "О Softmark")]
     [InlineData(AppLanguage.English, "DirtyPromptCloseWindow", "Otherwise your changes will be lost when you quit Softmark.")]
-    [InlineData(AppLanguage.Russian, "UpdateDefaultMessage", "При запуске Softmark не ходит в сеть.")]
+    [InlineData(AppLanguage.Russian, "UpdateWindowTitle", "Обновление Softmark")]
     public void NamedStringsCarryTheProductName(AppLanguage language, string key, string expected)
     {
         Assert.Equal(expected, new LocalizationService(language)[key]);

@@ -34,6 +34,14 @@ public interface IWindowLauncher
     /// повторный вызов выводит вперёд уже открытое.
     /// </summary>
     void ShowAbout();
+
+    /// <summary>
+    /// Показывает окно обновления (ADR-0004, «Update Model»), тоже в одном экземпляре.
+    /// <paramref name="startCheck"/> — ручная проверка из меню: окно открывается сразу в
+    /// состоянии «Проверяем…». Кнопка в строке проверку не запускает — окно показывает то,
+    /// что уже известно.
+    /// </summary>
+    void ShowUpdates(bool startCheck);
 }
 
 public sealed class WindowLauncher : IWindowLauncher
@@ -45,6 +53,12 @@ public sealed class WindowLauncher : IWindowLauncher
 
     /// <summary>Единственное окно About, пока оно открыто. Создаётся только по нажатию пункта меню.</summary>
     private AboutWindow? _aboutWindow;
+
+    /// <summary>Единственное окно обновления, пока оно открыто. Создаётся только по действию пользователя.</summary>
+    private UpdateWindow? _updateWindow;
+
+    /// <summary>Открытое окно обновления — для тестов единственного экземпляра.</summary>
+    internal UpdateWindow? UpdateWindow => _updateWindow;
 
     public WindowLauncher(IServiceProvider services)
     {
@@ -117,6 +131,29 @@ public sealed class WindowLauncher : IWindowLauncher
         var window = new AboutWindow(new AboutViewModel(_services.GetRequiredService<ILocalizationService>()));
         window.Closed += (_, _) => _aboutWindow = null;
         _aboutWindow = window;
+        window.Show();
+    }
+
+    public void ShowUpdates(bool startCheck)
+    {
+        var updates = _services.GetRequiredService<UpdateViewModel>();
+
+        // Без известного состояния показывать нечего — тогда окно тоже начинает с проверки.
+        // Во время загрузки и после неё координатор сам не станет проверять заново.
+        if (startCheck || updates.State == UpdateState.Idle)
+        {
+            _ = updates.Coordinator.CheckAsync();
+        }
+
+        if (_updateWindow is not null)
+        {
+            _updateWindow.Activate();
+            return;
+        }
+
+        var window = new UpdateWindow(updates);
+        window.Closed += (_, _) => _updateWindow = null;
+        _updateWindow = window;
         window.Show();
     }
 

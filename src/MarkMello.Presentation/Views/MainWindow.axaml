@@ -217,6 +217,20 @@
                         Spacing="4"
                         Margin="8,0,0,0"
                         VerticalAlignment="Center">
+              <!-- Кнопка обновления (ADR-0004, «Update Model») — первой, чтобы раскрытая
+                   надпись росла влево над вкладками, а не над кнопками. Создаётся, только
+                   когда есть новая версия: до этого у ContentControl нет содержимого. -->
+              <ContentControl Name="UpdateButtonHost"
+                              Margin="0,0,2,0"
+                              IsVisible="{Binding Updates.IsButtonVisible}"
+                              Content="{Binding Updates.ButtonContent}">
+                <ContentControl.ContentTemplate>
+                  <DataTemplate x:DataType="vm:UpdateViewModel">
+                    <views:UpdateNotificationButton />
+                  </DataTemplate>
+                </ContentControl.ContentTemplate>
+              </ContentControl>
+
               <StackPanel Name="UnsavedIndicator"
                           Orientation="Horizontal"
                           Spacing="7"
