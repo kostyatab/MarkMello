@@ -63,6 +63,10 @@ public partial class ShellViewModel
         nameof(AppSettingsReadingHintPrefix),
         nameof(AppSettingsReadingHintSuffix),
         nameof(DirtyPromptCancel),
+        nameof(DocumentOutlineHint),
+        nameof(DocumentOutlineLabel),
+        nameof(DocumentOutlineOff),
+        nameof(DocumentOutlineOn),
         nameof(DirtyPromptDiscard),
         nameof(DirtyPromptSave),
         nameof(DragDropHint),
@@ -264,6 +268,10 @@ public partial class ShellViewModel
     public string WindowBorderLabel => _localization["WindowBorderLabel"];
     public string WindowBorderOff => _localization["WindowBorderOff"];
     public string WindowBorderOn => _localization["WindowBorderOn"];
+    public string DocumentOutlineHint => _localization["DocumentOutlineHint"];
+    public string DocumentOutlineLabel => _localization["DocumentOutlineLabel"];
+    public string DocumentOutlineOff => _localization["DocumentOutlineOff"];
+    public string DocumentOutlineOn => _localization["DocumentOutlineOn"];
     public string ReadingMoreSettingsHint => _localization["ReadingMoreSettingsHint"];
     public string ReadingMoreSettingsLink => _localization["ReadingMoreSettingsLink"];
     public string ReadingSettingsTooltip => _localization["ReadingSettingsTooltip"];

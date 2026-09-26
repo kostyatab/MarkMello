@@ -114,6 +114,8 @@ internal sealed class InMemorySettingsStore : ISettingsStore
 
     public WindowBorderMode WindowBorderMode { get; set; } = WindowBorderMode.Auto;
 
+    public bool DocumentOutlineEnabled { get; set; } = true;
+
     public double SidebarWidth { get; set; } = WorkspaceSidebarWidth.Default;
 
     public ValueTask<ReadingPreferences> LoadPreferencesAsync(CancellationToken cancellationToken = default)
@@ -160,6 +162,15 @@ internal sealed class InMemorySettingsStore : ISettingsStore
     public ValueTask SaveWindowBorderModeAsync(WindowBorderMode mode, CancellationToken cancellationToken = default)
     {
         WindowBorderMode = mode;
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask<bool> LoadDocumentOutlineEnabledAsync(CancellationToken cancellationToken = default)
+        => ValueTask.FromResult(DocumentOutlineEnabled);
+
+    public ValueTask SaveDocumentOutlineEnabledAsync(bool enabled, CancellationToken cancellationToken = default)
+    {
+        DocumentOutlineEnabled = enabled;
         return ValueTask.CompletedTask;
     }
 

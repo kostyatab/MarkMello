@@ -22,6 +22,7 @@ public sealed class JsonSettingsStore : ISettingsStore
     private ThemeMode _theme = ThemeMode.System;
     private AppLanguage _language = AppLanguage.System;
     private WindowBorderMode _windowBorder = WindowBorderMode.Auto;
+    private bool _documentOutline = true;
     private WindowPlacement? _windowPlacement;
     private double _sidebarWidth = WorkspaceSidebarWidth.Default;
     private WorkspaceSessionState _session = WorkspaceSessionState.Empty;
@@ -102,6 +103,31 @@ public sealed class JsonSettingsStore : ISettingsStore
         {
             EnsureLoadedCore();
             _windowBorder = NormalizeWindowBorderMode(mode);
+            PersistCore();
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask<bool> LoadDocumentOutlineEnabledAsync(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        lock (_gate)
+        {
+            EnsureLoadedCore();
+            return ValueTask.FromResult(_documentOutline);
+        }
+    }
+
+    public ValueTask SaveDocumentOutlineEnabledAsync(bool enabled, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        lock (_gate)
+        {
+            EnsureLoadedCore();
+            _documentOutline = enabled;
             PersistCore();
         }
 
@@ -260,6 +286,7 @@ public sealed class JsonSettingsStore : ISettingsStore
                         _preferences = ReadingPreferences.Normalize(fileModel.Preferences);
                         _language = NormalizeLanguage(fileModel.Language);
                         _windowBorder = NormalizeWindowBorderMode(fileModel.WindowBorder);
+                        _documentOutline = fileModel.DocumentOutline;
                         _windowPlacement = WindowPlacement.Normalize(fileModel.WindowPlacement);
                         _sidebarWidth = WorkspaceSidebarWidth.Normalize(fileModel.SidebarWidth);
                         _session = fileModel.Session ?? WorkspaceSessionState.Empty;
@@ -274,6 +301,7 @@ public sealed class JsonSettingsStore : ISettingsStore
             _preferences = ReadingPreferences.Default;
             _language = AppLanguage.System;
             _windowBorder = WindowBorderMode.Auto;
+            _documentOutline = true;
             _windowPlacement = null;
             _sidebarWidth = WorkspaceSidebarWidth.Default;
             _session = WorkspaceSessionState.Empty;
@@ -304,6 +332,7 @@ public sealed class JsonSettingsStore : ISettingsStore
                 _language,
                 _windowPlacement,
                 _windowBorder,
+                _documentOutline,
                 _sidebarWidth,
                 _session,
                 JsonSerializer.SerializeToElement(

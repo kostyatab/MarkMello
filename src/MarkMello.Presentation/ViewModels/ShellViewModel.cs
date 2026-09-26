@@ -76,6 +76,8 @@ public partial class ShellViewModel : ObservableObject
     private AppUpdatePackage? _availableUpdatePackage;
     private WindowBorderMode _windowBorderMode = WindowBorderMode.Auto;
     private bool _isWindowBorderLoaded;
+    private bool _isDocumentOutlineEnabled = true;
+    private bool _isDocumentOutlineLoaded;
 
     public event EventHandler? CloseRequested;
 
@@ -800,6 +802,56 @@ public partial class ShellViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Рельс оглавления у правого края документа. Как и рамка окна, хранится отдельно
+    /// от <see cref="ReadingPreferences"/>: это редкий переключатель, а не параметр чтения.
+    /// </summary>
+    public bool IsDocumentOutlineEnabled
+    {
+        get => _isDocumentOutlineEnabled;
+        set
+        {
+            if (_isDocumentOutlineEnabled == value)
+            {
+                return;
+            }
+
+            _isDocumentOutlineEnabled = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(IsDocumentOutlineOnSelected));
+            OnPropertyChanged(nameof(IsDocumentOutlineOffSelected));
+
+            if (_isDocumentOutlineLoaded)
+            {
+                _ = _settings.SaveDocumentOutlineEnabledAsync(value).AsTask();
+            }
+        }
+    }
+
+    public bool IsDocumentOutlineOnSelected
+    {
+        get => IsDocumentOutlineEnabled;
+        set => SelectDocumentOutline(value, enabled: true, nameof(IsDocumentOutlineOnSelected));
+    }
+
+    public bool IsDocumentOutlineOffSelected
+    {
+        get => !IsDocumentOutlineEnabled;
+        set => SelectDocumentOutline(value, enabled: false, nameof(IsDocumentOutlineOffSelected));
+    }
+
+    private void SelectDocumentOutline(bool isChecked, bool enabled, string propertyName)
+    {
+        if (!isChecked)
+        {
+            // Как у рамки окна: сегмент нельзя снять, только выбрать соседний.
+            OnPropertyChanged(propertyName);
+            return;
+        }
+
+        IsDocumentOutlineEnabled = enabled;
+    }
+
+    /// <summary>
     /// Тема «Авто / Светлая / Тёмная» в карточке Aa (ADR-0009). «Авто» — сохраняемый
     /// выбор <see cref="ThemeMode.System"/>: приложение само идёт за темой ОС.
     /// </summary>
@@ -881,6 +933,9 @@ public partial class ShellViewModel : ObservableObject
 
         WindowBorderMode = await _settings.LoadWindowBorderModeAsync().ConfigureAwait(true);
         _isWindowBorderLoaded = true;
+
+        IsDocumentOutlineEnabled = await _settings.LoadDocumentOutlineEnabledAsync().ConfigureAwait(true);
+        _isDocumentOutlineLoaded = true;
 
         // Аргументы командной строки принадлежат запуску процесса, а не каждому окну:
         // второе окно получает свою папку от launcher'а и стартовую активацию пропускает.

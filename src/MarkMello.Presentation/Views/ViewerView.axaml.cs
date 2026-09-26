@@ -3,14 +3,17 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using MarkMello.Domain;
+using MarkMello.Domain.Outline;
 using MarkMello.Presentation.ViewModels;
 using MarkMello.Presentation.Views.Markdown;
+using MarkMello.Presentation.Views.Markdown.Outline;
+using System.ComponentModel;
 
 namespace MarkMello.Presentation.Views;
 
 public partial class ViewerView : UserControl, IFindHost
 {
-    private const double WheelStepMultiplier = 6.0;
     private const double KeyboardPageOverlap = 48.0;
     private ScrollViewer? _scroll;
     private MarkdownDocumentView? _documentView;
@@ -18,6 +21,20 @@ public partial class ViewerView : UserControl, IFindHost
 
     // Идёт пересборка после докраски кода (ADR-0010 §4), а не новый документ.
     private bool _isRecolorRender;
+
+    /// <summary>Рельс не подходит к тексту ближе этого — иначе он скрыт.</summary>
+    private const double OutlineMinimumGapToText = 16;
+
+    private DocumentOutlineLayer? _outlineLayer;
+    private ShellViewModel? _viewModel;
+    private RenderedMarkdownDocument? _outlineDocument;
+    private DocumentOutline _outline = DocumentOutline.Empty;
+    private double[] _outlineHeadingTops = [];
+    private bool _isOutlineBuildQueued;
+
+    // Документ перерисовывается: рельс остаётся на месте до новой сборки, чтобы не
+    // мигать и не дёргать широкие таблицы, но по его устаревшим пунктам не ходим.
+    private bool _isOutlineStale;
 
     public ViewerView()
     {
@@ -42,6 +59,12 @@ public partial class ViewerView : UserControl, IFindHost
 
     public void ClearFind() => _documentView?.ApplySearchQuery(null);
 
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        AttachViewModel(DataContext as ShellViewModel);
+    }
+
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
@@ -61,13 +84,39 @@ public partial class ViewerView : UserControl, IFindHost
             _documentView.DocumentRenderInvalidated += OnDocumentRenderInvalidated;
             _documentView.MarkdownFileLinkRequested += OnMarkdownFileLinkRequested;
             _documentView.SearchStateChanged += OnDocumentSearchStateChanged;
+            _documentView.SizeChanged += OnOutlineGeometryChanged;
         }
+
+        _outlineLayer = this.FindControl<DocumentOutlineLayer>("OutlineLayer");
+        if (_outlineLayer is not null)
+        {
+            _outlineLayer.IsCardSuppressed = IsOutlineCardSuppressed;
+            _outlineLayer.EntryInvoked += OnOutlineEntryInvoked;
+
+            // Рельс и карточка лежат рядом с DocScroll, а не в нём: колесо над ними,
+            // которое не прокрутило список карточки, должно крутить документ.
+            _outlineLayer.AddHandler(InputElement.PointerWheelChangedEvent, OnPointerWheelChanged);
+        }
+
+        SizeChanged += OnOutlineGeometryChanged;
+        AttachViewModel(DataContext as ShellViewModel);
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         _hasRenderedDocument = false;
         _isRecolorRender = false;
+
+        SizeChanged -= OnOutlineGeometryChanged;
+        AttachViewModel(null);
+        HideOutline();
+        if (_outlineLayer is not null)
+        {
+            _outlineLayer.IsCardSuppressed = null;
+            _outlineLayer.EntryInvoked -= OnOutlineEntryInvoked;
+            _outlineLayer.RemoveHandler(InputElement.PointerWheelChangedEvent, OnPointerWheelChanged);
+            _outlineLayer = null;
+        }
 
         if (_scroll is not null)
         {
@@ -84,6 +133,7 @@ public partial class ViewerView : UserControl, IFindHost
             _documentView.DocumentRenderInvalidated -= OnDocumentRenderInvalidated;
             _documentView.MarkdownFileLinkRequested -= OnMarkdownFileLinkRequested;
             _documentView.SearchStateChanged -= OnDocumentSearchStateChanged;
+            _documentView.SizeChanged -= OnOutlineGeometryChanged;
             _documentView = null;
         }
 
@@ -92,36 +142,10 @@ public partial class ViewerView : UserControl, IFindHost
 
     private void OnPointerWheelChanged(object? sender, PointerWheelEventArgs e)
     {
-        if (_scroll is null || Math.Abs(e.Delta.Y) <= double.Epsilon)
+        if (_scroll is not null && ReadingWheelScroll.TryScroll(_scroll, e.Delta))
         {
-            return;
+            e.Handled = true;
         }
-
-        // Preserve horizontal wheel gestures for nested controls such as
-        // horizontally scrollable code blocks. We only take over primarily
-        // vertical scrolling to match the faster browser-like reading feel.
-        if (Math.Abs(e.Delta.X) > Math.Abs(e.Delta.Y))
-        {
-            return;
-        }
-
-        var maxOffset = _scroll.ScrollBarMaximum.Y;
-        if (maxOffset <= 0)
-        {
-            return;
-        }
-
-        var baseStep = _scroll.SmallChange.Height > 0 ? _scroll.SmallChange.Height : 16.0;
-        var wheelStep = baseStep * WheelStepMultiplier;
-        var nextOffset = Math.Clamp(_scroll.Offset.Y - e.Delta.Y * wheelStep, 0, maxOffset);
-
-        if (Math.Abs(nextOffset - _scroll.Offset.Y) <= double.Epsilon)
-        {
-            return;
-        }
-
-        _scroll.Offset = new Vector(_scroll.Offset.X, nextOffset);
-        e.Handled = true;
     }
 
     private void OnViewerKeyDown(object? sender, KeyEventArgs e)
@@ -192,6 +216,7 @@ public partial class ViewerView : UserControl, IFindHost
             // Докраска кода: тот же документ, другие только цвета. Фокус
             // и прокрутка к совпадению поиска остаются как были.
             _isRecolorRender = false;
+            QueueOutlineBuild();
             return;
         }
 
@@ -204,6 +229,7 @@ public partial class ViewerView : UserControl, IFindHost
 
         _hasRenderedDocument = true;
         FocusDocumentViewAsync();
+        QueueOutlineBuild();
 
         // Keep the active search match in view after a document re-render.
         if (_documentView?.MatchIndex >= 0)
@@ -267,6 +293,16 @@ public partial class ViewerView : UserControl, IFindHost
         }
 
         _hasRenderedDocument = false;
+
+        // Пустой документ не присылает DocumentRendered — рельс прячется сразу.
+        if (_documentView?.Document is not { Blocks.Count: > 0 })
+        {
+            HideOutline();
+            return;
+        }
+
+        _isOutlineStale = true;
+        _outlineLayer?.CloseCard();
     }
 
     private async void OnMarkdownFileLinkRequested(object? sender, MarkdownFileLinkRequestedEventArgs e)
@@ -296,5 +332,198 @@ public partial class ViewerView : UserControl, IFindHost
             // вьюер уже показывает другой документ и спрашивать его поздно.
             vm.ReportScrollOffset(current);
         }
+
+        UpdateOutlineCurrentEntry();
+    }
+
+    // ---------- Оглавление ----------
+
+    private void AttachViewModel(ShellViewModel? viewModel)
+    {
+        if (ReferenceEquals(_viewModel, viewModel))
+        {
+            return;
+        }
+
+        if (_viewModel is not null)
+        {
+            _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        }
+
+        _viewModel = viewModel;
+
+        if (_viewModel is not null)
+        {
+            _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        }
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        switch (e.PropertyName)
+        {
+            case nameof(ShellViewModel.IsDocumentOutlineEnabled):
+                QueueOutlineBuild();
+                break;
+            case nameof(ShellViewModel.DocumentOutlineLabel) when _outlineLayer is not null:
+                _outlineLayer.AccessibleName = _viewModel?.DocumentOutlineLabel;
+                break;
+        }
+
+        // Открылся другой оверлей — карточка оглавления уступает ему место.
+        if (_outlineLayer is { IsCardOpen: true } && IsOutlineCardSuppressed())
+        {
+            _outlineLayer.CloseCard();
+        }
+    }
+
+    private bool IsOutlineCardSuppressed()
+        => DataContext is not ShellViewModel vm
+            || vm.HasOpenOverlay
+            || vm.IsFindBarOpen
+            || vm.IsModalDialogOpen
+            || _isOutlineStale;
+
+    private void OnOutlineGeometryChanged(object? sender, SizeChangedEventArgs e)
+    {
+        if (_hasRenderedDocument)
+        {
+            QueueOutlineBuild();
+        }
+    }
+
+    /// <summary>
+    /// Оглавление строится после отрисовки документа и не раньше: с фоновым
+    /// приоритетом, одной сборкой на серию событий (ресайз, смена ширины строки).
+    /// Документ, перерисованный между постановкой и сборкой, ловит проверка
+    /// <see cref="_hasRenderedDocument"/>: до нового DocumentRendered она ложна,
+    /// и сборку повторит сам DocumentRendered.
+    /// </summary>
+    private void QueueOutlineBuild()
+    {
+        if (_isOutlineBuildQueued)
+        {
+            return;
+        }
+
+        _isOutlineBuildQueued = true;
+        Dispatcher.UIThread.Post(
+            () =>
+            {
+                _isOutlineBuildQueued = false;
+                BuildOutline();
+            },
+            DispatcherPriority.Background);
+    }
+
+    private void BuildOutline()
+    {
+        // Документ ещё перерисовывается — соберём по его DocumentRendered.
+        if (!_hasRenderedDocument)
+        {
+            return;
+        }
+
+        if (_outlineLayer is null
+            || _documentView?.Document is not { } document
+            || _scroll is null
+            || DataContext is not ShellViewModel { IsDocumentOutlineEnabled: true } vm)
+        {
+            HideOutline();
+            return;
+        }
+
+        if (!ReferenceEquals(_outlineDocument, document))
+        {
+            _outlineDocument = document;
+            _outline = DocumentOutline.Create(document);
+        }
+
+        if (!_outline.HasEnoughEntries || !TryMeasureHeadingTops(_outline, out var tops) || !OutlineFitsBesideText())
+        {
+            HideOutline();
+            return;
+        }
+
+        _outlineHeadingTops = tops;
+        _outlineLayer.AccessibleName = vm.DocumentOutlineLabel;
+        _isOutlineStale = false;
+        _outlineLayer.Show(_outline.Entries, FindCurrentOutlineEntry());
+        MarkdownTableHost.SetPageEndReserve(_scroll, DocumentOutlineLayer.RailFootprint);
+    }
+
+    private bool TryMeasureHeadingTops(DocumentOutline outline, out double[] tops)
+    {
+        tops = new double[outline.Entries.Count];
+        for (var index = 0; index < tops.Length; index++)
+        {
+            var heading = _documentView?.GetTopLevelHeadingControl(outline.Entries[index].BlockIndex);
+            if (heading?.TranslatePoint(default, _scroll!) is not { } point)
+            {
+                return false;
+            }
+
+            tops[index] = _scroll!.Offset.Y + point.Y;
+        }
+
+        return true;
+    }
+
+    /// <summary>Рельс стоит в правом поле и не наезжает на текст — иначе он скрыт.</summary>
+    private bool OutlineFitsBesideText()
+    {
+        if (_documentView is null)
+        {
+            return false;
+        }
+
+        var textRight = _documentView.TranslatePoint(
+            new Point(_documentView.Bounds.Width - _documentView.DocumentPadding.Right, 0),
+            this);
+        if (textRight is null)
+        {
+            return false;
+        }
+
+        var railLeft = Bounds.Width - DocumentOutlineLayer.RailFootprint;
+        return railLeft - textRight.Value.X >= OutlineMinimumGapToText;
+    }
+
+    private int FindCurrentOutlineEntry()
+        => _scroll is null
+            ? 0
+            : Math.Max(0, DocumentOutline.FindCurrentEntry(
+                _outlineHeadingTops,
+                _scroll.Offset.Y,
+                _scroll.ScrollBarMaximum.Y,
+                _scroll.Viewport.Height));
+
+    private void UpdateOutlineCurrentEntry()
+    {
+        if (_outlineLayer is { IsVisible: true } && !_isOutlineStale && _outlineHeadingTops.Length > 0)
+        {
+            _outlineLayer.SetCurrentIndex(FindCurrentOutlineEntry());
+        }
+    }
+
+    private void HideOutline()
+    {
+        _isOutlineStale = false;
+        _outlineHeadingTops = [];
+        _outlineLayer?.Hide();
+        if (_scroll is not null)
+        {
+            MarkdownTableHost.SetPageEndReserve(_scroll, 0);
+        }
+    }
+
+    private void OnOutlineEntryInvoked(object? sender, int index)
+    {
+        if (_isOutlineStale || index < 0 || index >= _outline.Entries.Count)
+        {
+            return;
+        }
+
+        _documentView?.TryScrollToTopLevelHeading(_outline.Entries[index].BlockIndex);
     }
 }

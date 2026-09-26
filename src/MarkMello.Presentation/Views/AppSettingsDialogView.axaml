@@ -101,6 +101,37 @@
         </Grid>
       </Border>
 
+      <Border Classes="mm-app-settings-row">
+        <Grid ColumnDefinitions="*,Auto"
+              ColumnSpacing="16">
+          <StackPanel Spacing="4"
+                      VerticalAlignment="Center">
+            <TextBlock Classes="mm-app-settings-label"
+                       Text="{Binding DocumentOutlineLabel}" />
+            <TextBlock Classes="mm-app-settings-caption"
+                       Text="{Binding DocumentOutlineHint}" />
+          </StackPanel>
+          <Border Grid.Column="1"
+                  Classes="mm-card-segments"
+                  Width="200"
+                  VerticalAlignment="Center">
+            <Grid ColumnDefinitions="*,*"
+                  ColumnSpacing="2">
+              <ToggleButton Grid.Column="0"
+                            Classes="mm-card-segment"
+                            IsChecked="{Binding IsDocumentOutlineOnSelected}">
+                <TextBlock Text="{Binding DocumentOutlineOn}" />
+              </ToggleButton>
+              <ToggleButton Grid.Column="1"
+                            Classes="mm-card-segment"
+                            IsChecked="{Binding IsDocumentOutlineOffSelected}">
+                <TextBlock Text="{Binding DocumentOutlineOff}" />
+              </ToggleButton>
+            </Grid>
+          </Border>
+        </Grid>
+      </Border>
+
       <TextBlock Classes="mm-app-settings-section"
                  Text="{Binding UpdatesSectionTitle}" />
 

@@ -10,6 +10,7 @@ internal sealed record SettingsFileModel(
     AppLanguage Language,
     WindowPlacement? WindowPlacement,
     WindowBorderMode WindowBorder = WindowBorderMode.Auto,
+    bool DocumentOutline = true,
     double? SidebarWidth = null,
     WorkspaceSessionState? Session = null,
     // Сырой JSON, а не список записей: битая запись «Недавних» не должна ронять чтение

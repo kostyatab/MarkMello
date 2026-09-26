@@ -19,6 +19,10 @@ public interface ISettingsStore
     ValueTask<WindowBorderMode> LoadWindowBorderModeAsync(CancellationToken cancellationToken = default);
     ValueTask SaveWindowBorderModeAsync(WindowBorderMode mode, CancellationToken cancellationToken = default);
 
+    /// <summary>Рельс оглавления у правого края документа; файл без поля читается как «Вкл».</summary>
+    ValueTask<bool> LoadDocumentOutlineEnabledAsync(CancellationToken cancellationToken = default);
+    ValueTask SaveDocumentOutlineEnabledAsync(bool enabled, CancellationToken cancellationToken = default);
+
     ValueTask<AppLanguage> LoadLanguageAsync(CancellationToken cancellationToken = default);
     ValueTask SaveLanguageAsync(AppLanguage language, CancellationToken cancellationToken = default);
 

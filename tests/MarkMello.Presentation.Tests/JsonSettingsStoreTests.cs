@@ -68,6 +68,52 @@ public sealed class JsonSettingsStoreTests
     }
 
     [Fact]
+    public async Task OldSettingsFileWithoutDocumentOutlineReadsAsEnabled()
+    {
+        var rootDirectory = CreateTempDirectory();
+        try
+        {
+            await File.WriteAllTextAsync(
+                Path.Combine(rootDirectory, "settings.json"),
+                """{ "theme": "Dark", "windowBorder": "On" }""");
+
+            var store = new JsonSettingsStore(rootDirectory);
+
+            Assert.True(await store.LoadDocumentOutlineEnabledAsync());
+            Assert.Equal(WindowBorderMode.On, await store.LoadWindowBorderModeAsync());
+        }
+        finally
+        {
+            DeleteDirectory(rootDirectory);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DocumentOutlineFlagSurvivesRestart(bool enabled)
+    {
+        var rootDirectory = CreateTempDirectory();
+        try
+        {
+            var store = new JsonSettingsStore(rootDirectory);
+            await store.SaveDocumentOutlineEnabledAsync(enabled);
+            await store.SaveThemeAsync(ThemeMode.Light);
+
+            var reloadedStore = new JsonSettingsStore(rootDirectory);
+
+            Assert.Equal(enabled, await reloadedStore.LoadDocumentOutlineEnabledAsync());
+            Assert.Equal(ThemeMode.Light, await reloadedStore.LoadThemeAsync());
+            var json = await File.ReadAllTextAsync(Path.Combine(rootDirectory, "settings.json"));
+            Assert.Contains($"\"documentOutline\": {(enabled ? "true" : "false")}", json, StringComparison.Ordinal);
+        }
+        finally
+        {
+            DeleteDirectory(rootDirectory);
+        }
+    }
+
+    [Fact]
     public async Task LoadNormalizesOutOfRangePreferenceValues()
     {
         var rootDirectory = CreateTempDirectory();

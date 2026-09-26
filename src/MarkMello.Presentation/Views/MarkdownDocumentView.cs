@@ -2981,6 +2981,21 @@ public sealed class MarkdownDocumentView : UserControl
         => MarkdownHeadingAnchorSlugger.TryNormalizeFragment(linkTarget, out var anchor)
             && _headingAnchorTargets.ContainsKey(anchor);
 
+    /// <summary>
+    /// Контрол заголовка верхнего уровня по индексу блока в <see cref="Document"/> —
+    /// опора оглавления у края документа. Для остальных блоков — null.
+    /// </summary>
+    internal Control? GetTopLevelHeadingControl(int blockIndex)
+        => blockIndex >= 0
+            && blockIndex < _builtBlocks.Count
+            && _builtBlocks[blockIndex] is { Block: MarkdownHeadingBlock, HeadingAnchors: [var (_, control), ..] }
+                ? control
+                : null;
+
+    /// <summary>Переход к заголовку оглавления — тем же путём, что по ссылке <c>#якорь</c>.</summary>
+    internal bool TryScrollToTopLevelHeading(int blockIndex)
+        => GetTopLevelHeadingControl(blockIndex) is { } target && TryScrollTargetIntoView(target);
+
     private bool TryScrollToHeadingAnchor(string linkTarget)
     {
         if (!MarkdownHeadingAnchorSlugger.TryNormalizeFragment(linkTarget, out var anchor)

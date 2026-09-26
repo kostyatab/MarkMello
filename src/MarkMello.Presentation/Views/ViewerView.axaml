@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:MarkMello.Presentation.ViewModels"
              xmlns:views="using:MarkMello.Presentation.Views"
+             xmlns:outline="using:MarkMello.Presentation.Views.Markdown.Outline"
              mc:Ignorable="d"
              x:Class="MarkMello.Presentation.Views.ViewerView"
              x:DataType="vm:ShellViewModel">
@@ -32,6 +33,10 @@
         </Border>
       </Grid>
     </ScrollViewer>
+
+    <!-- Оглавление у правого края: рельс и карточка появляются после отрисовки
+         документа, на быстром пути здесь пустой невидимый слой. -->
+    <outline:DocumentOutlineLayer Name="OutlineLayer" />
   </Grid>
 
 </UserControl>

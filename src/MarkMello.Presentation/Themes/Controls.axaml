@@ -605,11 +605,24 @@
     Поверхность карточек под строкой окна (ADR-0009 Rule 2) — поиска, Aa, меню ⋯
     и настроек: одна на всех, чтобы карточки не расходились при правке палитры.
   -->
-  <Style Selector="Border.mm-settings-panel, Border.mm-find-card">
+  <Style Selector="Border.mm-settings-panel, Border.mm-find-card, Border.mm-outline-card">
     <Setter Property="Background" Value="{DynamicResource MmElevatedBackgroundBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource MmBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="BoxShadow" Value="{DynamicResource MmCardShadow}" />
+  </Style>
+
+  <!-- Карточка оглавления у правого края документа: ложится на рельс по наведению.
+       Пункты — строки меню на 28 px, текущий раздел — акцентом во всех состояниях. -->
+  <Style Selector="Border.mm-outline-card">
+    <Setter Property="Padding" Value="6" />
+    <Setter Property="CornerRadius" Value="12" />
+  </Style>
+  <Style Selector="Button.mm-list-item.mm-outline-item">
+    <Setter Property="FontSize" Value="13" />
+  </Style>
+  <Style Selector="Button.mm-list-item.mm-outline-item.mm-current /template/ ContentPresenter, Button.mm-list-item.mm-outline-item.mm-current:pointerover /template/ ContentPresenter, Button.mm-list-item.mm-outline-item.mm-current:pressed /template/ ContentPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource MmAccentBrush}" />
   </Style>
 
   <!-- Карточка поиска по A-CollapsedFind: одна строка под кнопкой поиска -->
