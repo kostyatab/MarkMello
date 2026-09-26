@@ -11,7 +11,7 @@ public sealed class MermaidDiagramRendererTests
     [Fact]
     public void KindIsMermaid()
     {
-        var renderer = new MermaidDiagramRenderer();
+        var renderer = new MermaidDiagramRenderer(new FixedAdvanceDiagramTextMeasurer());
 
         Assert.Equal(MarkdownDiagramKind.Mermaid, renderer.Kind);
     }
@@ -25,7 +25,7 @@ public sealed class MermaidDiagramRendererTests
                 A[Start] --> B[End]
             """;
 
-        var renderer = new MermaidDiagramRenderer();
+        var renderer = new MermaidDiagramRenderer(new FixedAdvanceDiagramTextMeasurer());
 
         var result = renderer.Render(new DiagramRenderRequest(source));
 
@@ -45,7 +45,7 @@ public sealed class MermaidDiagramRendererTests
                 Bob-->>Alice: Hey
             """;
 
-        var renderer = new MermaidDiagramRenderer();
+        var renderer = new MermaidDiagramRenderer(new FixedAdvanceDiagramTextMeasurer());
 
         var result = renderer.Render(new DiagramRenderRequest(source));
 
@@ -58,7 +58,7 @@ public sealed class MermaidDiagramRendererTests
     {
         const string source = "this is not a valid mermaid diagram";
 
-        var renderer = new MermaidDiagramRenderer();
+        var renderer = new MermaidDiagramRenderer(new FixedAdvanceDiagramTextMeasurer());
 
         var result = renderer.Render(new DiagramRenderRequest(source));
 
@@ -80,7 +80,7 @@ public sealed class MermaidDiagramRendererTests
                 C ==>
             """;
 
-        var result = new MermaidDiagramRenderer().Render(new DiagramRenderRequest(source));
+        var result = new MermaidDiagramRenderer(new FixedAdvanceDiagramTextMeasurer()).Render(new DiagramRenderRequest(source));
 
         var failure = Assert.IsType<DiagramRenderResult.Failure>(result);
         Assert.Equal(DiagramFailureReason.EmptyDiagram, failure.Reason);
@@ -103,7 +103,7 @@ public sealed class MermaidDiagramRendererTests
                 merge develop
             """;
 
-        var result = new MermaidDiagramRenderer().Render(new DiagramRenderRequest(source));
+        var result = new MermaidDiagramRenderer(new FixedAdvanceDiagramTextMeasurer()).Render(new DiagramRenderRequest(source));
 
         var svg = XDocument.Parse(Assert.IsType<DiagramRenderResult.Success>(result).Svg);
         var circles = svg.Descendants().Where(static e => e.Name.LocalName == "circle").ToList();
@@ -141,7 +141,7 @@ public sealed class MermaidDiagramRendererTests
     [Fact]
     public void RenderReturnsFailureForEmptySource()
     {
-        var renderer = new MermaidDiagramRenderer();
+        var renderer = new MermaidDiagramRenderer(new FixedAdvanceDiagramTextMeasurer());
 
         var result = renderer.Render(new DiagramRenderRequest(string.Empty));
 
@@ -152,7 +152,7 @@ public sealed class MermaidDiagramRendererTests
     public void RenderPreservesOriginalSourceInFailure()
     {
         const string source = "graph";
-        var renderer = new MermaidDiagramRenderer();
+        var renderer = new MermaidDiagramRenderer(new FixedAdvanceDiagramTextMeasurer());
 
         var result = renderer.Render(new DiagramRenderRequest(source));
 
@@ -171,7 +171,7 @@ public sealed class MermaidDiagramRendererTests
                 A --> B
                 B --> C
             """;
-        var renderer = new MermaidDiagramRenderer();
+        var renderer = new MermaidDiagramRenderer(new FixedAdvanceDiagramTextMeasurer());
 
         renderer.Render(new DiagramRenderRequest(source));
 

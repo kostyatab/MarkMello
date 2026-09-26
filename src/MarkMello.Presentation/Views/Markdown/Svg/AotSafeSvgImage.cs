@@ -1590,7 +1590,7 @@ internal sealed class AotSafeSvgImage : IImage
 
             var screenAnchor = transform.Transform(Anchor);
             var screenFontSize = Math.Max(1, FontSize * Math.Abs(transform.ScaleY));
-            var typeface = ResolveTypeface(FontFamilyName, FontWeight);
+            var typeface = SvgTypeface.Resolve(FontFamilyName, FontWeight);
             var brush = new SolidColorBrush(ApplyOpacity(Fill, Opacity) ?? Fill);
             var formatted = new FormattedText(
                 Text,
@@ -1616,38 +1616,6 @@ internal sealed class AotSafeSvgImage : IImage
             };
 
             context.DrawText(formatted, new Point(screenAnchor.X + offsetX, screenAnchor.Y + offsetY));
-        }
-
-        private static Typeface ResolveTypeface(string? fontFamily, FontWeight weight)
-        {
-            if (string.IsNullOrWhiteSpace(fontFamily))
-            {
-                return new Typeface(FontFamily.Default, FontStyle.Normal, weight);
-            }
-
-            // SVG font-family is a comma-separated fallback list; Avalonia's
-            // FontFamily accepts a single family. Take the first non-empty
-            // token, otherwise fall back to the system default so glyphs
-            // always render.
-            foreach (var candidate in fontFamily.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-            {
-                var unquoted = candidate.Trim('"', '\'').Trim();
-                if (unquoted.Length == 0)
-                {
-                    continue;
-                }
-
-                try
-                {
-                    return new Typeface(new FontFamily(unquoted), FontStyle.Normal, weight);
-                }
-                catch (ArgumentException)
-                {
-                    continue;
-                }
-            }
-
-            return new Typeface(FontFamily.Default, FontStyle.Normal, weight);
         }
     }
 

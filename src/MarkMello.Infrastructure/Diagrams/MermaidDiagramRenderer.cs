@@ -1,5 +1,6 @@
 using MarkMello.Application.Abstractions;
 using MarkMello.Domain;
+using MarkMello.Infrastructure.Diagrams.Sequence;
 using System.Xml;
 using Naiad;
 
@@ -16,9 +17,21 @@ namespace MarkMello.Infrastructure.Diagrams;
 /// does not crash the document. Composition errors (missing/duplicate
 /// renderer) live outside this class and surface from
 /// <c>DiagramRenderService</c>.
+///
+/// Sequence diagrams get their labels measured and their layout redone on
+/// top of Naiad's SVG (ADR-0005 Decision 13); other diagram types pass
+/// through as Naiad draws them.
 /// </summary>
 public sealed class MermaidDiagramRenderer : IDiagramRenderer
 {
+    private readonly IDiagramTextMeasurer _textMeasurer;
+
+    public MermaidDiagramRenderer(IDiagramTextMeasurer textMeasurer)
+    {
+        ArgumentNullException.ThrowIfNull(textMeasurer);
+        _textMeasurer = textMeasurer;
+    }
+
     public MarkdownDiagramKind Kind => MarkdownDiagramKind.Mermaid;
 
     public DiagramRenderResult Render(DiagramRenderRequest request)
@@ -31,11 +44,14 @@ public sealed class MermaidDiagramRenderer : IDiagramRenderer
         {
             // Options are built per call: edit-mode preview renders off the UI
             // thread, so nothing here may be shared mutable state.
-            var svg = Mermaid.Render(source, new RenderOptions());
+            var options = new RenderOptions();
+            var svg = Mermaid.Render(source, options);
             if (string.IsNullOrEmpty(svg))
             {
                 return new DiagramRenderResult.Failure("Mermaid produced empty SVG output.", source);
             }
+
+            svg = SequenceSvgLayout.Apply(source, svg, options, _textMeasurer);
 
             // Naiad 1.x parses some broken sources (an unclosed flowchart node,
             // for one) into an empty diagram instead of throwing. Showing that

@@ -42,7 +42,7 @@ public sealed class M7SampleDiagramSourcesTests
     [InlineData(StateSource)]
     public void SampleDiagramRendersThroughTheRealMermaidPipeline(string source)
     {
-        var renderer = new MermaidDiagramRenderer();
+        var renderer = new MermaidDiagramRenderer(new FixedAdvanceDiagramTextMeasurer());
         var result = renderer.Render(new DiagramRenderRequest(source));
 
         var success = Assert.IsType<DiagramRenderResult.Success>(result);

@@ -18,6 +18,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="TestData\issue-35.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\MarkMello.Domain\MarkMello.Domain.csproj" />
     <ProjectReference Include="..\..\src\MarkMello.Infrastructure\MarkMello.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\MarkMello.Presentation\MarkMello.Presentation.csproj" />

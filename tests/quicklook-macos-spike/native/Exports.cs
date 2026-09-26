@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
+using MarkMello.Application.Abstractions;
 using MarkMello.Application.Diagrams;
 using MarkMello.Application.UseCases;
 using MarkMello.Domain;
@@ -27,7 +28,7 @@ public static unsafe class Exports
             var dir = Path.GetDirectoryName(path);
             var useCase = new RenderMarkdownDocumentUseCase(
                 new MarkdigMarkdownDocumentRenderer(),
-                new DiagramRenderService([new MermaidDiagramRenderer()]));
+                new DiagramRenderService([new MermaidDiagramRenderer(new ApproximateTextMeasurer())]));
             var doc = useCase.Execute(text, dir);
 #if HIGHLIGHT
             using var hl = new TextMateCodeHighlighter();
@@ -157,4 +158,12 @@ public static unsafe class Exports
         p[bytes.Length] = 0;
         return p;
     }
+}
+
+// No Avalonia in the Quick Look extension: estimate label widths for the
+// sequence-diagram layout; the browser draws the SVG with its own fonts.
+file sealed class ApproximateTextMeasurer : IDiagramTextMeasurer
+{
+    public DiagramTextSize Measure(string text, string fontFamily, double fontSize, bool bold)
+        => new(text.Length * fontSize * (bold ? 0.62 : 0.56), fontSize * 1.2);
 }

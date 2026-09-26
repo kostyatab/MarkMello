@@ -32,6 +32,7 @@ public static class DependencyInjection
         });
 
         services.AddSingleton<IFilePicker, FilePicker>();
+        services.AddSingleton<IDiagramTextMeasurer, AvaloniaDiagramTextMeasurer>();
         services.AddSingleton<IThemeService, AvaloniaThemeService>();
         services.AddSingleton<ILocalizationService, LocalizationService>();
 

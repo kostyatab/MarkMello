@@ -491,7 +491,7 @@ public sealed class AotSafeSvgImageTests
 
     private static string RenderMermaid(string source)
     {
-        var renderer = new MermaidDiagramRenderer();
+        var renderer = new MermaidDiagramRenderer(new FixedAdvanceDiagramTextMeasurer());
         var result = renderer.Render(new DiagramRenderRequest(source));
         var success = Assert.IsType<DiagramRenderResult.Success>(result);
         return success.Svg;
