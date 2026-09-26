@@ -369,14 +369,21 @@ public sealed class NewTabMenuCardTests
 
     /// <summary>
     /// Карточка встаёт под «+» левым краем, а у правого края окна сдвигается внутрь,
-    /// не обрезаясь: при переполнении «+» стоит в конце полосы, у кнопок строки справа.
+    /// не обрезаясь. Четыре вкладки в окне 900 сжимаются, но не уходят в «ещё N» —
+    /// заполняют полосу целиком, и «+» стоит у кнопок строки справа. При переполнении
+    /// «+» идёт сразу за видимыми вкладками, и зазор до края полосы зависел бы от
+    /// отступов строки на каждой ОС.
     /// </summary>
-    [Fact]
+    [FactSkippedOnWindows(
+        "На Windows правее кнопок строки стоят кнопки окна: от «+» до края окна остаётся "
+        + "больше ширины карточки, и сдвигать её внутрь не приходится.")]
     public Task CardShiftsInsideAtTheRightEdgeOfTheWindow()
     {
         return _fixture.RunAsync(async () =>
         {
-            var (window, _, _) = await ShowAsync(documents: Documents.Length);
+            var (window, viewModel, _) = await ShowAsync(documents: 4);
+            Assert.False(viewModel.OpenDocuments.HasOverflow);
+            Assert.True(viewModel.OpenDocuments.TabWidth < OpenDocumentsViewModel.PreferredTabWidth);
             var plus = PlusButton(window);
             var host = window.GetControl<Panel>("SidebarMenuHost");
 
